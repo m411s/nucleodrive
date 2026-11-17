@@ -1,0 +1,124 @@
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Media;
+using Avalonia.Media.Imaging;
+using Avalonia.Threading;
+using Pdrive.Ipc;
+
+namespace Pdrive.App.Services;
+
+/// <summary>Tray icon (StatusNotifierItem on Linux) mirroring the daemon status. Port of tray.py.</summary>
+public sealed class TrayController : IDisposable
+{
+    private readonly IDaemonControl _daemon;
+    private readonly TrayIcon _icon;
+    private readonly NativeMenuItem _status = new() { IsEnabled = false };
+    private readonly NativeMenuItem _lastSync = new() { IsEnabled = false };
+    private readonly NativeMenuItem _syncNow = new("Sync now");
+    private readonly NativeMenuItem _pause = new("Pause");
+    private readonly DispatcherTimer _clock;
+
+    public TrayController(Application app, IDaemonControl daemon, Action showWindow, Action quit)
+    {
+        _daemon = daemon;
+        var open = new NativeMenuItem("Open Proton Drive");
+        var quitItem = new NativeMenuItem("Quit");
+        open.Click += (_, _) => showWindow();
+        quitItem.Click += (_, _) => quit();
+        _syncNow.Click += async (_, _) => await Try(daemon.SyncNowAsync);
+        _pause.Click += async (_, _) => await Try(daemon.Status.State == DaemonState.Paused ? daemon.ResumeAsync : daemon.PauseAsync);
+
+        _icon = new TrayIcon
+        {
+            Icon = StatusIcons.For(DaemonState.Stopped),
+            ToolTipText = "Proton Drive",
+            Menu = new NativeMenu { _status, _lastSync, new NativeMenuItemSeparator(), _syncNow, _pause, open, new NativeMenuItemSeparator(), quitItem },
+        };
+        _icon.Clicked += (_, _) => showWindow();
+        TrayIcon.SetIcons(app, [_icon]);
+
+        daemon.StatusChanged += s => Dispatcher.UIThread.Post(() => Update(s));
+        _clock = new DispatcherTimer(TimeSpan.FromSeconds(30), DispatcherPriority.Background, (_, _) => Update(_daemon.Status));
+        _clock.Start();
+        Update(daemon.Status);
+    }
+
+    private DaemonState? _shown;
+
+    private void Update(DaemonStatus s)
+    {
+        if (_shown != s.State)
+        {
+            _icon.Icon = StatusIcons.For(s.State);
+            _shown = s.State;
+        }
+        var tip = $"Proton Drive – {s.Message}";
+        _icon.ToolTipText = tip.Length > 120 ? tip[..120] : tip;
+        _status.Header = s.Message.Length > 80 ? s.Message[..80] + "…" : s.Message;
+        _lastSync.Header = "Last sync: " + Units.Ago(s.LastSync);
+        var running = s.State != DaemonState.Stopped;
+        _syncNow.IsEnabled = running && s.State != DaemonState.Paused;
+        _pause.IsEnabled = running;
+        _pause.Header = s.State == DaemonState.Paused ? "Resume" : "Pause";
+    }
+
+    private static async Task Try(Func<Task> action)
+    {
+        try
+        {
+            await action();
+        }
+        catch (DaemonException)
+        {
+            // the status (and icon) already show why
+        }
+    }
+
+    public void Dispose()
+    {
+        _clock.Stop();
+        _icon.Dispose();
+    }
+}
+
+/// <summary>The tray.py icon: a coloured disc with a white "P", one colour per state.</summary>
+public static class StatusIcons
+{
+    private static readonly Dictionary<DaemonState, WindowIcon> Cache = [];
+
+    public static Color ColorFor(DaemonState state) => Color.Parse(state switch
+    {
+        DaemonState.Idle => "#3ba55d",
+        DaemonState.Syncing or DaemonState.Starting => "#4a7fe0",
+        DaemonState.Paused => "#9aa0a6",
+        DaemonState.Error => "#d9534f",
+        DaemonState.Login => "#e0a030",
+        _ => "#5f6368", // not running
+    });
+
+    public static WindowIcon For(DaemonState state)
+    {
+        if (Cache.TryGetValue(state, out var icon))
+            return icon;
+        var color = new SolidColorBrush(ColorFor(state));
+        var bmp = new RenderTargetBitmap(new PixelSize(64, 64));
+        using (var ctx = bmp.CreateDrawingContext())
+        {
+            ctx.DrawEllipse(color, null, new Rect(4, 4, 56, 56));
+            ctx.DrawRectangle(Brushes.White, null, new Rect(24, 18, 7, 28));          // stem
+            ctx.DrawGeometry(Brushes.White, null, HalfDisc(new Point(35, 28), 11, 10)); // bowl
+            ctx.DrawGeometry(color, null, HalfDisc(new Point(35, 28), 5.5, 5));        // counter
+        }
+        return Cache[state] = new WindowIcon(bmp);
+    }
+
+    private static StreamGeometry HalfDisc(Point center, double rx, double ry)
+    {
+        var g = new StreamGeometry();
+        using var c = g.Open();
+        c.BeginFigure(new Point(center.X, center.Y - ry), true);
+        c.ArcTo(new Point(center.X, center.Y + ry), new Size(rx, ry), 0, false, SweepDirection.Clockwise);
+        c.EndFigure(true);
+        return g;
+    }
+}
