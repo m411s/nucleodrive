@@ -8,8 +8,10 @@ official `proton-drive` CLI. It replaces the Python prototype in `../proton-driv
 - **Back up** local folders to Drive: new and changed files are uploaded within seconds (inotify),
   with a full scan every `interval_minutes` as a safety net. **Nothing is ever deleted** on either side;
   deleting or renaming a local file leaves the old copy on Drive.
-- **Tray icon** shows the backup state: green = up to date, blue = syncing, light grey = paused,
-  red = problem, amber = sign in needed, dark grey = daemon not running.
+- **Tray icon** shows the state with a dot on the app icon: green ✓ synced, blue ↑ syncing, grey ‖ paused,
+  red ! problem, amber ! needs you (sign in, or confirm deletions), faded – service not running.
+- **Settings**: sign in/out, install or update the `proton-drive` CLI (verified against Proton's
+  published SHA-512), start at login, keep syncing in the background.
 
 ## Two-way sync (`~/proton-drive`)
 
@@ -35,9 +37,13 @@ Unchosen folders stay online-only and remain browsable in the Files tab.
 
 ## Install
 
-Needs the .NET 10 SDK to build (the installed app is self-contained) and the `proton-drive` CLI:
-download it from https://proton.me/download/drive/cli, `chmod +x` it, and put it in `~/.local/bin`
-(or set `PROTON_DRIVE_BIN`).
+Needs the .NET 10 SDK to build (the installed app is self-contained). The `proton-drive` CLI can be
+installed from the app (**Settings › Install the CLI**), or by hand from
+https://proton.me/download/drive/cli/index.html into `~/.local/bin` (or set `PROTON_DRIVE_BIN`).
+
+`install.sh` downloads Proton's Drive badge to use as the app icon (onto this computer only; it's
+Proton's trademark and isn't part of this repo). `NO_BADGE=1` keeps pdrive's own icon. Tray state
+icons need ImageMagick; rendering the badge needs librsvg (`python3-gi` with GdkPixbuf).
 
 ```bash
 ./install.sh
@@ -59,7 +65,7 @@ Cinnamon show them out of the box. Without a tray, use the app's Backup tab.
 
 | | |
 |---|---|
-| App | `pdrive`: Files, Sync and Backup tabs. `pdrive --tray` starts hidden (used at login). Launching again shows the running window. |
+| App | `pdrive`: Files, Sync, Backup and Settings tabs. `pdrive --tray` starts hidden (used at login). Launching again shows the running window. |
 | CLI | `pdrivectl sync status \| list \| add FOLDER \| remove FOLDER \| now \| confirm` (two-way sync) |
 | | `pdrivectl status \| list \| add LOCAL REMOTE \| remove LOCAL \| now \| pause \| resume` (backups; pause/resume cover sync too) |
 | Daemon | `systemctl --user status pdrive`, logs with `journalctl --user -u pdrive` |

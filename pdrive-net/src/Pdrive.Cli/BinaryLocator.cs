@@ -20,7 +20,9 @@ public static class BinaryLocator
         }
 
         var home = getEnv("HOME") ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        return Fallbacks.Select(f => Path.Combine(home, f[2..])).FirstOrDefault(IsExecutable);
+        var data = getEnv("XDG_DATA_HOME") is { Length: > 0 } d ? d : Path.Combine(home, ".local/share");
+        var installed = Path.Combine(data, "pdrive/cli/proton-drive"); // where Settings › Install puts it
+        return Fallbacks.Select(f => Path.Combine(home, f[2..])).Append(installed).FirstOrDefault(IsExecutable);
     }
 
     public static bool IsExecutable(string path)

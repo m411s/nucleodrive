@@ -22,7 +22,7 @@ public sealed class EntryViewModel(DriveEntry entry)
 /// <summary>The Files tab: browse, upload (button or drop), download, sign in. Port of app.py's Window.</summary>
 public sealed partial class BrowserViewModel : ObservableObject
 {
-    private readonly IDriveClient? _client;
+    private readonly DriveClientProvider _provider;
     private readonly IDialogs _dialogs;
     private readonly IToaster _toast;
     private readonly Stack<string> _history = new();
@@ -38,13 +38,26 @@ public sealed partial class BrowserViewModel : ObservableObject
 
     /// <param name="client">Null if the CLI couldn't be found; <paramref name="clientError"/> says why.</param>
     public BrowserViewModel(IDriveClient? client, string? clientError, IDialogs dialogs, IToaster toast)
+        : this(new DriveClientProvider(() => client ?? throw new DriveException(clientError ?? "proton-drive CLI not found.")), dialogs, toast)
     {
-        _client = client;
+    }
+
+    public BrowserViewModel(DriveClientProvider provider, IDialogs dialogs, IToaster toast)
+    {
+        _provider = provider;
         _dialogs = dialogs;
         _toast = toast;
-        if (client is null)
-            Placeholder = clientError ?? "proton-drive CLI not found.";
+        if (provider.Client is null)
+            Placeholder = provider.Error ?? "proton-drive CLI not found.";
+        provider.Changed += () =>
+        {
+            OnPropertyChanged(nameof(HasClient));
+            Placeholder = provider.Client is null ? provider.Error : null;
+            _ = RefreshAsync();
+        };
     }
+
+    private IDriveClient? _client => _provider.Client;
 
     public ObservableCollection<EntryViewModel> Entries { get; } = [];
 

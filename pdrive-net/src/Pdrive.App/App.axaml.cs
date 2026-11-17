@@ -41,22 +41,16 @@ public sealed class App : Application
         _monitor = new DaemonMonitor(paths.DaemonSocket);
         var daemon = new MonitorDaemonControl(_monitor);
 
-        IDriveClient? client = null;
-        string? clientError = null;
-        try
-        {
-            client = new ProtonDriveCli();
-        }
-        catch (DriveException e)
-        {
-            clientError = e.Message;
-        }
+        var drive = new DriveClientProvider(() => new ProtonDriveCli());
+        var http = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromMinutes(10) };
+        http.DefaultRequestHeaders.UserAgent.ParseAdd("pdrive");
 
         _window = new MainWindow();
         var vm = new MainWindowViewModel(
-            new BrowserViewModel(client, clientError, _window, _window),
+            new BrowserViewModel(drive, _window, _window),
             new BackupViewModel(daemon, _window, _window, a => Dispatcher.UIThread.Post(a)),
-            new SyncViewModel(daemon, client, _window, a => Dispatcher.UIThread.Post(a), OpenInFileManager));
+            new SyncViewModel(daemon, drive, _window, a => Dispatcher.UIThread.Post(a), OpenInFileManager),
+            new SettingsViewModel(new CliSetup(CliInstaller.ForCurrentUser(http)), drive, StartupSettings.ForCurrentUser(), daemon, _window, _window));
         _window.DataContext = vm;
         _window.Closing += (_, e) =>
         {

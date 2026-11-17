@@ -13,6 +13,9 @@ public interface IDriveClient
     /// <summary>Opens the browser for sign-in; completes when the CLI does.</summary>
     Task LoginAsync(CancellationToken ct = default);
 
+    /// <summary>Signs out (the session is removed from the keyring).</summary>
+    Task LogoutAsync(CancellationToken ct = default);
+
     Task MkdirAsync(string remotePath, CancellationToken ct = default);
 
     /// <param name="output">Receives the CLI's output lines as they arrive (progress, if it prints any).</param>

@@ -43,6 +43,15 @@ public sealed class FakeDrive : IDriveClient
 
     public Task MkdirAsync(string remotePath, CancellationToken ct = default) => Task.CompletedTask;
 
+    public int Logouts { get; private set; }
+
+    public Task LogoutAsync(CancellationToken ct = default)
+    {
+        Logouts++;
+        ListError = new AuthException("You need to login first");
+        return Task.CompletedTask;
+    }
+
     public async Task UploadAsync(IReadOnlyList<string> localPaths, string remoteDir, IProgress<string>? output = null, CancellationToken ct = default)
     {
         Uploads.Add((localPaths, remoteDir));
@@ -71,6 +80,15 @@ public sealed class FakeDialogs : IDialogs
 
     public Task<IReadOnlyList<string>> PickFilesAsync(string title) => Task.FromResult(Files);
     public Task<string?> PickFolderAsync(string title) => Task.FromResult(Folder);
+
+    public bool ConfirmAnswer { get; set; } = true;
+    public List<string> Confirmations { get; } = [];
+
+    public Task<bool> ConfirmAsync(string title, string message, string yes = "Yes", string no = "Cancel")
+    {
+        Confirmations.Add(message);
+        return Task.FromResult(ConfirmAnswer);
+    }
 }
 
 public sealed class FakeToaster : IToaster

@@ -23,6 +23,17 @@ public sealed partial class MainWindow : Window, IDialogs, IToaster
         AddHandler(DragDrop.DragOverEvent, OnDragOver);
         AddHandler(DragDrop.DropEvent, OnDrop);
 
+        // Load settings (CLI version, update check, sign-in state) when the tab is first opened.
+        var settingsLoaded = false;
+        this.FindControl<TabItem>("SettingsTab")!.PropertyChanged += (_, e) =>
+        {
+            if (e.Property == TabItem.IsSelectedProperty && e.NewValue is true && !settingsLoaded && Vm?.Settings is { } s)
+            {
+                settingsLoaded = true;
+                _ = s.LoadAsync();
+            }
+        };
+
         var list = this.FindControl<ListBox>("EntryList")!;
         list.DoubleTapped += (_, _) => OpenSelected(list);
         list.KeyDown += (_, e) =>
@@ -71,6 +82,45 @@ public sealed partial class MainWindow : Window, IDialogs, IToaster
         return folders.Count > 0 ? folders[0].TryGetLocalPath() : null;
     }
 
+    public async Task<bool> ConfirmAsync(string title, string message, string yes = "Yes", string no = "Cancel")
+    {
+        var yesButton = new Button { Content = yes, Classes = { "accent" }, IsDefault = true };
+        var noButton = new Button { Content = no, IsCancel = true };
+        var dialog = new Window
+        {
+            Title = title,
+            Width = 440,
+            SizeToContent = SizeToContent.Height,
+            CanResize = false,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Icon = Icon,
+            Content = new StackPanel
+            {
+                Margin = new Avalonia.Thickness(20),
+                Spacing = 16,
+                Children =
+                {
+                    new TextBlock { Text = message, TextWrapping = Avalonia.Media.TextWrapping.Wrap },
+                    new StackPanel
+                    {
+                        Orientation = Avalonia.Layout.Orientation.Horizontal,
+                        HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
+                        Spacing = 8,
+                        Children = { noButton, yesButton },
+                    },
+                },
+            },
+        };
+        yesButton.Click += (_, _) => dialog.Close(true);
+        noButton.Click += (_, _) => dialog.Close(false);
+        if (!IsVisible)
+        {
+            Show();
+            Activate();
+        }
+        return await dialog.ShowDialog<bool?>(this) == true;
+    }
+
     // ---- IToaster ----------------------------------------------------------------
 
     public void Show(string message, bool error = false) => Dispatcher.UIThread.Post(() =>
@@ -81,7 +131,8 @@ public sealed partial class MainWindow : Window, IDialogs, IToaster
     {
         try
         {
-            return new WindowIcon(Avalonia.Platform.AssetLoader.Open(new Uri("avares://pdrive/Assets/pdrive.png")));
+            return StatusIcons.InstalledAppIcon()
+                   ?? new WindowIcon(Avalonia.Platform.AssetLoader.Open(new Uri("avares://pdrive/Assets/pdrive.png")));
         }
         catch (Exception)
         {

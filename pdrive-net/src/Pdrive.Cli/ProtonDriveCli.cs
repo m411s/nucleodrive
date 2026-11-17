@@ -67,6 +67,8 @@ public sealed class ProtonDriveCli : IDriveClient
 
     public Task LoginAsync(CancellationToken ct = default) => RunAsync(["auth", "login"], LoginTimeout, null, ct);
 
+    public Task LogoutAsync(CancellationToken ct = default) => RunAsync(["auth", "logout"], ShortTimeout, null, ct);
+
     /// <summary>`filesystem create-folder parentPath name`. Callers treat failure as "may already exist".</summary>
     public Task MkdirAsync(string remotePath, CancellationToken ct = default) =>
         RunAsync(["filesystem", "create-folder", RemotePath.Parent(remotePath), RemotePath.UnescapeName(RemotePath.Name(remotePath))],

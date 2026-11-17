@@ -131,6 +131,12 @@ if (Cmd("filesystem", "download"))
     return 0;
 }
 
+if (Cmd("auth", "logout"))
+{
+    Console.WriteLine("ok");
+    return 0;
+}
+
 if (Cmd("auth", "login"))
 {
     Console.WriteLine("ok");

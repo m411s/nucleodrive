@@ -16,6 +16,13 @@ rm -f "$CONF/systemd/user/pdrive.service" "$CONF/autostart/pdrive-tray.desktop" 
 [ -L "$HOME/.local/bin/pdrivectl" ] && rm -f "$HOME/.local/bin/pdrivectl"
 rm -rf "$LIB"
 rm -f "$ICONS/scalable/apps/pdrive.svg" "$ICONS"/*/apps/pdrive.png
+DATA="${XDG_DATA_HOME:-$HOME/.local/share}/pdrive"
+rm -rf "$DATA/icons"
+# The CLI installed from Settings stays (it's useful on its own) unless --purge.
+if [ "${1:-}" = "--purge" ]; then
+  [ "$(readlink "$HOME/.local/bin/proton-drive" 2>/dev/null)" = "$DATA/cli/proton-drive" ] && rm -f "$HOME/.local/bin/proton-drive"
+  rm -rf "$DATA"
+fi
 if [ "${NO_SYSTEMD:-0}" != "1" ] && command -v systemctl >/dev/null; then
   systemctl --user daemon-reload 2>/dev/null || true
 fi

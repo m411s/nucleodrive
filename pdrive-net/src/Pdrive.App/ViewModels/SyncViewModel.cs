@@ -19,7 +19,7 @@ public sealed partial class SyncFolderChoice(string path, bool isChecked) : Obse
 public sealed partial class SyncViewModel : ObservableObject
 {
     private readonly IDaemonControl _daemon;
-    private readonly IDriveClient? _drive;
+    private readonly DriveClientProvider _provider;
     private readonly IToaster _toast;
     private readonly Action<string> _openFolder;
 
@@ -36,9 +36,14 @@ public sealed partial class SyncViewModel : ObservableObject
     /// <param name="onUi">Runs an action on the UI thread.</param>
     /// <param name="openFolder">Opens a local folder in the file manager.</param>
     public SyncViewModel(IDaemonControl daemon, IDriveClient? drive, IToaster toast, Action<Action> onUi, Action<string> openFolder)
+        : this(daemon, new DriveClientProvider(() => drive ?? throw new DriveException("proton-drive CLI not found.")), toast, onUi, openFolder)
+    {
+    }
+
+    public SyncViewModel(IDaemonControl daemon, DriveClientProvider provider, IToaster toast, Action<Action> onUi, Action<string> openFolder)
     {
         _daemon = daemon;
-        _drive = drive;
+        _provider = provider;
         _toast = toast;
         _openFolder = openFolder;
         _status = daemon.Status;
@@ -85,11 +90,11 @@ public sealed partial class SyncViewModel : ObservableObject
         {
             var synced = (await _daemon.GetSyncSettingsAsync()).Folders;
             var names = new List<string>();
-            if (_drive is not null)
+            if (_provider.Client is { } drive)
             {
                 try
                 {
-                    names.AddRange((await _drive.ListAsync(RemotePath.Root)).Where(e => e.IsDir).Select(e => e.Name));
+                    names.AddRange((await drive.ListAsync(RemotePath.Root)).Where(e => e.IsDir).Select(e => e.Name));
                 }
                 catch (DriveException e)
                 {

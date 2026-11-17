@@ -7,6 +7,9 @@ public interface IDialogs
 {
     Task<IReadOnlyList<string>> PickFilesAsync(string title);
     Task<string?> PickFolderAsync(string title);
+
+    /// <summary>Yes/no question; true for yes.</summary>
+    Task<bool> ConfirmAsync(string title, string message, string yes = "Yes", string no = "Cancel");
 }
 
 public interface IToaster

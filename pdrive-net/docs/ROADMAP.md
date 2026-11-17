@@ -1,24 +1,17 @@
 # Planned
 
-## Settings page: install the CLI and sign in
+Nothing scheduled right now. Ideas:
 
-Requested 2026-11-17. A **Settings** tab (or dialog) in the app that covers first-time setup without
-a terminal:
+- Edit the rest of `config.json` in Settings (sync folder location, check interval, parallel listings,
+  deletion threshold, exclude patterns), so the file never needs editing by hand.
+- Rename, delete, new folder and sharing in the Files tab (the CLI has `rename`, `trash`,
+  `create-folder` and `sharing` commands).
 
-- **proton-drive CLI**
-  - Shows whether it's found, where (`BinaryLocator`), and its version (`proton-drive --version`,
-    which also says whether it's the latest).
-  - **Download / Update** button: fetch the official Linux build from Proton (find the direct
-    download URL behind https://proton.me/download/drive/cli; HTTPS only, Proton's domain only), keep
-    it in a new empty folder (e.g. `~/.local/lib/pdrive/cli/`), check it's an x86-64/arm64 ELF and that
-    `--version` runs, then `chmod +x` and link it as `~/.local/bin/proton-drive`. Check whether Proton
-    publishes a checksum or signature to verify it against.
-  - Today the CLI lives in `pdrive-net/cli/` with a symlink in `~/.local/bin`; the install should
-    replace that cleanly (ask before overwriting an existing link or file).
-- **Account**
-  - Signed-in state (a cheap `filesystem list /my-files`), with **Sign in** (`auth login`, opens the
-    browser; `ProtonDriveCli.LoginAsync` already exists and the Files tab offers it when signed out) and
-    **Sign out** (`auth logout`, with a confirmation since sync stops until you sign in again).
-- After installing or signing in, poke the daemon (Sync now) so the status updates straight away.
-- Nice to have: the other `config.json` settings (sync folder location, check interval, parallel
-  listings, deletion threshold, exclude patterns), so the file never needs editing by hand.
+## Done
+
+- 2026-11-17: **Settings tab**: Proton account (sign in/out), the proton-drive CLI (install/update
+  from Proton's release index with SHA-512 verification, into `~/.local/share/pdrive/cli`, linked as
+  `~/.local/bin/proton-drive`), start the tray at login, keep the background service running.
+- 2026-11-17: **Tray state icons** (synced, syncing, paused, error, needs you, not running) made by
+  `assets/make-tray-icons.sh` from the app icon; `install.sh` uses Proton's Drive badge as the app
+  icon when it can download it (local only, never committed: it's Proton's trademark).

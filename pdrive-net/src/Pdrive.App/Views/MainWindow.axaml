@@ -182,5 +182,52 @@
         </StackPanel>
       </ScrollViewer>
     </TabItem>
+
+    <!-- Settings tab -->
+    <TabItem Header="Settings" x:Name="SettingsTab">
+      <ScrollViewer DataContext="{Binding Settings}" x:DataType="vm:SettingsViewModel">
+        <StackPanel Spacing="12" Margin="0,8">
+
+          <Border Padding="16" CornerRadius="8" Background="{DynamicResource CardBackgroundFillColorDefaultBrush}">
+            <StackPanel Spacing="6">
+              <TextBlock Text="Proton account" FontSize="16" FontWeight="SemiBold" />
+              <TextBlock Text="{Binding AccountStatus}" TextWrapping="Wrap" />
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Classes="accent" Command="{Binding SignInCommand}" IsVisible="{Binding !IsSignedIn}">Sign in…</Button>
+                <Button Command="{Binding SignOutCommand}" IsVisible="{Binding IsSignedIn}">Sign out</Button>
+              </StackPanel>
+              <TextBlock Opacity="0.6" TextWrapping="Wrap"
+                         Text="Signing in opens your browser. Your password never passes through pdrive; the session is kept in your system keyring." />
+            </StackPanel>
+          </Border>
+
+          <Border Padding="16" CornerRadius="8" Background="{DynamicResource CardBackgroundFillColorDefaultBrush}">
+            <StackPanel Spacing="6">
+              <TextBlock Text="Proton Drive CLI" FontSize="16" FontWeight="SemiBold" />
+              <TextBlock Text="{Binding CliStatus}" TextWrapping="Wrap" />
+              <SelectableTextBlock Text="{Binding CliPath}" Opacity="0.6" IsVisible="{Binding HasCli}" />
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Command="{Binding InstallCliCommand}" Content="{Binding InstallLabel}" />
+                <ProgressBar IsIndeterminate="True" IsVisible="{Binding CliBusy}" Width="80" VerticalAlignment="Center" />
+              </StackPanel>
+              <TextBlock Opacity="0.6" TextWrapping="Wrap"
+                         Text="Downloads Proton's official build for this computer from proton.me, checks it against the SHA-512 checksum Proton publishes, and installs it to ~/.local/share/pdrive/cli (linked as ~/.local/bin/proton-drive)." />
+            </StackPanel>
+          </Border>
+
+          <Border Padding="16" CornerRadius="8" Background="{DynamicResource CardBackgroundFillColorDefaultBrush}">
+            <StackPanel Spacing="8">
+              <TextBlock Text="Startup" FontSize="16" FontWeight="SemiBold" />
+              <CheckBox IsChecked="{Binding TrayAtLogin}">Start Proton Drive (tray icon) when I log in</CheckBox>
+              <CheckBox IsChecked="{Binding ServiceEnabled}" IsEnabled="{Binding ServiceInstalled}">Keep syncing and backing up in the background</CheckBox>
+              <TextBlock Opacity="0.6" TextWrapping="Wrap"
+                         Text="The background service does the syncing, with or without the tray icon. It starts when you log in while this is on." />
+            </StackPanel>
+          </Border>
+
+          <Button Command="{Binding LoadCommand}" HorizontalAlignment="Left">Refresh</Button>
+        </StackPanel>
+      </ScrollViewer>
+    </TabItem>
   </TabControl>
 </Window>

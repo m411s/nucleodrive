@@ -89,10 +89,42 @@ public sealed class TrayController : IDisposable
     }
 }
 
-/// <summary>The tray.py icon: a coloured disc with a white "P", one colour per state.</summary>
+/// <summary>Tray icons per state: the icons install.sh generates (app icon + status dot, in
+/// $XDG_DATA_HOME/pdrive/icons), or, if they're missing, a drawn coloured disc with a white "P".</summary>
 public static class StatusIcons
 {
     private static readonly Dictionary<DaemonState, WindowIcon> Cache = [];
+
+    public static string IconDir => Path.Combine(
+        Environment.GetEnvironmentVariable("XDG_DATA_HOME") is { Length: > 0 } d ? d
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local/share"),
+        "pdrive", "icons");
+
+    /// <summary>File name stem for a state: synced = idle, attention = sign in / confirm deletions.</summary>
+    public static string NameFor(DaemonState state) => state switch
+    {
+        DaemonState.Idle => "idle",
+        DaemonState.Syncing or DaemonState.Starting => "syncing",
+        DaemonState.Paused => "paused",
+        DaemonState.Error => "error",
+        DaemonState.Login => "attention",
+        _ => "stopped",
+    };
+
+    /// <summary>The app icon install.sh prepared (Proton's badge, if downloaded), or null.</summary>
+    public static WindowIcon? InstalledAppIcon() => Load(Path.Combine(IconDir, "app-256.png"));
+
+    private static WindowIcon? Load(string file)
+    {
+        try
+        {
+            return File.Exists(file) ? new WindowIcon(file) : null;
+        }
+        catch (Exception e) when (e is IOException or ArgumentException or NotSupportedException or InvalidOperationException)
+        {
+            return null;
+        }
+    }
 
     public static Color ColorFor(DaemonState state) => Color.Parse(state switch
     {
@@ -108,6 +140,8 @@ public static class StatusIcons
     {
         if (Cache.TryGetValue(state, out var icon))
             return icon;
+        if (Load(Path.Combine(IconDir, $"tray-{NameFor(state)}.png")) is { } installed)
+            return Cache[state] = installed;
         var color = new SolidColorBrush(ColorFor(state));
         var bmp = new RenderTargetBitmap(new PixelSize(64, 64));
         using (var ctx = bmp.CreateDrawingContext())
