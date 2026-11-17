@@ -17,12 +17,14 @@ public sealed class TrayController : IDisposable
     private readonly NativeMenuItem _syncNow = new("Sync now");
     private readonly NativeMenuItem _pause = new("Pause");
     private readonly NativeMenuItem _openSync = new("Open sync folder");
+    private readonly NativeMenuItem _review = new("Review deletions…");
     private readonly DispatcherTimer _clock;
 
     public TrayController(Application app, IDaemonControl daemon, Action showWindow, Action quit, Action<string> openFolder, Action showAbout,
-        Action showSettings)
+        Action showSettings, Action showSync)
     {
         _daemon = daemon;
+        _review.Click += (_, _) => showSync();
         _openSync.Click += (_, _) =>
         {
             if (_daemon.Status.Sync is { LocalRoot.Length: > 0 } sync)
@@ -37,7 +39,7 @@ public sealed class TrayController : IDisposable
         open.Click += (_, _) => showWindow();
         quitItem.Click += (_, _) => quit();
         _syncNow.Click += async (_, _) => await Try(daemon.SyncNowAsync);
-        _pause.Click += async (_, _) => await Try(daemon.Status.State == DaemonState.Paused ? daemon.ResumeAsync : daemon.PauseAsync);
+        _pause.Click += async (_, _) => await Try(TrayState.Menu(daemon.Status).PauseLabel == "Resume" ? daemon.ResumeAsync : daemon.PauseAsync);
 
         _icon = new TrayIcon
         {
@@ -69,10 +71,23 @@ public sealed class TrayController : IDisposable
         _status.Header = message.Length > 80 ? message[..80] + "…" : message;
         _lastSync.Header = "Last sync: " + Units.Ago(last);
         _openSync.IsEnabled = s.Sync is { Folders.Count: > 0 };
-        var running = s.State != DaemonState.Stopped;
-        _syncNow.IsEnabled = running && s.State != DaemonState.Paused;
-        _pause.IsEnabled = running;
-        _pause.Header = s.State == DaemonState.Paused ? "Resume" : "Pause";
+        var menu = TrayState.Menu(s);
+        _syncNow.IsEnabled = menu.SyncNowEnabled;
+        _pause.IsEnabled = menu.PauseEnabled;
+        _pause.Header = menu.PauseLabel;
+
+        // right under the status lines; added and removed rather than hidden (not every tray honours "visible")
+        var items = _icon.Menu!.Items;
+        if (menu.ReviewDeletions is { } label)
+        {
+            _review.Header = label;
+            if (!items.Contains(_review))
+                items.Insert(items.IndexOf(_lastSync) + 1, _review);
+        }
+        else
+        {
+            items.Remove(_review);
+        }
     }
 
     private static async Task Try(Func<Task> action)

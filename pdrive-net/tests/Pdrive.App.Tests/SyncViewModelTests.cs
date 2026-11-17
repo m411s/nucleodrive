@@ -77,5 +77,32 @@ public sealed class TrayStateTests
         Assert.Equal((DaemonState.Error, "backup broke"), Pick(TrayState.Combine(backupError)));
     }
 
+    [Fact]
+    public void Tray_menu_follows_the_combined_state()
+    {
+        var stopped = TrayState.Menu(DaemonStatus.NotRunning);
+        Assert.False(stopped.SyncNowEnabled);
+        Assert.False(stopped.PauseEnabled);
+        Assert.Null(stopped.ReviewDeletions);
+
+        Assert.True(TrayState.Menu(FakeDaemon.WithSync(SyncState.Idle, "Up to date")).SyncNowEnabled);
+
+        // paused on the sync side only (backup idle) used to leave "Sync now" on
+        var syncPaused = TrayState.Menu(FakeDaemon.WithSync(SyncState.Paused, "Paused"));
+        Assert.False(syncPaused.SyncNowEnabled);
+        Assert.Equal("Resume", syncPaused.PauseLabel);
+        var backupPaused = TrayState.Menu(FakeDaemon.With(DaemonState.Paused, "Paused"));
+        Assert.False(backupPaused.SyncNowEnabled);
+        Assert.Equal("Resume", backupPaused.PauseLabel);
+
+        Assert.False(TrayState.Menu(FakeDaemon.WithSync(SyncState.Login, "Sign in")).SyncNowEnabled);
+
+        var held = TrayState.Menu(FakeDaemon.WithSync(SyncState.NeedsConfirmation, "62 deletions wait", held: 62));
+        Assert.Equal("Review 62 deletions…", held.ReviewDeletions);
+        Assert.True(held.SyncNowEnabled);
+        Assert.Equal("Pause", held.PauseLabel);
+        Assert.Equal("Review deletions…", TrayState.Menu(FakeDaemon.WithSync(SyncState.NeedsConfirmation, "held")).ReviewDeletions);
+    }
+
     private static (DaemonState, string) Pick((DaemonState Icon, string Message, DateTimeOffset? Last) t) => (t.Icon, t.Message);
 }

@@ -26,6 +26,24 @@ public static class TrayState
             : (syncIcon, sync.Message, sync.LastFullScan);
     }
 
+    /// <summary>What the tray menu offers for a status. "Sync now" follows the combined state (as the
+    /// icon does): off while stopped, paused or signed out. "Review deletions…" appears while sync
+    /// holds back a large deletion.</summary>
+    public static TrayMenu Menu(DaemonStatus s)
+    {
+        var running = s.State != DaemonState.Stopped;
+        var paused = s.State == DaemonState.Paused || s.Sync?.State == SyncState.Paused;
+        var signedOut = s.State == DaemonState.Login || s.Sync?.State == SyncState.Login;
+        string? review = s.Sync is { State: SyncState.NeedsConfirmation } sync
+            ? sync.HeldDeletes > 0 ? $"Review {sync.HeldDeletes} deletions…" : "Review deletions…"
+            : null;
+        return new TrayMenu(
+            SyncNowEnabled: running && !paused && !signedOut,
+            PauseEnabled: running,
+            PauseLabel: paused ? "Resume" : "Pause",
+            ReviewDeletions: running ? review : null);
+    }
+
     private static int Rank(DaemonState state) => state switch
     {
         DaemonState.Login => 5,
@@ -35,3 +53,6 @@ public static class TrayState
         _ => 1,
     };
 }
+
+/// <param name="ReviewDeletions">Menu label, or null to hide the item.</param>
+public sealed record TrayMenu(bool SyncNowEnabled, bool PauseEnabled, string PauseLabel, string? ReviewDeletions);

@@ -64,7 +64,8 @@ public sealed class App : Application
         settings.ShowSetup = _showSetup;
         settings.ShowAbout = ShowAbout;
 
-        _tray = new TrayController(this, daemon, () => ShowWindow(), () => Quit(desktop), OpenInFileManager, ShowAbout, ShowSettings);
+        _tray = new TrayController(this, daemon, () => ShowWindow(), () => Quit(desktop), OpenInFileManager, ShowAbout, ShowSettings,
+            () => ShowPage(MainWindowViewModel.SyncPage));
         _monitor.Start();
         _singleInstance = SingleInstance.Listen(paths.AppSocket, () => Dispatcher.UIThread.Post(() => ShowWindow()));
         desktop.Exit += (_, _) => Cleanup();
@@ -128,11 +129,13 @@ public sealed class App : Application
     private MainWindowViewModel? _vm;
     private IClassicDesktopStyleApplicationLifetime? _desktop;
 
-    private void ShowSettings()
+    private void ShowSettings() => ShowPage(MainWindowViewModel.SettingsPage);
+
+    private void ShowPage(int page)
     {
         if (_vm is null)
             return;
-        _vm.PageIndex = MainWindowViewModel.SettingsPage;
+        _vm.PageIndex = page;
         ShowWindow();
     }
 
