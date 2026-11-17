@@ -49,15 +49,33 @@ public sealed partial class SettingsViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(SignInCommand), nameof(SignOutCommand))]
     private bool _accountBusy;
 
+    private readonly IAppearance? _appearance;
+
     public SettingsViewModel(ICliSetup cli, DriveClientProvider provider, IStartupSettings startup, IDaemonControl daemon,
-        IDialogs dialogs, IToaster toast)
+        IDialogs dialogs, IToaster toast, IAppearance? appearance = null)
     {
+        _appearance = appearance;
         _cli = cli;
         _provider = provider;
         _startup = startup;
         _daemon = daemon;
         _dialogs = dialogs;
         _toast = toast;
+    }
+
+    public bool HasAppearance => _appearance is not null;
+
+    /// <summary>0 automatic (follow the system), 1 light, 2 dark.</summary>
+    public int ThemeIndex
+    {
+        get => (int)(_appearance?.Theme ?? AppTheme.Auto);
+        set
+        {
+            if (_appearance is null || value is < 0 or > 2 || value == ThemeIndex)
+                return;
+            _appearance.Theme = (AppTheme)value;
+            OnPropertyChanged();
+        }
     }
 
     public bool HasCli => CliPath is not null;

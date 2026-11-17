@@ -49,7 +49,7 @@ public sealed class Screenshots
             new BrowserViewModel(drive, null, window, window),
             new BackupViewModel(daemon, window, window, a => a()),
             new SyncViewModel(daemon, drive, window, a => a(), _ => { }, TimeSpan.FromSeconds(1)),
-            new SettingsViewModel(new NoCli(), new Pdrive.App.Services.DriveClientProvider(() => drive), new NoStartup(), daemon, window, window));
+            new SettingsViewModel(new NoCli(), new Pdrive.App.Services.DriveClientProvider(() => drive), new NoStartup(), daemon, window, window, new FixedAppearance()));
         window.DataContext = vm;
         window.Show();
         return (window, daemon, vm);
@@ -117,6 +117,11 @@ internal sealed class NoStartup : Pdrive.App.Services.IStartupSettings
     public void SetTrayAtLogin(bool enabled) => TrayAtLogin = enabled;
     public Task<bool?> IsServiceEnabledAsync() => Task.FromResult<bool?>(true);
     public Task SetServiceEnabledAsync(bool enabled) => Task.CompletedTask;
+}
+
+internal sealed class FixedAppearance : Pdrive.App.Services.IAppearance
+{
+    public Pdrive.App.Services.AppTheme Theme { get; set; }
 }
 
 internal static class VisualExtensions

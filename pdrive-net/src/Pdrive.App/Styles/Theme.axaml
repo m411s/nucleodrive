@@ -129,6 +129,38 @@
     <Setter Property="Foreground" Value="{DynamicResource Pd.FolderTint}" />
   </Style>
 
+  <!-- Segmented switch (Settings › Appearance): one rounded track, the chosen segment raised -->
+  <Style Selector="ListBox.segmented">
+    <Setter Property="Background" Value="{DynamicResource Pd.Hover}" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="Padding" Value="3" />
+  </Style>
+  <Style Selector="ListBox.segmented ListBoxItem">
+    <Setter Property="Padding" Value="12,6" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.15" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="ListBox.segmented ListBoxItem:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Pd.CardBorder}" />
+  </Style>
+  <Style Selector="ListBox.segmented ListBoxItem:selected /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Pd.Card}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Pd.CardBorder}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+  <Style Selector="ListBox.segmented ListBoxItem:selected">
+    <Setter Property="Foreground" Value="{DynamicResource Pd.FolderTint}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="ListBox.segmented ListBoxItem:selected /template/ ContentPresenter">
+    <Setter Property="Foreground" Value="{DynamicResource Pd.FolderTint}" />
+  </Style>
+
   <!-- Wizard step dots -->
   <Style Selector="Border.stepDot">
     <Setter Property="Width" Value="8" />

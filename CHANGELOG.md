@@ -10,6 +10,7 @@ minor versions may change behaviour.
   Proton's Drive badge is no longer used as the icon unless you ask for it (`PROTON_BADGE=1 ./install.sh`).
 - **Sync page: folder tree.** Open any Drive folder to choose subfolders to sync, not only top-level
   ones. Subfolders are listed only when you open a folder; folders that sync only partly say so.
+- **Light, dark or automatic** (follows the system) in Settings › Appearance; remembered in `~/.config/pdrive/theme`.
 - **Fewer CLI runs everywhere:** saving files checks Drive with one listing per folder instead of one
   call per file; a folder tree copied into the sync folder goes up in one upload; new folders take one
   call instead of two; downloads for several folders run at once; checks of Drive back off while

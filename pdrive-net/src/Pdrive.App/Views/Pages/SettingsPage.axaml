@@ -7,7 +7,7 @@
     <StackPanel Spacing="16" MaxWidth="760" Margin="0,0,8,0">
       <StackPanel Spacing="2">
         <TextBlock Classes="h1" Text="Settings" />
-        <TextBlock Classes="muted" Text="Account, the Proton Drive CLI and startup" />
+        <TextBlock Classes="muted" Text="Account, the Proton Drive CLI, appearance and startup" />
       </StackPanel>
 
       <!-- account -->
@@ -45,6 +45,43 @@
           </StackPanel>
           <Button Grid.Column="2" Margin="12,0,0,0" VerticalAlignment="Top" Command="{Binding InstallCliCommand}"
                   Content="{Binding InstallLabel}" />
+        </Grid>
+      </Border>
+
+      <!-- appearance -->
+      <Border Classes="card" IsVisible="{Binding HasAppearance}">
+        <Grid ColumnDefinitions="Auto,*,Auto">
+          <Border Classes="iconTile" Margin="0,0,14,0" VerticalAlignment="Center">
+            <Path Classes="icon tint" Data="{StaticResource Icon.Sun}" />
+          </Border>
+          <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+            <TextBlock Classes="h2" Text="Appearance" />
+            <TextBlock Classes="muted small" Text="Automatic follows your system's light or dark setting" TextWrapping="Wrap" />
+          </StackPanel>
+          <ListBox Grid.Column="2" x:Name="ThemeSwitch" Classes="segmented" Margin="12,0,0,0" VerticalAlignment="Center"
+                   SelectedIndex="{Binding ThemeIndex}">
+            <ListBox.ItemsPanel>
+              <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+            </ListBox.ItemsPanel>
+            <ListBoxItem ToolTip.Tip="Follow the system setting">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <Path Classes="icon small" Data="{StaticResource Icon.Monitor}" />
+                <TextBlock Text="Automatic" VerticalAlignment="Center" />
+              </StackPanel>
+            </ListBoxItem>
+            <ListBoxItem>
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <Path Classes="icon small" Data="{StaticResource Icon.Sun}" />
+                <TextBlock Text="Light" VerticalAlignment="Center" />
+              </StackPanel>
+            </ListBoxItem>
+            <ListBoxItem>
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <Path Classes="icon small" Data="{StaticResource Icon.Moon}" />
+                <TextBlock Text="Dark" VerticalAlignment="Center" />
+              </StackPanel>
+            </ListBoxItem>
+          </ListBox>
         </Grid>
       </Border>
 

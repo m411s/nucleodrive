@@ -53,7 +53,9 @@ public sealed class App : Application
         // The window is built when first shown and released when closed to the tray (it holds
         // ~150 MB of rendering resources); the view models and their state stay.
         var ui = new WindowServices(() => ShowWindow(), () => _window);
-        var settings = new SettingsViewModel(cli, drive, startup, daemon, ui, ui);
+        var appearance = new Appearance(new ThemeStore(paths.ConfigDir), t => RequestedThemeVariant = Appearance.VariantFor(t));
+        RequestedThemeVariant = Appearance.VariantFor(appearance.Theme); // before any window opens
+        var settings = new SettingsViewModel(cli, drive, startup, daemon, ui, ui, appearance);
         _vm = new MainWindowViewModel(
             new BrowserViewModel(drive, ui, ui),
             new BackupViewModel(daemon, ui, ui, a => Dispatcher.UIThread.Post(a)),

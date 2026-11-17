@@ -172,3 +172,51 @@ public sealed class SystemWideStartupTests
         Assert.True(File.Exists(tmp["etc/autostart/pdrive-tray.desktop"]));
     }
 }
+
+public sealed class AppearanceTests : IDisposable
+{
+    private readonly string _dir = Path.Combine(Path.GetTempPath(), "pdrive-theme-" + Guid.NewGuid().ToString("N"));
+
+    public void Dispose()
+    {
+        if (Directory.Exists(_dir))
+            Directory.Delete(_dir, recursive: true);
+    }
+
+    [Fact]
+    public void Theme_is_saved_applied_and_defaults_to_automatic()
+    {
+        var store = new ThemeStore(_dir);
+        Assert.Equal(AppTheme.Auto, store.Load()); // nothing saved yet
+
+        var applied = new List<AppTheme>();
+        var appearance = new Appearance(store, applied.Add);
+        appearance.Theme = AppTheme.Dark;
+        appearance.Theme = AppTheme.Dark; // no change, nothing applied
+        Assert.Equal([AppTheme.Dark], applied);
+        Assert.Equal("dark", File.ReadAllText(Path.Combine(_dir, "theme")).Trim());
+        Assert.Equal(AppTheme.Dark, new Appearance(new ThemeStore(_dir), _ => { }).Theme); // remembered
+
+        File.WriteAllText(Path.Combine(_dir, "theme"), "purple\n");
+        Assert.Equal(AppTheme.Auto, store.Load()); // unknown → automatic
+        Assert.Equal(Avalonia.Styling.ThemeVariant.Default, Appearance.VariantFor(AppTheme.Auto));
+        Assert.Equal(Avalonia.Styling.ThemeVariant.Light, Appearance.VariantFor(AppTheme.Light));
+    }
+
+    [Fact]
+    public void Settings_switch_sets_the_theme()
+    {
+        var appearance = new Appearance(new ThemeStore(_dir), _ => { });
+        var vm = new SettingsViewModel(null!, new DriveClientProvider(() => null!), null!, new FakeDaemon(), new FakeDialogs(), new FakeToaster(), appearance);
+        Assert.True(vm.HasAppearance);
+        Assert.Equal(0, vm.ThemeIndex);
+        var changed = new List<string?>();
+        vm.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+        vm.ThemeIndex = 2;
+        Assert.Equal(AppTheme.Dark, appearance.Theme);
+        Assert.Contains(nameof(vm.ThemeIndex), changed);
+        vm.ThemeIndex = 7; // out of range: ignored
+        Assert.Equal(AppTheme.Dark, appearance.Theme);
+        Assert.False(new SettingsViewModel(null!, new DriveClientProvider(() => null!), null!, new FakeDaemon(), new FakeDialogs(), new FakeToaster()).HasAppearance);
+    }
+}
