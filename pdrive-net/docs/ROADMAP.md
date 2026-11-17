@@ -4,6 +4,16 @@ Ideas:
 
 - Edit the rest of `config.json` in Settings (sync folder location, check interval, parallel listings,
   deletion threshold, exclude patterns), so the file never needs editing by hand.
+- **Choose subfolders on the Sync page**, not only top-level folders. Today the list shows the folders in
+  My files, and a nested folder can only be added by typing its path (`Documents/Work`); the engine already
+  syncs nested folders. Planned:
+  - an expandable folder tree, each level listed from Drive only when you open it (one CLI call per level),
+    with a toggle per folder;
+  - switching on a subfolder syncs just that subfolder; switching on a parent includes everything under it;
+  - switching off a subfolder inside a synced parent keeps it online-only. That needs per-path exclusions
+    in the config and the planner (today's exclude patterns match names anywhere, not paths), and a rule
+    for the local copy: move it to the Trash, or keep it and stop syncing it (ask, like the deletion guard);
+  - parents show a partial state when only some of their subfolders sync.
 - Bring the Backup page back in the window once it's polished (it's hidden for now; one-way backups still
   work through `pdrivectl add` and the daemon).
 - Rename, delete, new folder and sharing in the Files page (the CLI has `rename`, `trash`,

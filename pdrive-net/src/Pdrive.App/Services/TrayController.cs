@@ -30,7 +30,7 @@ public sealed class TrayController : IDisposable
             if (_daemon.Status.Sync is { LocalRoot.Length: > 0 } sync)
                 openFolder(sync.LocalRoot);
         };
-        var open = new NativeMenuItem("Open Proton Drive");
+        var open = new NativeMenuItem("Open pdrive");
         var settingsItem = new NativeMenuItem("Settings");
         settingsItem.Click += (_, _) => showSettings();
         var aboutItem = new NativeMenuItem("About pdrive");
@@ -44,7 +44,7 @@ public sealed class TrayController : IDisposable
         _icon = new TrayIcon
         {
             Icon = StatusIcons.For(DaemonState.Stopped),
-            ToolTipText = "Proton Drive",
+            ToolTipText = "pdrive",
             Menu = new NativeMenu { _status, _lastSync, new NativeMenuItemSeparator(), _syncNow, _pause, _openSync, open, settingsItem, new NativeMenuItemSeparator(), aboutItem, quitItem },
         };
         _icon.Clicked += (_, _) => showWindow();
@@ -66,7 +66,7 @@ public sealed class TrayController : IDisposable
             _icon.Icon = StatusIcons.For(state);
             _shown = state;
         }
-        var tip = $"Proton Drive – {message}";
+        var tip = $"pdrive – {message}";
         _icon.ToolTipText = tip.Length > 120 ? tip[..120] : tip;
         _status.Header = message.Length > 80 ? message[..80] + "…" : message;
         _lastSync.Header = "Last sync: " + Units.Ago(last);
