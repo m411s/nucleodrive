@@ -20,4 +20,7 @@ public sealed record DaemonOptions
     public TimeSpan ProgressThrottle { get; init; } = TimeSpan.FromMilliseconds(250);
 
     public LogLevel MinLogLevel { get; init; } = LogLevel.Information;
+
+    /// <summary>Where the desktop Trash lives ($XDG_DATA_HOME by default). Tests point this at a temp dir.</summary>
+    public string? TrashDataHome { get; init; }
 }

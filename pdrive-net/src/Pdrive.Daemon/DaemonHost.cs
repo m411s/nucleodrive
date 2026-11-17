@@ -22,6 +22,8 @@ public static class DaemonHost
         builder.Services.AddSingleton(options);
         builder.Services.AddSingleton<SyncWorker>();
         builder.Services.AddHostedService(sp => sp.GetRequiredService<SyncWorker>());
+        builder.Services.AddSingleton<TwoWaySyncWorker>();
+        builder.Services.AddHostedService(sp => sp.GetRequiredService<TwoWaySyncWorker>());
         builder.Services.AddHostedService<RpcServer>();
         return builder.Build();
     }

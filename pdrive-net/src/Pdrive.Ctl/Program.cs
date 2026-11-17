@@ -82,10 +82,80 @@ now.SetAction(async (_, ct) =>
     return 0;
 });
 
+// ---- two-way sync -------------------------------------------------------------------------------
+var syncFolderArg = new Argument<string>("folder") { Description = "Drive folder relative to /my-files, e.g. Photos or Documents/Work" };
+var syncStatus = new Command("status", "Show the sync folder's state");
+var syncList = new Command("list", "List the Drive folders that are synced");
+var syncAdd = new Command("add", "Start syncing a Drive folder into the local sync folder") { syncFolderArg };
+var syncRemove = new Command("remove", "Stop syncing a Drive folder (nothing is deleted on either side)") { syncFolderArg };
+var syncNow = new Command("now", "Check Drive for changes now");
+var syncConfirm = new Command("confirm", "Let held-back deletions go through");
+var sync = new Command("sync", "Two-way sync of chosen Drive folders into ~/proton-drive")
+    { syncStatus, syncList, syncAdd, syncRemove, syncNow, syncConfirm };
+
+syncStatus.SetAction(async (_, ct) =>
+{
+    await using var client = await DaemonClient.TryConnectAsync(paths.DaemonSocket, ct);
+    if (client is null)
+    {
+        Console.WriteLine("stopped: Backup daemon not running");
+        return 3;
+    }
+    var s = (await client.GetStatusAsync(ct)).Sync;
+    if (s is null)
+    {
+        Console.WriteLine("This daemon has no two-way sync.");
+        return 1;
+    }
+    Console.WriteLine($"{s.State.ToString().ToLowerInvariant()}: {s.Message}");
+    Console.WriteLine($"local folder: {s.LocalRoot}");
+    Console.WriteLine($"last Drive check: {Units.Ago(s.LastFullScan)}");
+    foreach (var e in s.Errors.Take(10))
+        Console.WriteLine($"  problem: {e}");
+    return 0;
+});
+
+syncList.SetAction(async (_, ct) =>
+{
+    await using var client = await DaemonClient.TryConnectAsync(paths.DaemonSocket, ct);
+    var settings = client is not null ? await client.GetSyncSettingsAsync(ct) : LocalSyncSettings();
+    foreach (var f in settings.Folders)
+        Console.WriteLine($"/my-files/{f} <-> {Path.Combine(settings.Local, f)}");
+    return 0;
+});
+
+syncAdd.SetAction((pr, ct) => ChangeSyncFolders(pr.GetValue(syncFolderArg)!, add: true, ct));
+syncRemove.SetAction((pr, ct) => ChangeSyncFolders(pr.GetValue(syncFolderArg)!, add: false, ct));
+
+syncNow.SetAction(async (_, ct) =>
+{
+    await using var client = await DaemonClient.TryConnectAsync(paths.DaemonSocket, ct);
+    if (client is null)
+    {
+        Console.Error.WriteLine("Daemon doesn't appear to be running.");
+        return 3;
+    }
+    await client.SyncNowAsync(ct);
+    return 0;
+});
+
+syncConfirm.SetAction(async (_, ct) =>
+{
+    await using var client = await DaemonClient.TryConnectAsync(paths.DaemonSocket, ct);
+    if (client is null)
+    {
+        Console.Error.WriteLine("Daemon doesn't appear to be running.");
+        return 3;
+    }
+    await client.ConfirmDeletionsAsync(ct);
+    Console.WriteLine("Confirmed; the held deletions go through on the next pass.");
+    return 0;
+});
+
 pause.SetAction((_, ct) => SetPaused(true, ct));
 resume.SetAction((_, ct) => SetPaused(false, ct));
 
-var root = new RootCommand("Control the Proton Drive backup daemon") { status, list, add, remove, now, pause, resume };
+var root = new RootCommand("Control the Proton Drive backup and sync daemon") { status, list, add, remove, now, pause, resume, sync };
 
 try
 {
@@ -95,6 +165,45 @@ catch (Exception e) when (e is DaemonException or ConfigException)
 {
     Console.Error.WriteLine(e.Message);
     return 1;
+}
+
+SyncSettingsInfo LocalSyncSettings()
+{
+    var s = new ConfigStore(paths).Load().Sync;
+    return new SyncSettingsInfo(s.LocalPath, [.. s.Folders], s.RemoteIntervalMinutes);
+}
+
+async Task<int> ChangeSyncFolders(string folder, bool add, CancellationToken ct)
+{
+    folder = folder.Trim().Trim('/');
+    if (folder.StartsWith("my-files/", StringComparison.Ordinal))
+        folder = folder["my-files/".Length..];
+    await using var client = await DaemonClient.TryConnectAsync(paths.DaemonSocket, ct);
+    var current = (client is not null ? await client.GetSyncSettingsAsync(ct) : LocalSyncSettings()).Folders.ToList();
+    if (add == current.Contains(folder))
+    {
+        Console.Error.WriteLine(add ? $"{folder} is already synced." : $"{folder} isn't synced.");
+        return 1;
+    }
+    var updated = add ? [.. current, folder] : current.Where(f => f != folder).ToArray();
+    if (client is not null)
+    {
+        await client.SetSyncFoldersAsync(updated, ct);
+    }
+    else
+    {
+        new ConfigStore(paths).Update(c => c with { Sync = c.Sync with { Folders = updated } });
+        if (!add)
+        {
+            using var state = new StateStore(paths.StateDb);
+            state.ClearBaseline(folder);
+        }
+    }
+    var root = (client is not null ? await client.GetSyncSettingsAsync(ct) : LocalSyncSettings()).Local;
+    Console.WriteLine(add
+        ? $"Syncing /my-files/{folder} <-> {Path.Combine(root, folder)}"
+        : $"Stopped syncing /my-files/{folder}; files on both sides are kept.");
+    return 0;
 }
 
 async Task<int> SetPaused(bool paused, CancellationToken ct)

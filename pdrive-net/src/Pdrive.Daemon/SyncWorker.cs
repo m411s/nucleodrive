@@ -32,6 +32,7 @@ public sealed class SyncWorker : BackgroundService
     private SyncConfig _cfg = new();
     private DaemonStatus _status;
     private DateTimeOffset _lastPush;
+    private SyncInfo? _syncInfo;
     private bool _legacyChecked;
 
     public SyncWorker(PdrivePaths paths, DaemonOptions options, ILogger<SyncWorker> log, ISystemdNotifier? notifier = null)
@@ -59,11 +60,40 @@ public sealed class SyncWorker : BackgroundService
 
     // ---- control (called from IPC) -------------------------------------------------------
 
-    public void SyncNow() => RequestFull();
+    public void SyncNow()
+    {
+        RequestFull();
+        SyncNowRequested?.Invoke();
+    }
+
+    /// <summary>Raised by SyncNow so the two-way worker scans too.</summary>
+    public event Action? SyncNowRequested;
+
+    /// <summary>The two-way worker's status, merged into <see cref="Status"/> and pushed to clients.</summary>
+    public void PublishSync(SyncInfo info, bool throttle = false)
+    {
+        DaemonStatus status;
+        lock (_gate)
+        {
+            _syncInfo = info;
+            var now = DateTimeOffset.UtcNow;
+            var skip = throttle && _status.Sync?.State == info.State && now - _lastPush < _options.ProgressThrottle;
+            _status = _status with { Sync = info };
+            status = _status;
+            if (skip)
+                return;
+            _lastPush = now;
+        }
+        StatusChanged?.Invoke(status);
+    }
+
+    /// <summary>Raised when backups/sync are paused (true) or resumed (false).</summary>
+    public event Action<bool>? PauseChanged;
 
     public void Pause()
     {
         _state.Paused = true;
+        PauseChanged?.Invoke(true);
         lock (_gate)
             _runCts?.Cancel();
         SetStatus(DaemonState.Paused, "Paused");
@@ -73,6 +103,7 @@ public sealed class SyncWorker : BackgroundService
     public void Resume()
     {
         _state.Paused = false;
+        PauseChanged?.Invoke(false);
         RequestFull();
     }
 
@@ -293,7 +324,7 @@ public sealed class SyncWorker : BackgroundService
         {
             status = new DaemonStatus(state, message, _state.LastSync, progress,
                 errors ?? (state == DaemonState.Syncing ? _status.RecentErrors : []),
-                _watcher?.Unwatched ?? new Dictionary<string, string>(), Environment.ProcessId);
+                _watcher?.Unwatched ?? new Dictionary<string, string>(), Environment.ProcessId) { Sync = _syncInfo };
             var now = DateTimeOffset.UtcNow;
             var skip = throttle && _status.State == state && now - _lastPush < _options.ProgressThrottle;
             _status = status;

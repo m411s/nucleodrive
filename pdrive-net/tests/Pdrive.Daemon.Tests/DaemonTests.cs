@@ -106,7 +106,7 @@ public sealed class DaemonTests : IAsyncLifetime
         _d.Client!.StatusChanged += s => { lock (seen) seen.Add(s); };
         _d.WriteFile("c.txt");
         await _d.Client.SyncNowAsync(Ct);
-        Assert.True(await DaemonFixture.WaitFor(() => { lock (seen) return seen.Any(s => s.State == DaemonState.Idle); }));
+        Assert.True(await DaemonFixture.WaitFor(() => { lock (seen) return seen.Any(s => s.State == DaemonState.Idle && s.Message == "Up to date (1 uploaded)"); }));
         lock (seen)
         {
             Assert.Contains(seen, s => s.State == DaemonState.Syncing && s.Progress is { FilesTotal: 1 });

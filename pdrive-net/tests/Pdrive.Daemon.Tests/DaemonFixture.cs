@@ -52,6 +52,7 @@ public sealed class DaemonFixture : IAsyncDisposable
             WatchQuiet = TimeSpan.FromMilliseconds(300),
             ProgressThrottle = TimeSpan.Zero,
             MinLogLevel = LogLevel.Warning,
+            TrashDataHome = Tmp["trash-home"], // never the real ~/.local/share/Trash
         });
         await Host.StartAsync(Ct);
         Client = await ConnectAsync();

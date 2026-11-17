@@ -46,7 +46,7 @@ public sealed record PdrivePaths(string ConfigDir, string StateDir, string Runti
     internal static void AtomicWrite(string path, string contents)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        var tmp = path + ".tmp";
+        var tmp = $"{path}.{Guid.NewGuid():N}.tmp"; // unique: two writers must not share a temp file
         File.WriteAllText(tmp, contents);
         File.Move(tmp, path, overwrite: true);
     }

@@ -10,6 +10,20 @@ public sealed record TransferProgress(int FilesDone, int FilesTotal, long BytesD
 
 public sealed record FolderInfo(string Local, string Remote);
 
+public enum SyncState { Off, Idle, Syncing, Paused, Error, Login, NeedsConfirmation }
+
+/// <summary>Two-way sync status (the ~/proton-drive folder), part of <see cref="DaemonStatus"/>.</summary>
+public sealed record SyncInfo(
+    SyncState State,
+    string Message,
+    string LocalRoot,
+    IReadOnlyList<string> Folders,
+    DateTimeOffset? LastFullScan,
+    int HeldDeletes,
+    IReadOnlyList<string> Errors);
+
+public sealed record SyncSettingsInfo(string Local, string[] Folders, double RemoteIntervalMinutes);
+
 public sealed record DaemonStatus(
     DaemonState State,
     string Message,
@@ -19,6 +33,9 @@ public sealed record DaemonStatus(
     IReadOnlyDictionary<string, string> Unwatched,
     int Pid)
 {
+    /// <summary>Two-way sync status; null if the daemon has no sync worker.</summary>
+    public SyncInfo? Sync { get; init; }
+
     /// <summary>What clients show when they can't reach the daemon.</summary>
     public static readonly DaemonStatus NotRunning =
         new(DaemonState.Stopped, "Backup daemon not running", null, null, [], new Dictionary<string, string>(), 0);
@@ -35,6 +52,9 @@ public static class Rpc
     public const string ListFolders = nameof(ListFolders);
     public const string AddFolder = nameof(AddFolder);
     public const string RemoveFolder = nameof(RemoveFolder);
+    public const string GetSyncSettings = nameof(GetSyncSettings);
+    public const string SetSyncFolders = nameof(SetSyncFolders);
+    public const string ConfirmDeletions = nameof(ConfirmDeletions);
     public const string StatusChanged = nameof(StatusChanged);
 
     public static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)

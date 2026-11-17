@@ -9,7 +9,7 @@ namespace Pdrive.Daemon;
 
 /// <summary>Serves <see cref="Rpc"/> on a Unix socket (mode 0600 in a 0700 runtime dir) and pushes
 /// StatusChanged notifications to every connected client.</summary>
-public sealed class RpcServer(PdrivePaths paths, SyncWorker worker, IHostApplicationLifetime lifetime, ILogger<RpcServer> log)
+public sealed class RpcServer(PdrivePaths paths, SyncWorker worker, TwoWaySyncWorker sync, IHostApplicationLifetime lifetime, ILogger<RpcServer> log)
     : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken ct)
@@ -60,7 +60,7 @@ public sealed class RpcServer(PdrivePaths paths, SyncWorker worker, IHostApplica
     {
         await using var stream = new NetworkStream(socket, ownsSocket: true);
         using var rpc = new JsonRpc(Rpc.CreateHandler(stream));
-        rpc.AddLocalRpcTarget(new RpcTarget(worker));
+        rpc.AddLocalRpcTarget(new RpcTarget(worker, sync));
 
         void Push(DaemonStatus s) => rpc.NotifyAsync(Rpc.StatusChanged, s)
             .ContinueWith(t => _ = t.Exception, TaskContinuationOptions.OnlyOnFaulted);
@@ -82,7 +82,7 @@ public sealed class RpcServer(PdrivePaths paths, SyncWorker worker, IHostApplica
 }
 
 /// <summary>The methods clients can call (names match <see cref="Rpc"/>).</summary>
-public sealed class RpcTarget(SyncWorker worker)
+public sealed class RpcTarget(SyncWorker worker, TwoWaySyncWorker sync)
 {
     public DaemonStatus GetStatus() => worker.Status;
 
@@ -97,6 +97,12 @@ public sealed class RpcTarget(SyncWorker worker)
     public void AddFolder(string local, string remote) => Refusable(() => worker.AddFolder(local, remote));
 
     public void RemoveFolder(string local) => Refusable(() => worker.RemoveFolder(local));
+
+    public SyncSettingsInfo GetSyncSettings() => sync.GetSettings();
+
+    public void SetSyncFolders(string[] folders) => Refusable(() => sync.SetFolders(folders));
+
+    public void ConfirmDeletions() => sync.ConfirmDeletions();
 
     private static void Refusable(Action action)
     {
