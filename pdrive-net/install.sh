@@ -112,11 +112,25 @@ if [ "${NO_BADGE:-0}" != "1" ] && command -v curl >/dev/null; then
     [ -f "$ICON_DATA/drive-badge.svg" ] || echo "Couldn't download Proton's Drive badge; using pdrive's own icon."
   fi
 fi
-if [ "${NO_BADGE:-0}" != "1" ] && [ -f "$ICON_DATA/drive-badge.svg" ] && render_svg "$ICON_DATA/drive-badge.svg" "$ICON_DATA/app-256.png" 256; then
+# Transparent background: drop the badge's white rounded tile and crop to the folder.
+# If the badge's shape ever changes so the tile isn't found, the original is used as is.
+badge="$ICON_DATA/drive-badge.svg"
+if [ -f "$badge" ] && python3 -I - "$badge" "$ICON_DATA/drive-folder.svg" <<'PY' 2>/dev/null
+import re, sys
+s = open(sys.argv[1], encoding="utf-8").read()
+t = re.sub(r'<path fill="#fff" d="M0 10C[^"]*Z"/>', "", s, count=1)
+if t == s or 'viewBox="0 0 36 36"' not in t:
+    sys.exit(1)
+open(sys.argv[2], "w", encoding="utf-8").write(t.replace('viewBox="0 0 36 36"', 'viewBox="6 6.4 24 24"', 1))
+PY
+then
+  badge="$ICON_DATA/drive-folder.svg"
+fi
+if [ "${NO_BADGE:-0}" != "1" ] && [ -f "$badge" ] && render_svg "$badge" "$ICON_DATA/app-256.png" 256; then
   base="$ICON_DATA/app-256.png"
-  install -Dm644 "$ICON_DATA/drive-badge.svg" "$ICONS/scalable/apps/pdrive.svg"
+  install -Dm644 "$badge" "$ICONS/scalable/apps/pdrive.svg"
   for size in 16 24 32 48 64 128 256; do
-    render_svg "$ICON_DATA/drive-badge.svg" "$ICONS/${size}x${size}/apps/pdrive.png" "$size" || true
+    render_svg "$badge" "$ICONS/${size}x${size}/apps/pdrive.png" "$size" || true
   done
 else
   rm -f "$ICON_DATA/app-256.png"
