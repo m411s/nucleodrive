@@ -24,15 +24,6 @@ pdrive-net/cli/
 proton-drive
 proton-drive.exe
 
-# --- Python prototype (proton-drive-gui) -------------------------------------------
-__pycache__/
-*.py[cod]
-.venv/
-venv/
-.pytest_cache/
-.mypy_cache/
-*.egg-info/
-
 # --- Editors and IDEs -----------------------------------------------------------------
 .vs/
 .idea/

@@ -53,5 +53,4 @@ Dependency scan (`dotnet list package --vulnerable --include-transitive`): **no 
 | 2 | Name collisions: two Drive files whose names differ only in Unicode normalisation (NFC/NFD, e.g. from macOS) map to different local files. Detect them and keep them online-only with a warning. | Avoids confusing duplicates and re-upload loops. |
 | 2 | Stricter sandbox for the service when user namespaces are available: `ProtectSystem=strict`, `ProtectHome=read-only` plus `ReadWritePaths=` for the sync folder, backup sources, state and runtime. Needs the backup folders listed, so generate the unit from config. | Limits damage from a bug in the daemon or the CLI. |
 | 3 | Deletion guard as a percentage as well (e.g. more than 20% of a folder), not only a count. | Catches mass deletions in small folders. |
-| 3 | Retire or clearly mark `proton-drive-gui/` (the Python prototype) as unmaintained; it doesn't have these fixes. | It's in the repo and installable. |
 | 3 | If Proton starts signing CLI releases, verify the signature as well as the checksum. | Today the checksum comes from the same server as the binary. |

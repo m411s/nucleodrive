@@ -38,7 +38,6 @@ Found a security problem? Please report it privately, as described in **[SECURIT
 | Folder | What it is |
 |---|---|
 | [`pdrive-net/`](pdrive-net) | **The app**: .NET 10 + Avalonia. Sync/backup daemon (systemd user service), `pdrivectl`, desktop app with tray, tests, install and packaging scripts. |
-| [`proton-drive-gui/`](proton-drive-gui) | The original Python/GTK prototype (file browser + one-way backup). Kept for reference; `pdrive-net` imports its settings. |
 
 Plans: [pdrive-net/docs/ROADMAP.md](pdrive-net/docs/ROADMAP.md). What was checked against the real CLI:
 [pdrive-net/docs/cli-notes.md](pdrive-net/docs/cli-notes.md).

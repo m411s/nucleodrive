@@ -1,7 +1,7 @@
 # pdrive: Proton Drive for Linux (unofficial, .NET)
 
 A file browser, two-way folder sync, one-way backup and tray icon for Proton Drive, built on Proton's
-official `proton-drive` CLI. It replaces the Python prototype in `../proton-drive-gui`. Not affiliated with Proton AG.
+official `proton-drive` CLI. Not affiliated with Proton AG.
 
 - **Sync** chosen Drive folders with `~/proton-drive` in both directions (details below).
 - **Browse** your Drive: upload (button or drag-and-drop), download, sign in through the browser.
@@ -105,6 +105,8 @@ A broken `config.json` shows as an error in the status; the daemon keeps running
 settings. `pdrivectl add/remove/pause/resume` also work while the daemon is stopped.
 
 ### Moving from the Python prototype
+
+The prototype was removed from this repository (it is in the git history before 0.1.1).
 
 The first start imports `~/.config/proton-drive-gui/config.json` and `~/.local/state/proton-drive-gui/state.json`.
 Unchanged files are **not** uploaded again (mtimes are compared at .NET's 100 ns resolution).
