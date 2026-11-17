@@ -79,6 +79,11 @@ fi
 [ -x "$LIB/pdrive-daemon" ] || { echo "Nothing published in $LIB" >&2; exit 1; }
 
 # --- files -------------------------------------------------------------------------
+# These paths go into a systemd unit and desktop entries, where ", %, \ and line breaks change meaning.
+case "$LIB" in
+  *[\"%\\]*|*"
+"*) echo "Unsupported characters in $LIB (\", %, \\ or a line break); install somewhere else." >&2; exit 1 ;;
+esac
 mkdir -p "$BIN" "$CONF/systemd/user" "$CONF/autostart" "$APPS"
 ln -sf "$LIB/pdrivectl" "$BIN/pdrivectl"
 
@@ -157,6 +162,12 @@ ExecStart="$LIB/pdrive-daemon"
 Restart=on-failure
 RestartSec=30
 TimeoutStopSec=60
+# Hardening that works for user services and doesn't get in the way of syncing your files.
+NoNewPrivileges=yes
+LockPersonality=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+SystemCallArchitectures=native
 
 [Install]
 WantedBy=default.target

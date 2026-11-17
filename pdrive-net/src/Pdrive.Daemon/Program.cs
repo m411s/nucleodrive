@@ -12,6 +12,12 @@ catch (Pdrive.Ipc.DaemonException e)
     return 1;
 }
 
+// Config and state hold folder names and what's synced where: keep them private (0700).
+PdrivePaths.EnsurePrivateDir(paths.ConfigDir);
+PdrivePaths.EnsurePrivateDir(paths.StateDir);
+if (File.Exists(paths.ConfigFile))
+    File.SetUnixFileMode(paths.ConfigFile, PdrivePaths.PrivateFile);
+
 using var daemonLock = DaemonLock.TryAcquire(paths.DaemonLock);
 if (daemonLock is null)
 {

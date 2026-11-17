@@ -43,11 +43,31 @@ public sealed record PdrivePaths(string ConfigDir, string StateDir, string Runti
             ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), path.TrimStart('~').TrimStart('/'))
             : path;
 
+    public const UnixFileMode PrivateDir = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute;
+    public const UnixFileMode PrivateFile = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+
+    /// <summary>Creates a folder only you can read (0700), or tightens an existing one.</summary>
+    public static void EnsurePrivateDir(string dir)
+    {
+        Directory.CreateDirectory(dir, PrivateDir);
+        try
+        {
+            File.SetUnixFileMode(dir, PrivateDir);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            // not ours to change (e.g. a shared folder); keep going
+        }
+    }
+
+    /// <summary>Writes a file only you can read (0600) atomically.</summary>
     internal static void AtomicWrite(string path, string contents)
     {
-        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        EnsurePrivateDir(Path.GetDirectoryName(path)!);
         var tmp = $"{path}.{Guid.NewGuid():N}.tmp"; // unique: two writers must not share a temp file
-        File.WriteAllText(tmp, contents);
+        using (var f = new FileStream(tmp, new FileStreamOptions { Mode = FileMode.CreateNew, Access = FileAccess.Write, UnixCreateMode = PrivateFile }))
+        using (var w = new StreamWriter(f))
+            w.Write(contents);
         File.Move(tmp, path, overwrite: true);
     }
 }

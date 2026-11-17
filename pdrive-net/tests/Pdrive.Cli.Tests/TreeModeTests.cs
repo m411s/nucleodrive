@@ -99,3 +99,19 @@ public sealed class TreeModeTests : IDisposable
         Assert.Single(await _cli.ListAsync(e.Path, Ct));
     }
 }
+
+public sealed class OptionInjectionTests
+{
+    [Theory]
+    [InlineData("--help")]
+    [InlineData("-rf")]
+    public async Task Names_that_look_like_options_are_refused_before_reaching_the_cli(string name)
+    {
+        using var tmp = new TempDir();
+        var cli = new FakeCli(tmp["log"]).UseTree(tmp["tree.json"]).Client();
+        var ct = TestContext.Current.CancellationToken;
+        await Assert.ThrowsAsync<DriveException>(() => cli.MkdirAsync("/my-files/" + name, ct));
+        await Assert.ThrowsAsync<DriveException>(() => cli.RenameAsync("/my-files/x", name, ct));
+        Assert.False(File.Exists(tmp["log"])); // the CLI was never run
+    }
+}

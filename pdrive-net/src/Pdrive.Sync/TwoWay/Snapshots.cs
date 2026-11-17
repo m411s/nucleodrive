@@ -111,7 +111,10 @@ public static class RemoteSnapshot
                 progress?.Invoke(Interlocked.Increment(ref listed));
                 foreach (var e in entries)
                 {
-                    if (e.Name.Contains('/') || e.Name is "." or ".." || e.Uid is null || SyncPaths.IsExcludedPath(e.Name, exclude))
+                    // Online-only: names that can't exist locally, names that couldn't be decrypted
+                    // (syncing a placeholder would upload it back as a new file), excluded names.
+                    if (e.NameUnavailable || e.Name.Contains('/') || e.Name.Contains('\0') || e.Name is "" or "." or ".."
+                        || e.Uid is null || SyncPaths.IsExcludedPath(e.Name, exclude))
                         continue;
                     var childRel = rel + "/" + e.Name;
                     items[childRel] = new RemoteItem(childRel, e.IsDir, e.Uid, e.RevisionUid, e.Size ?? 0, e.ModifiedAt, e.Sha1, e.IsProtonDocument);

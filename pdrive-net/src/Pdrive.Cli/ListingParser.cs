@@ -18,6 +18,9 @@ public sealed record DriveEntry(string Name, bool IsDir, long? Size, string Path
 
     /// <summary>SHA-1 of the content as claimed by the uploader (lowercase hex), if known.</summary>
     public string? Sha1 { get; init; }
+
+    /// <summary>The name couldn't be decrypted; <see cref="Name"/> is a placeholder and <see cref="Path"/> uses the uid.</summary>
+    public bool NameUnavailable { get; init; }
 }
 
 /// <summary>Parser for `filesystem list --json`. The real schema (cli-drive 0.9.0, see
@@ -108,6 +111,7 @@ public static class ListingParser
             name = First(item, "name", "Name", "title")?.ToString();
         }
         string segment;
+        var unavailable = false;
         if (nameOk && !string.IsNullOrEmpty(name))
         {
             segment = RemotePath.EscapeName(name);
@@ -116,6 +120,7 @@ public static class ListingParser
         {
             // The CLI accepts node UIDs in paths where names can't be used.
             segment = uid;
+            unavailable = true;
             var nodeId = uid.Split('~')[^1];
             name = $"(name unavailable) {nodeId[..Math.Min(8, nodeId.Length)]}";
         }
@@ -149,6 +154,7 @@ public static class ListingParser
 
         return new DriveEntry(name!, isDir, size, path, mediaType)
         {
+            NameUnavailable = unavailable,
             Uid = uid,
             RevisionUid = revision is { } r3 && First(r3, "uid") is { ValueKind: JsonValueKind.String } ru ? ru.GetString() : null,
             ModifiedAt = modified,

@@ -87,6 +87,12 @@ ExecStart=/opt/pdrive/pdrive-daemon
 Restart=on-failure
 RestartSec=30
 TimeoutStopSec=60
+# Hardening that works for user services and doesn't get in the way of syncing your files.
+NoNewPrivileges=yes
+LockPersonality=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+SystemCallArchitectures=native
 
 [Install]
 WantedBy=default.target

@@ -20,9 +20,16 @@ public sealed partial class StateStore : IDisposable
 
     public StateStore(string dbPath)
     {
-        Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
+        PdrivePaths.EnsurePrivateDir(Path.GetDirectoryName(dbPath)!);
         _db = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = dbPath, Pooling = false }.ToString());
         _db.Open();
+        try
+        {
+            File.SetUnixFileMode(dbPath, PdrivePaths.PrivateFile); // before WAL files appear (they copy this mode)
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+        }
         Exec("""
             PRAGMA journal_mode = WAL;
             CREATE TABLE IF NOT EXISTS files (

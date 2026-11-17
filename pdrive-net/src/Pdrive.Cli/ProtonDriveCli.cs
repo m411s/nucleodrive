@@ -71,8 +71,15 @@ public sealed class ProtonDriveCli : IDriveClient
 
     /// <summary>`filesystem create-folder parentPath name`. Callers treat failure as "may already exist".</summary>
     public Task MkdirAsync(string remotePath, CancellationToken ct = default) =>
-        RunAsync(["filesystem", "create-folder", RemotePath.Parent(remotePath), RemotePath.UnescapeName(RemotePath.Name(remotePath))],
+        RunAsync(["filesystem", "create-folder", RemotePath.Parent(remotePath), SafeName(RemotePath.UnescapeName(RemotePath.Name(remotePath)))],
             ShortTimeout, null, ct);
+
+    /// <summary>A bare name passed as its own argument would be read as an option if it starts with '-'
+    /// (e.g. a file called "--help"). Paths are safe: they always start with '/'.</summary>
+    private static string SafeName(string name) =>
+        name.StartsWith('-')
+            ? throw new DriveException($"\"{name}\" starts with '-', which the CLI would read as an option; rename it to sync it.")
+            : name;
 
     public Task UploadAsync(IReadOnlyList<string> localPaths, string remoteDir, IProgress<string>? output = null, CancellationToken ct = default)
     {
@@ -98,7 +105,7 @@ public sealed class ProtonDriveCli : IDriveClient
         remotePaths.Count == 0 ? Task.CompletedTask : RunAsync(["filesystem", "trash", .. remotePaths], ShortTimeout, null, ct);
 
     public Task RenameAsync(string remotePath, string newName, CancellationToken ct = default) =>
-        RunAsync(["filesystem", "rename", remotePath, newName], ShortTimeout, null, ct);
+        RunAsync(["filesystem", "rename", remotePath, SafeName(newName)], ShortTimeout, null, ct);
 
     public Task MoveAsync(IReadOnlyList<string> remotePaths, string targetParent, CancellationToken ct = default) =>
         remotePaths.Count == 0 ? Task.CompletedTask : RunAsync(["filesystem", "move", .. remotePaths, targetParent], ShortTimeout, null, ct);

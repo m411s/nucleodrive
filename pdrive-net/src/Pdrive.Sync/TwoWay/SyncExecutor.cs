@@ -123,8 +123,8 @@ public sealed class SyncExecutor
 
     private Task MoveLocal(MoveLocalOp m)
     {
-        var from = SyncPaths.Local(_root, m.From);
-        var to = SyncPaths.Local(_root, m.To);
+        var from = Safe(m.From);
+        var to = Safe(m.To);
         Directory.CreateDirectory(Path.GetDirectoryName(to)!);
         if (File.Exists(to) || Directory.Exists(to))
             throw new IOException($"{m.To} already exists");
@@ -178,7 +178,7 @@ public sealed class SyncExecutor
 
     private Task CreateLocalFolder(string rel)
     {
-        var path = SyncPaths.Local(_root, rel);
+        var path = Safe(rel);
         Directory.CreateDirectory(path);
         var st = Posix.TryStat(path);
         _state.UpsertBaseline(_folder, [new BaseItem(rel, true, _remote.GetValueOrDefault(rel)?.Uid, null, 0, 0, st?.Inode ?? 0)]);
@@ -243,7 +243,7 @@ public sealed class SyncExecutor
 
     private async Task DownloadAsync(DownloadOp d, CancellationToken ct)
     {
-        var target = SyncPaths.Local(_root, d.Path);
+        var target = Safe(d.Path);
         var staging = Path.Combine(_root, SyncPaths.StagingDir, Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(staging);
         try
@@ -276,6 +276,7 @@ public sealed class SyncExecutor
                 return; // deleted locally meanwhile; the next pass decides
             }
             Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+            Safe(d.Path); // again: a folder on the way may have been swapped for a link meanwhile
             File.Move(staged, target, overwrite: true);
             var st = Posix.TryStat(target)!.Value;
             _state.UpsertBaseline(_folder, [new BaseItem(d.Path, false, d.Remote.Uid, d.Remote.RevisionUid, st.Size, st.Mtime100ns, st.Inode)]);
@@ -324,7 +325,7 @@ public sealed class SyncExecutor
 
     private Task TrashLocal(TrashLocalOp t)
     {
-        var path = SyncPaths.Local(_root, t.Path);
+        var path = Safe(t.Path);
         if (Posix.TryStat(path) is not { } st)
         {
             _state.RemoveBaseline(_folder, t.Path); // already gone
@@ -357,6 +358,29 @@ public sealed class SyncExecutor
     {
         _state.RemoveBaseline(_folder, rel);
         return Task.CompletedTask;
+    }
+
+    /// <summary>Refuses local paths that would pass through a symlink (or non-folder) below the sync
+    /// folder, so nothing is ever written, moved or trashed outside it. The sync folder itself may be
+    /// a symlink (your choice); everything under it is checked without following links.</summary>
+    private string Safe(string rel)
+    {
+        var parts = rel.Split('/');
+        if (parts.Any(p => p is "" or "." or ".."))
+            throw new IOException($"unsafe path {rel}");
+        var path = _root;
+        for (var i = 0; i < parts.Length; i++)
+        {
+            path = Path.Combine(path, parts[i]);
+            var last = i == parts.Length - 1;
+            if (Posix.TryStat(path) is not { } st)
+                break; // doesn't exist yet: nothing below it can be a link
+            if (st.IsSymlink)
+                throw new IOException($"{string.Join('/', parts[..(i + 1)])} is a symlink; pdrive doesn't follow links");
+            if (!last && !st.IsDir)
+                throw new IOException($"{string.Join('/', parts[..(i + 1)])} isn't a folder");
+        }
+        return path;
     }
 
     private static bool Matches(LocalItem? known, Posix.Stat st) =>

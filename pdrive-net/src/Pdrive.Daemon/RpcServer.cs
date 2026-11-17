@@ -30,8 +30,7 @@ public sealed class RpcServer(PdrivePaths paths, SyncWorker worker, TwoWaySyncWo
     private async Task ServeForeverAsync(CancellationToken ct)
     {
         SocketPath.Validate(paths.DaemonSocket);
-        Directory.CreateDirectory(paths.RuntimeDir);
-        File.SetUnixFileMode(paths.RuntimeDir, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        PdrivePaths.EnsurePrivateDir(paths.RuntimeDir);
         File.Delete(paths.DaemonSocket); // stale from a crash; safe because we hold the daemon lock
 
         using var listener = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);
@@ -44,6 +43,12 @@ public sealed class RpcServer(PdrivePaths paths, SyncWorker worker, TwoWaySyncWo
             while (!ct.IsCancellationRequested)
             {
                 var socket = await listener.AcceptAsync(ct);
+                if (!PeerCredentials.IsSameUser(socket))
+                {
+                    log.LogWarning("Refused a control connection from another user");
+                    socket.Dispose();
+                    continue;
+                }
                 _ = Task.Run(() => ServeAsync(socket, ct), CancellationToken.None);
             }
         }

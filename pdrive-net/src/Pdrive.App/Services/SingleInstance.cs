@@ -31,7 +31,7 @@ public static class SingleInstance
         try
         {
             SocketPath.Validate(socketPath);
-            Directory.CreateDirectory(Path.GetDirectoryName(socketPath)!);
+            Pdrive.Sync.PdrivePaths.EnsurePrivateDir(Path.GetDirectoryName(socketPath)!);
             File.Delete(socketPath); // stale: TrySignalExisting just failed to connect to it
             var listener = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);
             listener.Bind(new UnixDomainSocketEndPoint(socketPath));
