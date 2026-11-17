@@ -120,6 +120,18 @@ public sealed class TwoWayEngineTests : IDisposable
     }
 
     [Fact]
+    public async Task First_sync_reports_the_matching_step()
+    {
+        await _f.WriteRemote("Docs/a.txt", "A");
+        await _f.WriteRemote("Docs/sub/b.txt", "B");
+        var messages = new List<string>();
+        await _f.Engine.FullPassAsync(_f.Cfg.Sync, _f.Cfg, "Docs", false, new InlineProgress<string>(m => { lock (messages) messages.Add(m); }), TwoWayFixture.Ct);
+        Assert.Equal("Downloading /my-files/Docs for the first time…", messages[0]);
+        Assert.Contains(messages, m => m.StartsWith("Matching the downloaded files with /my-files/Docs… (", StringComparison.Ordinal) && m.EndsWith("folders checked)", StringComparison.Ordinal));
+        Assert.Contains(messages, m => m.StartsWith("Checking /my-files/Docs on Drive", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task Local_new_and_edited_files_are_uploaded()
     {
         await _f.SyncedStart();

@@ -35,7 +35,7 @@ public sealed class TwoWaySyncEngine(IDriveClient client, StateStore state, Free
         }
 
         if (baseline.Count == 0 && !Directory.EnumerateFileSystemEntries(localFolder).Any())
-            await InitialDownloadAsync(root, folder, cfg, progress, ct);
+            await InitialDownloadAsync(root, folder, cfg, sync.ParallelListings, progress, ct);
 
         progress?.Report($"Checking {SyncPaths.Remote(folder)} on Drive…");
         var remote = await RemoteSnapshot.TakeAsync(client, folder, cfg.Exclude, sync.ParallelListings, ct,
@@ -159,14 +159,26 @@ public sealed class TwoWaySyncEngine(IDriveClient client, StateStore state, Free
 
     /// <summary>First sync into an empty folder: one recursive download (much faster than file by file),
     /// then record everything that matches Drive as in sync, with Drive's modification times.</summary>
-    private async Task InitialDownloadAsync(string root, string folder, SyncConfig cfg, IProgress<string>? progress, CancellationToken ct)
+    private async Task InitialDownloadAsync(string root, string folder, SyncConfig cfg, int parallelism, IProgress<string>? progress, CancellationToken ct)
     {
-        progress?.Report($"Downloading {SyncPaths.Remote(folder)} for the first time…");
+        var remotePath = SyncPaths.Remote(folder);
+        progress?.Report($"Downloading {remotePath} for the first time…");
         var staging = Path.Combine(root, SyncPaths.StagingDir, Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(staging);
         try
         {
-            await client.DownloadAsync(SyncPaths.Remote(folder), staging, null, null, ct);
+            // The CLI prints nothing while downloading, so report what has arrived in staging.
+            using var watching = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            var reporter = ReportStagingAsync(staging, remotePath, progress, watching.Token);
+            try
+            {
+                await client.DownloadAsync(remotePath, staging, null, null, ct);
+            }
+            finally
+            {
+                await watching.CancelAsync();
+                await reporter;
+            }
             var downloaded = Path.Combine(staging, SyncPaths.Name(folder));
             var target = SyncPaths.Local(root, folder);
             if (Directory.Exists(downloaded))
@@ -181,7 +193,9 @@ public sealed class TwoWaySyncEngine(IDriveClient client, StateStore state, Free
             RemoveEmptyStaging(root);
         }
 
-        var remote = await RemoteSnapshot.TakeAsync(client, folder, cfg.Exclude, 4, ct);
+        progress?.Report($"Matching the downloaded files with {remotePath}…");
+        var remote = await RemoteSnapshot.TakeAsync(client, folder, cfg.Exclude, parallelism, ct,
+            n => progress?.Report($"Matching the downloaded files with {remotePath}… ({n} folders checked)"));
         var records = new List<BaseItem>();
         foreach (var r in remote.Values)
         {
@@ -200,6 +214,32 @@ public sealed class TwoWaySyncEngine(IDriveClient client, StateStore state, Free
             records.Add(new BaseItem(r.Path, false, r.Uid, r.RevisionUid, after.Size, after.Mtime100ns, after.Inode));
         }
         state.UpsertBaseline(folder, records);
+    }
+
+    private static async Task ReportStagingAsync(string staging, string remotePath, IProgress<string>? progress, CancellationToken ct)
+    {
+        if (progress is null)
+            return;
+        var opts = new EnumerationOptions { RecurseSubdirectories = true, IgnoreInaccessible = true, AttributesToSkip = 0 };
+        try
+        {
+            while (true)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(2), ct);
+                long bytes = 0;
+                var files = 0;
+                foreach (var f in new DirectoryInfo(staging).EnumerateFiles("*", opts))
+                {
+                    bytes += f.Length;
+                    files++;
+                }
+                progress.Report($"Downloading {remotePath} for the first time… ({bytes / 1048576.0:0.0} MB, {files} files so far)");
+            }
+        }
+        catch (Exception e) when (e is OperationCanceledException or IOException or UnauthorizedAccessException)
+        {
+            // download finished (or staging changed underneath us); nothing to report
+        }
     }
 
     private static string? Sha1Of(string path)
