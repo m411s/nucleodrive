@@ -1,21 +1,57 @@
-# Python
-__pycache__/
-*.pyc
-.venv/
-
-# .NET
+# --- .NET (pdrive-net) -----------------------------------------------------------
 bin/
 obj/
-*.user
-.vs/
-.idea/
-TestResults/
 artifacts/
 publish/
+TestResults/
+*.binlog
+*.coverage
+coverage*.xml
+coverage*.json
+*.user
+*.suo
+*.rsuser
+*.userprefs
 
-# Locally downloaded proton-drive CLI binary (not ours to commit)
-pdrive-net/cli/
-
-# Packaging output and downloaded build tools
+# Packaging output and downloaded build tools (package.sh)
 pdrive-net/dist/
 pdrive-net/.tools/
+*.AppImage
+*.deb
+
+# Proton's proton-drive CLI binary, downloaded locally (not ours to commit)
+pdrive-net/cli/
+proton-drive
+proton-drive.exe
+
+# --- Python prototype (proton-drive-gui) -------------------------------------------
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+*.egg-info/
+
+# --- Editors and IDEs -----------------------------------------------------------------
+.vs/
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.fleet/
+
+# --- OS --------------------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+.directory
+
+# --- Local only ---------------------------------------------------------------------------
+# Secrets and per-machine settings
+.env
+.env.*
+.claude/settings.local.json
+# Logs and scratch files
+*.log
+*.tmp
