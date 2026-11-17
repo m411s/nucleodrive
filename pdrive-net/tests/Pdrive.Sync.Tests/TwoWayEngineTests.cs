@@ -210,6 +210,56 @@ public sealed class TwoWayEngineTests : IDisposable
     }
 
     [Fact]
+    public async Task Downloads_for_several_folders_run_at_the_same_time()
+    {
+        await _f.SyncedStart();
+        for (var i = 0; i < 4; i++)
+            await _f.WriteRemote($"Docs/day{i}/p.jpg", $"photo {i}");
+        var cli = new GatedClient(_f.Cli, expected: 4);
+        var engine = new TwoWaySyncEngine(cli, _f.State, new FreedesktopTrash(_f.Tmp["data"], mountPoints: () => ["/"]), null);
+
+        var r = await engine.FullPassAsync(_f.Cfg.Sync, _f.Cfg, "Docs", false, null, TwoWayFixture.Ct);
+        Assert.Equal(4, r.Downloaded);
+        Assert.Equal(4, cli.MaxConcurrent); // all four folders' runs were in flight together
+        for (var i = 0; i < 4; i++)
+            Assert.Equal($"photo {i}", _f.ReadLocal($"Docs/day{i}/p.jpg"));
+    }
+
+    /// <summary>Holds each download until <c>expected</c> are running at once (or 5 s pass).</summary>
+    private sealed class GatedClient(IDriveClient inner, int expected) : IDriveClient
+    {
+        private int _running;
+        private readonly TaskCompletionSource _all = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public int MaxConcurrent { get; private set; }
+
+        public async Task DownloadManyAsync(IReadOnlyList<string> remotePaths, string localDir, long? totalSize = null,
+            IProgress<string>? output = null, CancellationToken ct = default)
+        {
+            var now = Interlocked.Increment(ref _running);
+            lock (_all)
+                MaxConcurrent = Math.Max(MaxConcurrent, now);
+            if (now >= expected)
+                _all.TrySetResult();
+            await Task.WhenAny(_all.Task, Task.Delay(5000, ct));
+            await inner.DownloadManyAsync(remotePaths, localDir, totalSize, output, ct);
+            Interlocked.Decrement(ref _running);
+        }
+        public Task<IReadOnlyList<DriveEntry>> ListAsync(string path, CancellationToken ct = default) => inner.ListAsync(path, ct);
+        public Task<bool> IsLoggedInAsync(CancellationToken ct = default) => inner.IsLoggedInAsync(ct);
+        public Task LoginAsync(CancellationToken ct = default) => inner.LoginAsync(ct);
+        public Task LogoutAsync(CancellationToken ct = default) => inner.LogoutAsync(ct);
+        public Task MkdirAsync(string remotePath, CancellationToken ct = default) => inner.MkdirAsync(remotePath, ct);
+        public Task UploadAsync(IReadOnlyList<string> localPaths, string remoteDir, IProgress<string>? output = null, CancellationToken ct = default) =>
+            inner.UploadAsync(localPaths, remoteDir, output, ct);
+        public Task DownloadAsync(string remotePath, string localDir, long? size = null, IProgress<string>? output = null, CancellationToken ct = default) =>
+            inner.DownloadAsync(remotePath, localDir, size, output, ct);
+        public Task<DriveEntry> InfoAsync(string remotePath, CancellationToken ct = default) => inner.InfoAsync(remotePath, ct);
+        public Task TrashAsync(IReadOnlyList<string> remotePaths, CancellationToken ct = default) => inner.TrashAsync(remotePaths, ct);
+        public Task RenameAsync(string remotePath, string newName, CancellationToken ct = default) => inner.RenameAsync(remotePath, newName, ct);
+        public Task MoveAsync(IReadOnlyList<string> remotePaths, string targetParent, CancellationToken ct = default) => inner.MoveAsync(remotePaths, targetParent, ct);
+    }
+
+    [Fact]
     public async Task A_failed_batch_still_places_what_arrived_and_retries_the_rest()
     {
         await _f.SyncedStart();
@@ -243,12 +293,60 @@ public sealed class TwoWayEngineTests : IDisposable
 
         Assert.Equal(8, r.Uploaded);
         Assert.Empty(r.Errors);
-        Assert.Equal(0, cli.Count("info")); // folders are created with --json, files checked by listing
-        // checks: Docs, Docs/sub, Docs/fresh/deep (not found); then one re-listing per upload batch
+        // files are checked by listing their folders: Docs, Docs/sub, Docs/fresh/deep (not found yet) …
         Assert.Equal(["Docs", "Docs/fresh/deep", "Docs/sub"], cli.Listed.Take(3).Order(StringComparer.Ordinal));
-        Assert.Equal(2, cli.Count("mkdir"));
+        // … and the new tree fresh/deep goes up in one upload; its top folder's ID is the only `info`
+        Assert.Equal(1, cli.Count("info"));
+        Assert.Equal(0, cli.Count("mkdir"));
+        Assert.Equal(3, cli.Count("upload")); // Docs, Docs/sub, the fresh tree
         Assert.Equal("X", await _f.ReadRemote("Docs/fresh/deep/x.txt"));
         Assert.Equal(0, (await _f.Full()).Changes);
+    }
+
+    [Fact]
+    public async Task A_new_folder_tree_goes_up_in_one_upload()
+    {
+        await _f.SyncedStart();
+        _f.WriteLocal("Docs/copied/a.txt", "a");
+        _f.WriteLocal("Docs/copied/sub/b.txt", "b");
+        _f.WriteLocal("Docs/copied/sub/deep/c.txt", "c");
+        Directory.CreateDirectory(_f.LocalPath("Docs/copied/empty"));
+
+        var cli = new CountingClient(_f.Cli);
+        var engine = new TwoWaySyncEngine(cli, _f.State, new FreedesktopTrash(_f.Tmp["data"], mountPoints: () => ["/"]), null);
+        var r = await engine.FullPassAsync(_f.Cfg.Sync, _f.Cfg, "Docs", false, null, TwoWayFixture.Ct);
+
+        Assert.Equal(3, r.Uploaded);
+        Assert.Empty(r.Errors);
+        Assert.Equal(1, cli.Count("upload"));
+        Assert.Equal(0, cli.Count("mkdir"));
+        Assert.Equal("c", await _f.ReadRemote("Docs/copied/sub/deep/c.txt"));
+        Assert.Contains("empty", await _f.RemoteNames("Docs/copied"));
+        Assert.Equal(0, (await _f.Full()).Changes); // all recorded: nothing to do next time
+        await _f.WriteRemote("Docs/copied/sub/b.txt", "b-from-phone", TwoWayFixture.Old.AddDays(1));
+        Assert.Equal(1, (await _f.Full()).Downloaded); // and tracked like any other file
+        Assert.Equal("b-from-phone", _f.ReadLocal("Docs/copied/sub/b.txt"));
+    }
+
+    [Fact]
+    public async Task A_new_tree_with_excluded_files_or_links_takes_the_normal_path()
+    {
+        await _f.SyncedStart();
+        _f.WriteLocal("Docs/t1/a.txt", "a");
+        _f.WriteLocal("Docs/t1/sub/.hidden", "excluded by .*");
+        _f.WriteLocal("Docs/t2/x.txt", "x");
+        Directory.CreateDirectory(_f.LocalPath("Docs/t2/sub"));
+        File.WriteAllText(_f.Tmp["secret.txt"], "secret");
+        File.CreateSymbolicLink(_f.LocalPath("Docs/t2/sub/link.txt"), _f.Tmp["secret.txt"]);
+
+        var cli = new CountingClient(_f.Cli);
+        var engine = new TwoWaySyncEngine(cli, _f.State, new FreedesktopTrash(_f.Tmp["data"], mountPoints: () => ["/"]), null);
+        var r = await engine.FullPassAsync(_f.Cfg.Sync, _f.Cfg, "Docs", false, null, TwoWayFixture.Ct);
+
+        Assert.Equal(2, r.Uploaded);
+        Assert.Equal(4, cli.Count("mkdir")); // t1, t1/sub, t2, t2/sub one by one
+        Assert.DoesNotContain(".hidden", await _f.RemoteNames("Docs/t1/sub"));
+        Assert.Empty(await _f.RemoteNames("Docs/t2/sub"));
     }
 
     /// <summary>Counts calls by kind and records listed paths (relative to My files).</summary>

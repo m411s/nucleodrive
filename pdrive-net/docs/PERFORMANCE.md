@@ -16,30 +16,47 @@ Measured 2026-11-17 on this machine (x86-64, real Drive, cli-drive 0.9.0).
 
 **The rule:** the number of CLI calls decides everything else. Local work is nearly free.
 
-## Where CLI calls are spent today
+## Where CLI calls are spent (after the 2026-11-17 optimisations)
 
-| Operation | Calls |
-|---|---|
-| Check one folder on Drive | 1 per folder (crawl) |
-| Upload N changed files in one folder | 1 upload + 1 listing (batched) ✓ |
-| Download N changed files | 1 per Drive folder (up to 50 files per run) ✓ |
-| New local folder with K subfolders | **2K** (create-folder + info each) + uploads |
-| Trash N items | 1 (batched) ✓ |
-| Rename/move | 1–2 each |
-| First sync of a folder | 1 download + 1 crawl ✓ |
-
-## Proposed optimisations (largest benefit first)
-
-| # | Change | Expected effect |
+| Operation | Before | Now |
 |---|---|---|
-| 1 | **Batch downloads per folder**: `filesystem download a b c … staging/` in one call, then move each file into place with the usual re-check. | 100 new files from your phone: ~150 s → ~2–5 s per folder *(done)* |
-| 2 | **Upload new local folder trees in one call** (`upload -d merge` takes folders), then one crawl of that folder to record it. | Copying a folder with 20 subfolders: ~60 s of create-folder/info → one upload + crawl |
-| 3 | **Adaptive check interval**: back off when checks find nothing (15 → 30 → 60 min), go back to 15 after any change or Sync now. | Fewer CLI runs and less network use when idle; same response when busy |
-| 4 | **Tray memory**: create the main window only when first opened, release it when closed in tray mode, then compact the heap. | The window's ~150 MB of rendering memory is only used while it's open *(done: the window is built on first open and released when closed to the tray)* |
-| 5 | **Files page cache**: show the last listing of a folder instantly, refresh in the background. | Going back to a folder feels instant instead of ~1.5 s per click *(done)*; prefetching the parent is still open |
-| 6 | Parse `create-folder --json` output (if the CLI prints the node) instead of a separate `info` call. | Halves the calls per new folder (needs checking with the real CLI) |
-| 7 | **ReadyToRun** publish for the app and daemon (`-p:PublishReadyToRun=true`). | Faster first window open and first sync after login, at ~30% larger packages |
-| 8 | Parallel downloads (up to `parallel_listings`) for large initial merges. | Faster when many separate folders change at once |
-| 9 | Local passes snapshot only the folders the watcher reported. | Small; local scans are already ~80 ms per 50k files |
+| Check one folder on Drive | 1 per folder (crawl) | same; checks back off while idle (15, 15, 30, 30, 60 min) |
+| Local edits: check Drive before uploading | **1 `info` per changed file**, one after another | 1 listing per changed folder, up to 4 at once |
+| Upload N changed files in one folder | 1 upload + 1 listing | same |
+| New local folder | create-folder + info | 1 (`create-folder --json` returns the ID) |
+| New local folder tree (K folders, e.g. copied in) | **3K** (create, upload, listing per folder) | 1 upload + 1 info + a crawl of K listings, 4 at once |
+| Download N changed files | **N** | 1 per Drive folder (up to 50 files), up to 4 folders at once |
+| Trash N items | 1 | 1 |
+| Rename/move | 1–2 each | same |
+| First sync of a folder | 1 download + 1 crawl | same |
+
+Examples at ~1.5 s per CLI run:
+
+| You do | Before | Now |
+|---|---|---|
+| Save 20 files in one folder | ~30 s of checks, then upload | ~1.5 s check, then upload |
+| Copy a folder with 20 subfolders in | ~90 s | ~10 s |
+| 100 new phone photos in 5 dated folders | ~150 s | ~3 s (all five folders at once) |
+| Nothing changes for a day | 96 checks of Drive | ~28 |
+
+## Optimisations
+
+| # | Change | Status |
+|---|---|---|
+| 1 | Batch downloads per folder (`filesystem download a b c … staging/`), placed one by one with the usual re-check | done |
+| 2 | Upload new local folder trees in one call (`upload -d merge folder parent`), then one crawl to record them. Only when a fresh look at the folder finds exactly what the plan uploads (no excluded, settling or linked items; the CLI refuses links and fails the whole upload, checked); otherwise folder by folder | done |
+| 3 | Adaptive check interval (`sync.remote_interval_max_minutes`, default 60) | done |
+| 4 | Tray memory: the window is built on first open and released when closed to the tray | done |
+| 5 | Files page cache: last listing shown instantly, refreshed in the background | done; prefetching the parent is open |
+| 6 | `create-folder --json` instead of a separate `info` (checked with cli-drive 0.9.0) | done |
+| 7 | Local passes list each changed folder once, in parallel, instead of `info` per file | done |
+| 8 | Parallel downloads across folders (up to `parallel_listings`) | done |
+| 9 | **ReadyToRun** publish for the app and daemon (`-p:PublishReadyToRun=true`) | open: faster first start, ~30% larger packages; measure first |
+| 10 | Parallel uploads across folders | open: same pattern as downloads; uploads are usually one folder at a time |
+| 11 | Local passes snapshot only the folders the watcher reported | open, small: local scans take ~80 ms per 50k files |
+
+Reading files: pdrive reads file contents only to compare SHA-1 when a file changed on both sides
+with the same size (and on a first sync into a folder that already has files). Scans use `statx`
+metadata only; the CLI reads what it uploads.
 
 Not worth doing now: the local scanner, SQLite (batched transactions already) and IPC (sub-millisecond).

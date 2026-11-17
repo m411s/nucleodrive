@@ -155,7 +155,7 @@ public sealed class TwoWaySyncEngine(IDriveClient client, StateStore state, Free
             return PassResult.Empty with { DeletionsHeld = plan.DeletionsHeld, HeldLocalDeletes = plan.DeletionsHeld ? plan.LocalDeletes : 0, HeldRemoteDeletes = plan.DeletionsHeld ? plan.RemoteDeletes : 0 };
         try
         {
-            return await new SyncExecutor(client, state, trash, root, folder, local, remote, log).ExecuteAsync(plan, progress, ct);
+            return await new SyncExecutor(client, state, trash, root, folder, local, remote, log, sync.ParallelListings).ExecuteAsync(plan, progress, ct);
         }
         finally
         {

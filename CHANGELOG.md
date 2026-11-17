@@ -10,6 +10,10 @@ minor versions may change behaviour.
   Proton's Drive badge is no longer used as the icon unless you ask for it (`PROTON_BADGE=1 ./install.sh`).
 - **Sync page: folder tree.** Open any Drive folder to choose subfolders to sync, not only top-level
   ones. Subfolders are listed only when you open a folder; folders that sync only partly say so.
+- **Fewer CLI runs everywhere:** saving files checks Drive with one listing per folder instead of one
+  call per file; a folder tree copied into the sync folder goes up in one upload; new folders take one
+  call instead of two; downloads for several folders run at once; checks of Drive back off while
+  nothing changes (`sync.remote_interval_max_minutes`, 60).
 - **Faster downloads:** a folder's changed files come down in one CLI run instead of one per file
   (100 new photos: about 2.5 minutes → a few seconds).
 - Files and folders whose names start with `-` now sync (passed to the CLI after `--`).

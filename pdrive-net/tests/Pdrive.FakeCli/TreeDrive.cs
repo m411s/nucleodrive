@@ -160,6 +160,25 @@ internal static class TreeDrive
             }
         }
 
+        // Like cli-drive 0.9.0: a link anywhere fails the whole upload before anything is sent.
+        static string? FirstLink(string path)
+        {
+            if (new FileInfo(path).LinkTarget is not null)
+                return path;
+            return Directory.Exists(path)
+                ? Directory.EnumerateFileSystemEntries(path).Select(FirstLink).FirstOrDefault(l => l is not null)
+                : null;
+        }
+        foreach (var l in locals)
+        {
+            if (FirstLink(l) is { } link)
+            {
+                Console.WriteLine("Transfer summary:\n  Uploaded: 0 items (0 B)\n  Failed: 1 items");
+                Console.WriteLine($"  - {Path.GetFileName(l)}: ValidationError: Not a regular file or directory: {link}");
+                throw new CliError("1 item(s) failed to upload");
+            }
+        }
+
         var failOn = Environment.GetEnvironmentVariable("FAKE_FAIL");
         int uploaded = 0;
         long bytes = 0;

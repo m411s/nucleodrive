@@ -25,13 +25,15 @@ public sealed class SyncExecutor
     private readonly Dictionary<string, RemoteItem> _remote;
     private readonly List<string> _errors = [];
     private readonly Action<string>? _log;
+    private readonly int _parallelism;
     private int _uploaded, _downloaded, _moved, _trashedLocal, _trashedRemote;
 
     /// <param name="log">Receives one line per change made (for the journal).</param>
     public SyncExecutor(IDriveClient client, StateStore state, FreedesktopTrash trash, string root, string folder,
-        Dictionary<string, LocalItem> local, Dictionary<string, RemoteItem> remote, Action<string>? log = null)
+        Dictionary<string, LocalItem> local, Dictionary<string, RemoteItem> remote, Action<string>? log = null, int parallelism = 4)
     {
         _log = log;
+        _parallelism = Math.Max(1, parallelism);
         _client = client;
         _state = state;
         _trash = trash;
@@ -43,7 +45,7 @@ public sealed class SyncExecutor
 
     public async Task<PassResult> ExecuteAsync(SyncPlan plan, IProgress<string>? progress, CancellationToken ct)
     {
-        var ops = plan.Ops;
+        var ops = await UploadNewTreesAsync(plan.Ops, progress, ct);
         for (var i = 0; i < ops.Count; i++)
         {
             ct.ThrowIfCancellationRequested();
@@ -68,16 +70,13 @@ public sealed class SyncExecutor
                     i++;
                 }
                 i--;
-                // one CLI run per Drive folder (each run costs ~1.5 s), at most MaxBatch files
-                foreach (var folder in run.GroupBy(d => SyncPaths.Parent(d.Path)))
-                {
-                    foreach (var batch in folder.Chunk(MaxDownloadBatch))
-                    {
-                        progress?.Report(batch.Length == 1 ? Describe(batch[0])
-                            : $"Downloading {batch.Length} files{(folder.Key.Length > 0 ? " in " + folder.Key : "")}");
-                        await DownloadBatchAsync(batch, ct);
-                    }
-                }
+                // one CLI run per Drive folder (each run costs ~1.5 s), at most MaxDownloadBatch files,
+                // several folders at once
+                var batches = run.GroupBy(d => SyncPaths.Parent(d.Path)).SelectMany(g => g.Chunk(MaxDownloadBatch)).ToList();
+                progress?.Report(run.Count == 1 ? Describe(run[0])
+                    : batches.Count == 1 ? $"Downloading {run.Count} files"
+                    : $"Downloading {run.Count} files in {batches.Count} folders");
+                await DownloadBatchesAsync(batches, ct);
                 continue;
             }
             if (op is TrashRemoteOp)
@@ -122,7 +121,7 @@ public sealed class SyncExecutor
         MoveRemoteOp m => MoveRemoteAsync(m, ct),
         CreateRemoteFolderOp c => CreateRemoteFolderAsync(c.Path, ct),
         CreateLocalFolderOp c => CreateLocalFolder(c.Path),
-        DownloadOp d => DownloadBatchAsync([d], ct),
+        DownloadOp d => DownloadBatchesAsync([[d]], ct),
         TrashLocalOp t => TrashLocal(t),
         RecordOp r => Record(r.Path),
         ForgetOp f => Forget(f.Path),
@@ -208,6 +207,106 @@ public sealed class SyncExecutor
         return Task.CompletedTask;
     }
 
+    // ---- new folder trees ----------------------------------------------------------------------
+
+    /// <summary>Folders created on this computer with subfolders (e.g. a folder tree copied in) go up in one
+    /// CLI run, `upload -d merge folder parent`, instead of a create, an upload and a listing per folder;
+    /// then one crawl records what was uploaded. Only when a fresh look at the folder finds exactly what the
+    /// plan uploads: anything excluded, still being written, or a link makes it take the normal path (the
+    /// CLI refuses links anyway). Returns the ops still to do.</summary>
+    private async Task<IReadOnlyList<SyncOp>> UploadNewTreesAsync(IReadOnlyList<SyncOp> ops, IProgress<string>? progress, CancellationToken ct)
+    {
+        var creates = ops.OfType<CreateRemoteFolderOp>().Select(o => o.Path).ToHashSet(StringComparer.Ordinal);
+        var roots = creates.Where(p => !creates.Contains(SyncPaths.Parent(p))).ToList();
+        var remaining = ops.ToList();
+        foreach (var root in roots)
+        {
+            var under = remaining.Where(o => o.Path == root || SyncPlanner.IsUnder(o.Path, root)).ToList();
+            var folders = under.OfType<CreateRemoteFolderOp>().Select(o => o.Path).ToHashSet(StringComparer.Ordinal);
+            var files = under.OfType<UploadOp>().Select(o => o.Path).ToHashSet(StringComparer.Ordinal);
+            if (folders.Count < 2 || under.Count != folders.Count + files.Count || !OnDiskExactly(root, folders, files))
+                continue; // a single folder costs the same either way; anything else: the normal path
+
+            progress?.Report($"Uploading the new folder {root} ({files.Count} file(s), {folders.Count} folder(s))");
+            try
+            {
+                await _client.UploadAsync([SyncPaths.Local(_root, root)], SyncPaths.Remote(SyncPaths.Parent(root)), null, ct);
+            }
+            catch (DriveException e) when (e is not AuthException)
+            {
+                _log?.Invoke($"Uploading {root} in one go failed ({e.FirstLine}); uploading it folder by folder");
+                continue; // the normal path; already uploaded files are skipped by the CLI (same content)
+            }
+
+            // Record what's there now: the new folder and everything in it.
+            var rootInfo = await _client.InfoAsync(SyncPaths.Remote(root), ct);
+            var listed = await RemoteSnapshot.TakeAsync(_client, root, [], _parallelism, ct);
+            var records = new List<BaseItem>();
+            if (Posix.TryStat(SyncPaths.Local(_root, root)) is { } rootStat)
+                records.Add(new BaseItem(root, true, rootInfo.Uid, null, 0, 0, rootStat.Inode));
+            foreach (var (rel, item) in listed)
+            {
+                var st = Posix.TryStat(SyncPaths.Local(_root, rel));
+                if (item.IsDir && folders.Contains(rel) && st is { IsDir: true })
+                    records.Add(new BaseItem(rel, true, item.Uid, null, 0, 0, st.Value.Inode));
+                else if (!item.IsDir && files.Contains(rel) && st is { IsRegular: true } fs && Matches(_local.GetValueOrDefault(rel), fs))
+                    records.Add(new BaseItem(rel, false, item.Uid, item.RevisionUid, fs.Size, fs.Mtime100ns, fs.Inode));
+                // anything else (edited meanwhile, missing): the next pass compares both sides
+            }
+            _state.UpsertBaseline(_folder, records);
+            var uploaded = records.Count(r => !r.IsDir);
+            _uploaded += uploaded;
+            _log?.Invoke($"Uploaded new folder: {root} ({uploaded} file(s))");
+            remaining.RemoveAll(o => under.Contains(o));
+        }
+        return remaining;
+    }
+
+    /// <summary>The folder holds exactly these subfolders and files (by lstat: no links, sockets, …),
+    /// all unchanged since the snapshot, and nothing else (e.g. excluded or still-settling files).</summary>
+    private bool OnDiskExactly(string root, HashSet<string> folders, HashSet<string> files)
+    {
+        var seenFolders = 0;
+        var seenFiles = 0;
+        bool Walk(string rel)
+        {
+            if (Posix.TryStat(SyncPaths.Local(_root, rel)) is not { IsDir: true })
+                return false;
+            if (!folders.Contains(rel))
+                return false;
+            seenFolders++;
+            IEnumerable<string> names;
+            try
+            {
+                names = Directory.EnumerateFileSystemEntries(SyncPaths.Local(_root, rel)).Select(Path.GetFileName).OfType<string>().ToList();
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                return false;
+            }
+            foreach (var name in names)
+            {
+                var child = rel + "/" + name;
+                var st = Posix.TryStat(SyncPaths.Local(_root, child));
+                if (st is { IsDir: true })
+                {
+                    if (!Walk(child))
+                        return false;
+                }
+                else if (st is { IsRegular: true } fs && files.Contains(child) && Matches(_local.GetValueOrDefault(child), fs))
+                {
+                    seenFiles++;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+        return Walk(root) && seenFolders == folders.Count && seenFiles == files.Count;
+    }
+
     // ---- transfers -----------------------------------------------------------------------------
 
     private async Task UploadBatchAsync(List<UploadOp> batch, CancellationToken ct)
@@ -266,45 +365,60 @@ public sealed class SyncExecutor
     /// <summary>Files per CLI run: keeps the argument list and a failed run's retry small.</summary>
     internal const int MaxDownloadBatch = 50;
 
-    /// <summary>Downloads files of one Drive folder in one CLI run into a staging folder, then moves
-    /// each into place after re-checking the local side. A failed run still places what arrived.</summary>
-    private async Task DownloadBatchAsync(IReadOnlyList<DownloadOp> batch, CancellationToken ct)
+    /// <summary>Downloads each batch (files of one Drive folder) in one CLI run into its own staging folder,
+    /// up to <c>parallelism</c> runs at once, then moves the files into place one by one after re-checking
+    /// the local side. A failed run still places what arrived.</summary>
+    private async Task DownloadBatchesAsync(IReadOnlyList<DownloadOp[]> batches, CancellationToken ct)
     {
-        var ok = new List<DownloadOp>();
-        foreach (var d in batch)
-            await Guard(d.Path, () =>
-            {
-                Safe(d.Path); // never through a symlink
-                ok.Add(d);
-                return Task.CompletedTask;
-            });
-        if (ok.Count == 0)
-            return;
-
-        var staging = Path.Combine(_root, SyncPaths.StagingDir, Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(staging);
-        try
+        var work = new List<(List<DownloadOp> Ok, string Staging)>();
+        foreach (var batch in batches)
         {
-            DriveException? failure = null;
-            try
-            {
-                await _client.DownloadManyAsync(ok.Select(d => SyncPaths.Remote(d.Path)).ToList(), staging,
-                    ok.Sum(d => d.Remote.Size), null, ct);
-            }
-            catch (DriveException e) when (e is not AuthException)
-            {
-                failure = e; // some files may still have arrived
-            }
-            foreach (var d in ok)
+            var ok = new List<DownloadOp>();
+            foreach (var d in batch)
                 await Guard(d.Path, () =>
                 {
-                    Place(d, staging, failure);
+                    Safe(d.Path); // never through a symlink
+                    ok.Add(d);
                     return Task.CompletedTask;
                 });
+            if (ok.Count > 0)
+                work.Add((ok, Path.Combine(_root, SyncPaths.StagingDir, Guid.NewGuid().ToString("N"))));
+        }
+        if (work.Count == 0)
+            return;
+
+        var failures = new DriveException?[work.Count];
+        try
+        {
+            await Parallel.ForEachAsync(Enumerable.Range(0, work.Count),
+                new ParallelOptions { MaxDegreeOfParallelism = _parallelism, CancellationToken = ct },
+                async (i, token) =>
+                {
+                    Directory.CreateDirectory(work[i].Staging);
+                    try
+                    {
+                        await _client.DownloadManyAsync(work[i].Ok.Select(d => SyncPaths.Remote(d.Path)).ToList(), work[i].Staging,
+                            work[i].Ok.Sum(d => d.Remote.Size), null, token);
+                    }
+                    catch (DriveException e) when (e is not AuthException)
+                    {
+                        failures[i] = e; // some files may still have arrived
+                    }
+                });
+            for (var i = 0; i < work.Count; i++)
+            {
+                foreach (var d in work[i].Ok)
+                    await Guard(d.Path, () =>
+                    {
+                        Place(d, work[i].Staging, failures[i]);
+                        return Task.CompletedTask;
+                    });
+            }
         }
         finally
         {
-            try { Directory.Delete(staging, recursive: true); } catch (IOException) { }
+            foreach (var (_, staging) in work)
+                try { Directory.Delete(staging, recursive: true); } catch (IOException) { } catch (UnauthorizedAccessException) { }
         }
     }
 
