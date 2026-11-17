@@ -3,7 +3,7 @@
 # small-size variant without it (16/24 px and the tray base, where the loop would be a smudge).
 #   python3 assets/make-app-icon.py assets/pdrive.svg
 #   python3 assets/make-app-icon.py assets/pdrive-small.svg small
-# Then render the PNGs in assets/icons with librsvg (like render_svg in install.sh).
+# Then render the PNGs in assets/icons with librsvg, e.g. `rsvg-convert -w 48 -h 48 assets/pdrive.svg`.
 import math, sys
 out = sys.argv[1]
 small = len(sys.argv) > 2
@@ -35,13 +35,13 @@ cloud = ("M78 188 "
 
 svg = f'''<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
-  <!-- pdrive app icon{' (small sizes: no sync loop)' if small else ''}: a cloud with a two-way sync loop on a purple tile in the app's accent
-       colours. Original artwork for this unofficial app; not Proton's logo (no "P", no Drive folder shape). -->
+  <!-- pdrive app icon{' (small sizes: no sync loop)' if small else ''}: a cloud with a two-way sync loop on a violet tile in the app's accent
+       colours (not Proton's purple). Original artwork for this unofficial app; not Proton's logo (no "P", no Drive folder shape). -->
   <defs>
     <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#A08BFF"/>
-      <stop offset="0.5" stop-color="#6D4AFF"/>
-      <stop offset="1" stop-color="#4A2BD9"/>
+      <stop offset="0" stop-color="#A78BFA"/>
+      <stop offset="0.5" stop-color="#7C3AED"/>
+      <stop offset="1" stop-color="#5B21B6"/>
     </linearGradient>
     <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#ffffff" stop-opacity="0.22"/>

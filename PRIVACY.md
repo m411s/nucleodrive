@@ -26,9 +26,8 @@ What the `proton-drive` CLI sends is up to Proton and covered by
 [Proton's privacy policy](https://proton.me/legal/privacy). pdrive runs it with your files and folder
 names as arguments, and nothing else.
 
-Installing pdrive with `install.sh` also downloads Proton's Drive badge image from Proton's CDN for the
-tray icon. Building packages with `package.sh` downloads `appimagetool` from GitHub. Neither happens while
-pdrive is running.
+Building packages with `package.sh` downloads `appimagetool` from GitHub; that doesn't happen while pdrive
+is running.
 
 ## What pdrive stores on your computer
 

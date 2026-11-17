@@ -12,7 +12,7 @@ wrapper and installer, `install.sh`, the .deb/AppImage packaging and the GitHub 
   folders, other devices or a compromised account. They must never make pdrive write, move or delete
   outside the sync folder, or run anything.
 - **Other users on the same computer** must not be able to control the daemon or read your config.
-- **Downloaded programs** (the proton-drive CLI, appimagetool, Proton's badge) must be verified before use.
+- **Downloaded programs** (the proton-drive CLI, appimagetool) must be verified before use.
 - **Out of scope:** malware already running as you (it can do anything you can), and Proton's own
   servers and CLI.
 
@@ -42,14 +42,13 @@ Dependency scan (`dotnet list package --vulnerable --include-transitive`): **no 
   Downloads go through staging and are re-checked before replacing anything. Symlinks are never followed or uploaded.
 - Single instance via `flock`. The control socket is in `$XDG_RUNTIME_DIR` (0700), and the socket itself is 0600.
 - No credentials are handled by pdrive; the CLI keeps its session in the system keyring.
-- appimagetool is pinned by SHA-256. Proton's badge is rejected if it contains scripts or external references.
+- appimagetool is pinned by SHA-256. Nothing else is downloaded at install time (Proton's badge icon was dropped).
 
 ## Proposed (not done yet)
 
 | Priority | Proposal | Why |
 |---|---|---|
 | 1 | **Sign releases.** Add GitHub build-provenance attestations (`actions/attest-build-provenance`) and a minisign/GPG signature on `SHA256SUMS`. | Users can verify downloads came from this repo's CI. |
-| 2 | Pin the expected SHA-256 of Proton's badge in `install.sh`, falling back to pdrive's own icon if it changes. | Removes trust in the CDN for an image rendered by librsvg. |
 | 2 | Name collisions: two Drive files whose names differ only in Unicode normalisation (NFC/NFD, e.g. from macOS) map to different local files. Detect them and keep them online-only with a warning. | Avoids confusing duplicates and re-upload loops. |
 | 2 | Stricter sandbox for the service when user namespaces are available: `ProtectSystem=strict`, `ProtectHome=read-only` plus `ReadWritePaths=` for the sync folder, backup sources, state and runtime. Needs the backup folders listed, so generate the unit from config. | Limits damage from a bug in the daemon or the CLI. |
 | 3 | Deletion guard as a percentage as well (e.g. more than 20% of a folder), not only a count. | Catches mass deletions in small folders. |

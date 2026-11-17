@@ -10,8 +10,6 @@
 #   NO_SYSTEMD=1   don't touch systemd (e.g. no user session, or testing with a fake HOME)
 #   NO_BUILD=1     reuse an existing publish in $LIB (only rewrite the unit/desktop files)
 #   NO_TRAY=1      don't start the tray now (it still starts at login)
-#   PROTON_BADGE=1 use Proton's Drive badge (downloaded from Proton, never shipped) instead of pdrive's
-#                  own icon. Off by default: it's Proton's trademark, and pdrive isn't Proton's app.
 #
 # Config and state (kept across reinstalls): ~/.config/pdrive, ~/.local/state/pdrive.
 # On first start the daemon imports the Python prototype's config and state (proton-drive-gui).
@@ -94,54 +92,13 @@ for size in 16 24 32 48 64 128 256; do
   install -Dm644 "$DIR/assets/icons/pdrive-$size.png" "$ICONS/${size}x${size}/apps/pdrive.png"
 done
 
-# Proton's Drive badge as the app icon, if wanted and possible. It's Proton's trademark, so it is
-# downloaded onto this computer only and never shipped in the repo; pdrive's own icon is the fallback.
 ICON_DATA="${XDG_DATA_HOME:-$HOME/.local/share}/pdrive/icons"
-BADGE_URL="https://pmecdn.protonweb.com/image-transformation/?s=c&image=image/upload/v1776940263/static/logos/drive/drive-badge.svg"
 mkdir -p "$ICON_DATA"
-render_svg() { # render_svg IN.svg OUT.png SIZE (librsvg via GdkPixbuf; ImageMagick's own SVG renderer drops gradients)
-  python3 -I - "$1" "$2" "$3" 2>/dev/null <<'PY'
-import sys, gi
-gi.require_version("GdkPixbuf", "2.0")
-from gi.repository import GdkPixbuf
-GdkPixbuf.Pixbuf.new_from_file_at_size(sys.argv[1], int(sys.argv[3]), int(sys.argv[3])).savev(sys.argv[2], "png", [], [])
-PY
-}
 base="$DIR/assets/icons/pdrive-tray-base.png" # the plain cloud: the sync loop is a smudge at tray size
-if [ "${PROTON_BADGE:-0}" = "1" ] && command -v curl >/dev/null; then
-  tmp_badge="$ICON_DATA/.drive-badge.download"
-  if curl -fsSL --max-time 30 --proto =https -o "$tmp_badge" "$BADGE_URL" \
-     && head -c 512 "$tmp_badge" | grep -q "<svg" && ! grep -qiE "<script|javascript:|xlink:href=\"http|href=\"http" "$tmp_badge"; then
-    mv "$tmp_badge" "$ICON_DATA/drive-badge.svg"
-  else
-    rm -f "$tmp_badge"
-    [ -f "$ICON_DATA/drive-badge.svg" ] || echo "Couldn't download Proton's Drive badge; using pdrive's own icon."
-  fi
-fi
-# Transparent background: drop the badge's white rounded tile and crop to the folder.
-# If the badge's shape ever changes so the tile isn't found, the original is used as is.
-badge="$ICON_DATA/drive-badge.svg"
-if [ -f "$badge" ] && python3 -I - "$badge" "$ICON_DATA/drive-folder.svg" <<'PY' 2>/dev/null
-import re, sys
-s = open(sys.argv[1], encoding="utf-8").read()
-t = re.sub(r'<path fill="#fff" d="M0 10C[^"]*Z"/>', "", s, count=1)
-if t == s or 'viewBox="0 0 36 36"' not in t:
-    sys.exit(1)
-open(sys.argv[2], "w", encoding="utf-8").write(t.replace('viewBox="0 0 36 36"', 'viewBox="6 6.4 24 24"', 1))
-PY
-then
-  badge="$ICON_DATA/drive-folder.svg"
-fi
-if [ "${PROTON_BADGE:-0}" = "1" ] && [ -f "$badge" ] && render_svg "$badge" "$ICON_DATA/app-256.png" 256; then
-  base="$ICON_DATA/app-256.png"
-  install -Dm644 "$badge" "$ICONS/scalable/apps/pdrive.svg"
-  for size in 16 24 32 48 64 128 256; do
-    render_svg "$badge" "$ICONS/${size}x${size}/apps/pdrive.png" "$size" || true
-  done
-else
-  rm -f "$ICON_DATA/app-256.png" "$ICON_DATA/drive-badge.svg" "$ICON_DATA/drive-folder.svg"
-fi
-# Tray state icons (synced, syncing, paused, error, attention, stopped) from whichever icon is in use.
+# Earlier versions could use Proton's Drive badge as the icon; Proton's rules for third-party apps
+# don't allow its logos, so remove any copy left from then.
+rm -f "$ICON_DATA/app-256.png" "$ICON_DATA/drive-badge.svg" "$ICON_DATA/drive-folder.svg" "$ICON_DATA/.drive-badge.download"
+# Tray state icons (synced, syncing, paused, error, attention, stopped) from pdrive's icon.
 if command -v magick >/dev/null || command -v convert >/dev/null; then
   "$DIR/assets/make-tray-icons.sh" "$base" "$ICON_DATA"
 else

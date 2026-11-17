@@ -135,4 +135,5 @@ needs the groundwork below first, then one item per channel.
   `~/.local/bin/proton-drive`), start the tray at login, keep the background service running.
 - 2026-11-17: **Tray state icons** (synced, syncing, paused, error, needs you, not running) in Proton
   VPN's style, made by `assets/make-tray-icons.sh` from the app icon; `install.sh` uses Proton's Drive
-  badge (transparent, local only, never committed: it's Proton's trademark).
+  badge (transparent, local only, never committed: it's Proton's trademark). Dropped later the same day:
+  Proton's rules for third-party apps don't allow its logos.

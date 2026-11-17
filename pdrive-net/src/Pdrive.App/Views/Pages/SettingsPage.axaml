@@ -20,7 +20,7 @@
             <TextBlock Classes="h2" Text="Proton account" />
             <TextBlock Text="{Binding AccountStatus}" TextWrapping="Wrap" />
             <TextBlock Classes="muted small" TextWrapping="Wrap"
-                       Text="Signing in opens your browser. Your password never passes through pdrive; the session is kept in your system keyring." />
+                       Text="Signing in opens your browser. Your password never passes through pdrive; the session is kept in your system keyring. pdrive is a third-party app, not made or supported by Proton." />
           </StackPanel>
           <StackPanel Grid.Column="2" Margin="12,0,0,0" VerticalAlignment="Top">
             <Button Classes="accent" Command="{Binding SignInCommand}" IsVisible="{Binding !IsSignedIn}">Sign in</Button>

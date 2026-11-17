@@ -58,7 +58,7 @@
               Data="{StaticResource Icon.User}" />
         <StackPanel VerticalAlignment="Center" Spacing="2">
           <TextBlock Classes="h2" Text="Sign in to Proton" />
-          <TextBlock Classes="muted" Text="Opens your browser. Your password never passes through pdrive." TextWrapping="Wrap" />
+          <TextBlock Classes="muted" Text="Opens your browser. Your password never passes through pdrive, a third-party app not made or supported by Proton." TextWrapping="Wrap" />
         </StackPanel>
       </DockPanel>
     </Border>

@@ -21,11 +21,14 @@ public sealed record TwoWaySettings
     /// <summary>Drive folders to sync, relative to /my-files with raw names ("Photos", "Documents/Work").</summary>
     public IReadOnlyList<string> Folders { get; init; } = [];
 
-    public double RemoteIntervalMinutes { get; init; } = 15;
+    /// <summary>How often Drive is checked for changes made elsewhere. Each check lists every synced folder,
+    /// and Proton asks third-party apps not to traverse the file tree frequently, so it's hourly by default;
+    /// "Sync now" checks straight away, and local changes upload within seconds regardless.</summary>
+    public double RemoteIntervalMinutes { get; init; } = 60;
 
     /// <summary>While checks of Drive keep finding nothing, the wait grows up to this (back to
     /// <see cref="RemoteIntervalMinutes"/> after any change). Set it equal to turn the back-off off.</summary>
-    public double RemoteIntervalMaxMinutes { get; init; } = 60;
+    public double RemoteIntervalMaxMinutes { get; init; } = 240;
     public int ParallelListings { get; init; } = 4;
     public int MaxDeletesWithoutConfirm { get; init; } = 50;
 
@@ -34,7 +37,7 @@ public sealed record TwoWaySettings
 
     /// <summary>The wait before the next check of Drive after <paramref name="quietChecks"/> checks in a row
     /// found nothing: the interval, doubled after every two quiet checks, at most remote_interval_max_minutes
-    /// (default 15, 15, 30, 30, 60 … minutes).</summary>
+    /// (default 60, 60, 120, 120, 240 … minutes).</summary>
     public TimeSpan NextCheckAfter(int quietChecks)
     {
         var max = TimeSpan.FromMinutes(Math.Max(RemoteIntervalMaxMinutes, Math.Max(1, RemoteIntervalMinutes)));

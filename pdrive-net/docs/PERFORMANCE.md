@@ -20,7 +20,7 @@ Measured 2026-11-17 on this machine (x86-64, real Drive, cli-drive 0.9.0).
 
 | Operation | Before | Now |
 |---|---|---|
-| Check one folder on Drive | 1 per folder (crawl) | same; checks back off while idle (15, 15, 30, 30, 60 min) |
+| Check one folder on Drive | 1 per folder (crawl) | same, hourly by default; checks back off while idle (1, 1, 2, 2, 4 h) |
 | Local edits: check Drive before uploading | **1 `info` per changed file**, one after another | 1 listing per changed folder, up to 4 at once |
 | Upload N changed files in one folder | 1 upload + 1 listing | same |
 | New local folder | create-folder + info | 1 (`create-folder --json` returns the ID) |
@@ -37,7 +37,7 @@ Examples at ~1.5 s per CLI run:
 | Save 20 files in one folder | ~30 s of checks, then upload | ~1.5 s check, then upload |
 | Copy a folder with 20 subfolders in | ~90 s | ~10 s |
 | 100 new phone photos in 5 dated folders | ~150 s | ~3 s (all five folders at once) |
-| Nothing changes for a day | 96 checks of Drive | ~28 |
+| Nothing changes for a day | 96 checks of Drive (every 15 min) | ~9 (hourly, backing off to 4 h) |
 
 ## Optimisations
 
@@ -45,7 +45,7 @@ Examples at ~1.5 s per CLI run:
 |---|---|---|
 | 1 | Batch downloads per folder (`filesystem download a b c … staging/`), placed one by one with the usual re-check | done |
 | 2 | Upload new local folder trees in one call (`upload -d merge folder parent`), then one crawl to record them. Only when a fresh look at the folder finds exactly what the plan uploads (no excluded, settling or linked items; the CLI refuses links and fails the whole upload, checked); otherwise folder by folder | done |
-| 3 | Adaptive check interval (`sync.remote_interval_max_minutes`, default 60) | done |
+| 3 | Adaptive check interval: hourly by default, up to 4 h while idle (`sync.remote_interval_minutes` 60, `sync.remote_interval_max_minutes` 240); Proton asks third-party apps not to traverse the file tree frequently | done |
 | 4 | Tray memory: the window is built on first open and released when closed to the tray | done |
 | 5 | Files page cache: last listing shown instantly, refreshed in the background | done; prefetching the parent is open |
 | 6 | `create-folder --json` instead of a separate `info` (checked with cli-drive 0.9.0) | done |

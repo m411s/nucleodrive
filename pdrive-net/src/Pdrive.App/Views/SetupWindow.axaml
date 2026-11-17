@@ -53,6 +53,8 @@
           <!-- sign in -->
           <StackPanel Spacing="12" IsVisible="{Binding IsSignInStep}">
             <TextBlock Text="{Binding SignInStatus}" TextWrapping="Wrap" />
+            <TextBlock Classes="muted small" TextWrapping="Wrap" IsVisible="{Binding !IsFirstStep}"
+                       Text="pdrive is a third-party app, not made or supported by Proton." />
             <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding !SignedIn}" Margin="0,6,0,0">
               <Button Classes="accent" Command="{Binding SignInCommand}">Sign in</Button>
               <Button Classes="ghost" Command="{Binding SkipSignInCommand}">Skip for now</Button>

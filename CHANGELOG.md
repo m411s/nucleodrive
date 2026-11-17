@@ -7,16 +7,21 @@ minor versions may change behaviour.
 
 - **Use-at-your-own-risk notice** in the README, About, the setup wizard and release notes: unofficial,
   for personal non-commercial use, no responsibility for data loss.
-- **New app icon** (a white cloud with a sync loop on a purple tile, in the app's colours); the app is
-  called "pdrive" (searchable as Proton Drive client).
-  Proton's Drive badge is no longer used as the icon unless you ask for it (`PROTON_BADGE=1 ./install.sh`).
+- **New app icon** (a white cloud with a sync loop on a violet tile) and a violet accent (#7C3AED) of its
+  own instead of Proton's #6D4AFF; the app is called "pdrive" (searchable as Proton Drive client).
+- **Drive is checked hourly** (was every 15 min), backing off to every 4 hours while nothing changes:
+  Proton asks third-party apps not to traverse the file tree frequently. Local changes still upload
+  within seconds, and Sync now checks straight away. Existing configs keep their value.
+- "pdrive is a third-party app, not made or supported by Proton" wherever you sign in.
+  Proton's Drive badge is no longer used or downloaded (Proton's rules for third-party apps don't allow
+  its logos); a copy left by an earlier install is removed.
 - **Sync page: folder tree.** Open any Drive folder to choose subfolders to sync, not only top-level
   ones. Subfolders are listed only when you open a folder; folders that sync only partly say so.
 - **Light, dark or automatic** (follows the system) in Settings › Appearance; remembered in `~/.config/pdrive/theme`.
 - **Fewer CLI runs everywhere:** saving files checks Drive with one listing per folder instead of one
   call per file; a folder tree copied into the sync folder goes up in one upload; new folders take one
   call instead of two; downloads for several folders run at once; checks of Drive back off while
-  nothing changes (`sync.remote_interval_max_minutes`, 60).
+  nothing changes (`sync.remote_interval_max_minutes`, 240).
 - **Faster downloads:** a folder's changed files come down in one CLI run instead of one per file
   (100 new photos: about 2.5 minutes → a few seconds).
 - Files and folders whose names start with `-` now sync (passed to the CLI after `--`).

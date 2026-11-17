@@ -34,8 +34,8 @@ Unchosen folders stay online-only and remain browsable in the Files page.
 
 - **Changes on this computer** (file manager, editors, …) upload within seconds (inotify).
 - **Changes made elsewhere** (web, phone, other computers) arrive at the next check of Drive: every
-  `sync.remote_interval_minutes` (15), or on **Sync now**. While checks keep finding nothing, the wait
-  grows (15, 15, 30, 30, then 60 min, `sync.remote_interval_max_minutes`) and drops back to 15 after any
+  `sync.remote_interval_minutes` (60), or on **Sync now**. While checks keep finding nothing, the wait
+  grows (1, 1, 2, 2, then 4 hours, `sync.remote_interval_max_minutes`) and drops back to 1 hour after any
   change, here or on Drive. The CLI can only list one folder at a time
   (about 2 s each), so a check takes a while for big folders; up to `sync.parallel_listings` (4) run at once.
 - **Deletions** go to the Trash on the other side (Drive trash, or your desktop Trash), never erased.
@@ -56,10 +56,8 @@ Needs the .NET 10 SDK to build (the installed app is self-contained). The `proto
 installed from the app (**Settings › Install the CLI**), or by hand from
 https://proton.me/download/drive/cli/index.html into `~/.local/bin` (or set `PROTON_DRIVE_BIN`).
 
-pdrive uses its own icon (a cloud with a sync loop, `assets/pdrive.svg`), deliberately unlike Proton's
-logos and colours. `PROTON_BADGE=1 ./install.sh` uses Proton's Drive badge instead, downloaded onto this
-computer only (it's Proton's trademark and never part of this repo). Tray state icons need ImageMagick;
-rendering the badge needs librsvg (`python3-gi` with GdkPixbuf).
+pdrive uses its own icon (a cloud with a sync loop, `assets/pdrive.svg`); Proton's rules for third-party
+apps don't allow Proton's logos. Tray state icons need ImageMagick.
 
 ```bash
 ./install.sh
@@ -84,8 +82,7 @@ Cinnamon show them out of the box. Without a tray, use the app's Backup page.
 ```
 
 builds `dist/pdrive_<version>_amd64.deb` and `dist/pdrive-<version>-x86_64.AppImage`
-(`./package.sh deb` or `./package.sh appimage` for one). Both use pdrive's own icon; Proton's badge is
-never included.
+(`./package.sh deb` or `./package.sh appimage` for one). Both use pdrive's own icon.
 
 - **.deb**: `sudo apt install ./dist/pdrive_*.deb`. Installs to `/opt/pdrive` (`pdrive`, `pdrivectl` in
   `/usr/bin`), the `pdrive` systemd **user** service (enabled for everyone; starts at login, or now with
@@ -106,7 +103,7 @@ never included.
 | CLI | `pdrivectl sync status \| list \| add FOLDER \| remove FOLDER \| now \| confirm` (two-way sync) |
 | | `pdrivectl status \| list \| add LOCAL REMOTE \| remove LOCAL \| now \| pause \| resume` (backups; pause/resume cover sync too) |
 | Daemon | `systemctl --user status pdrive`, logs with `journalctl --user -u pdrive` |
-| Config | `~/.config/pdrive/config.json`: `interval_minutes` (15), `min_age_seconds` (5), `exclude` (`.*`, `*~`, `*.tmp`, `*.part`, `*.crdownload`), `folders`, `conflict_strategy` for files that already exist on Drive (`create-new-revision` default, `rename`, `replace`, `skip`), `watch` (true), and `sync`: `local` (`~/proton-drive`), `folders`, `remote_interval_minutes` (15), `remote_interval_max_minutes` (60: while checks find nothing, the wait doubles every two checks up to this), `parallel_listings` (4), `max_deletes_without_confirm` (50) |
+| Config | `~/.config/pdrive/config.json`: `interval_minutes` (15), `min_age_seconds` (5), `exclude` (`.*`, `*~`, `*.tmp`, `*.part`, `*.crdownload`), `folders`, `conflict_strategy` for files that already exist on Drive (`create-new-revision` default, `rename`, `replace`, `skip`), `watch` (true), and `sync`: `local` (`~/proton-drive`), `folders`, `remote_interval_minutes` (60), `remote_interval_max_minutes` (240: while checks find nothing, the wait doubles every two checks up to this), `parallel_listings` (4), `max_deletes_without_confirm` (50) |
 | State | `~/.local/state/pdrive/state.db` (SQLite: what was uploaded where, the sync baseline, pause, last sync) |
 
 A broken `config.json` shows as an error in the status; the daemon keeps running on the last good

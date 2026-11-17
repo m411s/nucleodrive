@@ -1,4 +1,4 @@
-<!-- pdrive's look: Fluent with a purple accent, cards, line icons, quiet buttons, smooth hover. -->
+<!-- pdrive's look: Fluent with a violet accent (its own, not Proton's #6D4AFF), cards, line icons, quiet buttons, smooth hover. -->
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Styles.Resources>
@@ -10,12 +10,12 @@
           <SolidColorBrush x:Key="Pd.Card" Color="#FFFFFF" />
           <SolidColorBrush x:Key="Pd.CardBorder" Color="#E6E4EC" />
           <SolidColorBrush x:Key="Pd.Hover" Color="#F0EEF8" />
-          <SolidColorBrush x:Key="Pd.Selected" Color="#E7E2FF" />
+          <SolidColorBrush x:Key="Pd.Selected" Color="#EDE5FD" />
           <SolidColorBrush x:Key="Pd.Muted" Color="#6B6A75" />
-          <SolidColorBrush x:Key="Pd.FolderTint" Color="#6D4AFF" />
+          <SolidColorBrush x:Key="Pd.FolderTint" Color="#7C3AED" />
           <SolidColorBrush x:Key="Pd.Warning" Color="#FFF4DB" />
           <SolidColorBrush x:Key="Pd.WarningBorder" Color="#F2C46B" />
-          <SolidColorBrush x:Key="Pd.DropFill" Color="#F2F3EFFF" />
+          <SolidColorBrush x:Key="Pd.DropFill" Color="#F2F5F0FE" />
         </ResourceDictionary>
         <ResourceDictionary x:Key="Dark">
           <SolidColorBrush x:Key="Pd.Window" Color="#17161C" />
@@ -23,9 +23,9 @@
           <SolidColorBrush x:Key="Pd.Card" Color="#22212A" />
           <SolidColorBrush x:Key="Pd.CardBorder" Color="#2E2C38" />
           <SolidColorBrush x:Key="Pd.Hover" Color="#2A2833" />
-          <SolidColorBrush x:Key="Pd.Selected" Color="#352C5E" />
+          <SolidColorBrush x:Key="Pd.Selected" Color="#3A2763" />
           <SolidColorBrush x:Key="Pd.Muted" Color="#A3A1AE" />
-          <SolidColorBrush x:Key="Pd.FolderTint" Color="#9C86FF" />
+          <SolidColorBrush x:Key="Pd.FolderTint" Color="#A78BFA" />
           <SolidColorBrush x:Key="Pd.Warning" Color="#3A3020" />
           <SolidColorBrush x:Key="Pd.WarningBorder" Color="#7A6230" />
           <SolidColorBrush x:Key="Pd.DropFill" Color="#F2221A3D" />
