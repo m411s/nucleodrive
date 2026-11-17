@@ -110,6 +110,7 @@ jobs:
           gh release create "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --title "pdrive $TAG" \
             --generate-notes $prerelease --notes "$(cat <<'EOF'
           Unofficial Linux client for Proton Drive. Not affiliated with Proton AG.
+          For personal, non-commercial use, at your own risk: provided "as is", with no responsibility for any data loss. Keep backups.
 
           - **.deb** (Debian/Ubuntu): `sudo apt install ./pdrive_*.deb`; the sync service starts at your next login (or `systemctl --user start pdrive`).
           - **AppImage**: `chmod +x pdrive-*.AppImage` and run it; the first launch sets up the background service and login entry.

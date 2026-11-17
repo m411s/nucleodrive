@@ -24,6 +24,10 @@
                  Text="An unofficial Linux client for Proton Drive: two-way folder sync, one-way backup, file browser and tray icon, built on Proton's official proton-drive CLI." />
       <TextBlock TextWrapping="Wrap" Classes="muted small"
                  Text="Not affiliated with or endorsed by Proton AG. &quot;Proton&quot; and &quot;Proton Drive&quot; are trademarks of Proton AG." />
+      <Border Classes="warning">
+        <TextBlock TextWrapping="Wrap" Classes="small"
+                   Text="For personal, non-commercial use, at your own risk. pdrive comes without warranty; its authors accept no responsibility for data loss. Keep backups." />
+      </Border>
       <SelectableTextBlock x:Name="LinkText" Classes="muted" />
       <StackPanel Orientation="Horizontal" Spacing="4" Margin="-8,0,0,0">
         <Button x:Name="PrivacyButton" Classes="ghost link">Privacy policy</Button>

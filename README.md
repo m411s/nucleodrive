@@ -12,6 +12,13 @@ An unofficial Linux client for [Proton Drive](https://proton.me/drive), built on
 - **Settings**: sign in/out, install or update the CLI (verified against Proton's checksums), start at
   login.
 
+> [!WARNING]
+> **Use at your own risk.** pdrive is an unofficial, third-party app, not made, endorsed or supported by
+> Proton AG. It is meant for **personal, non-commercial use**: Proton only allows third-party Drive apps
+> for personal, non-commercial projects. pdrive is provided "as is", without warranty of any kind, and its
+> authors accept **no responsibility for any data loss** or other damage (see [LICENSE](LICENSE)). Keep
+> backups of anything you can't afford to lose.
+
 ## Get it
 
 ```bash

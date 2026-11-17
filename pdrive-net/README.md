@@ -13,6 +13,11 @@ official `proton-drive` CLI. Not affiliated with Proton AG.
 - **Settings**: sign in/out, install or update the `proton-drive` CLI (verified against Proton's
   published SHA-512), start at login, keep syncing in the background.
 
+> [!WARNING]
+> **Use at your own risk.** Unofficial third-party app, not supported by Proton; for **personal,
+> non-commercial use** (Proton only allows third-party Drive apps for that). Provided "as is", with **no
+> responsibility for any data loss** (see [LICENSE](../LICENSE)). Keep backups.
+
 ## First start
 
 A setup wizard walks through signing in to Proton (installing the CLI first if needed), choosing the

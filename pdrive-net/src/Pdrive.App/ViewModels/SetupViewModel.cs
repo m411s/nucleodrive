@@ -41,7 +41,7 @@ public sealed partial class SetupViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsCliStep), nameof(IsSignInStep), nameof(IsFolderStep), nameof(IsStartupStep),
-        nameof(StepTitle), nameof(StepText), nameof(IsLastStep), nameof(NextLabel), nameof(StepDots))]
+        nameof(StepTitle), nameof(StepText), nameof(IsLastStep), nameof(NextLabel), nameof(StepDots), nameof(IsFirstStep))]
     [NotifyCanExecuteChangedFor(nameof(NextCommand), nameof(BackCommand))]
     private SetupStep _step;
 
@@ -76,6 +76,8 @@ public sealed partial class SetupViewModel : ObservableObject
     public bool IsSignInStep => Step == SetupStep.SignIn;
     public bool IsFolderStep => Step == SetupStep.Folder;
     public bool IsStartupStep => Step == SetupStep.Startup;
+    /// <summary>The first page also shows the third-party / own-risk notice.</summary>
+    public bool IsFirstStep => _steps.Count == 0 || _steps.IndexOf(Step) == 0;
     public bool IsLastStep => _steps.Count > 0 && Step == _steps[^1];
     public string NextLabel => IsLastStep ? "Finish" : "Next";
     /// <summary>One dot per step: done, current or still to come.</summary>

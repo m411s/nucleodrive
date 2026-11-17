@@ -32,6 +32,8 @@
       </StackPanel>
       <ProgressBar IsIndeterminate="True" IsVisible="{Binding Busy}" Width="100" HorizontalAlignment="Left" VerticalAlignment="Center" />
     </DockPanel>
+    <TextBlock DockPanel.Dock="Bottom" Classes="muted small" Margin="2,12,2,0" TextWrapping="Wrap" IsVisible="{Binding IsFirstStep}"
+               Text="pdrive is an unofficial third-party app, not made or supported by Proton. It's for personal, non-commercial use, at your own risk: the authors accept no responsibility for data loss, so keep backups." />
     <Border DockPanel.Dock="Bottom" Classes="warning" Margin="0,12,0,0"
             IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}">
       <TextBlock Text="{Binding Error}" TextWrapping="Wrap" />

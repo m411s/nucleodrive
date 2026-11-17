@@ -5,6 +5,8 @@ minor versions may change behaviour.
 
 ## Unreleased
 
+- **Use-at-your-own-risk notice** in the README, About, the setup wizard and release notes: unofficial,
+  for personal non-commercial use, no responsibility for data loss.
 - **New app icon** (a white cloud with a sync loop on a purple tile, in the app's colours); the app is
   called "pdrive" (searchable as Proton Drive client).
   Proton's Drive badge is no longer used as the icon unless you ask for it (`PROTON_BADGE=1 ./install.sh`).
