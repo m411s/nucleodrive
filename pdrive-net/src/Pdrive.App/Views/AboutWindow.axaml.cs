@@ -6,10 +6,12 @@ using Avalonia.Platform;
 
 namespace Pdrive.App.Views;
 
-/// <summary>Version, what pdrive is, the Proton disclaimer, the MIT licence and a link to the project.</summary>
+/// <summary>Version, what pdrive is, the Proton disclaimer, privacy and security policies, the MIT licence and a link to the project.</summary>
 public sealed partial class AboutWindow : Window
 {
     public const string ProjectUrl = "https://github.com/m411s/pdrive";
+    public const string PrivacyUrl = ProjectUrl + "/blob/main/PRIVACY.md";
+    public const string SecurityUrl = ProjectUrl + "/blob/main/SECURITY.md";
 
     public AboutWindow() : this(_ => { })
     {
@@ -25,6 +27,8 @@ public sealed partial class AboutWindow : Window
         this.FindControl<SelectableTextBlock>("LinkText")!.Text = ProjectUrl;
         this.FindControl<SelectableTextBlock>("LicenseBox")!.Text = System.Text.RegularExpressions.Regex.Replace(LicenseText.ReplaceLineEndings("\n"), @"(?<!\n)\n(?!\n)", " "); // reflow paragraphs
         this.FindControl<Button>("GitHubButton")!.Click += (_, _) => openUrl(ProjectUrl);
+        this.FindControl<Button>("PrivacyButton")!.Click += (_, _) => openUrl(PrivacyUrl);
+        this.FindControl<Button>("SecurityButton")!.Click += (_, _) => openUrl(SecurityUrl);
         this.FindControl<Button>("CloseButton")!.Click += (_, _) => Close();
         try
         {

@@ -25,6 +25,10 @@
       <TextBlock TextWrapping="Wrap" Classes="muted small"
                  Text="Not affiliated with or endorsed by Proton AG. &quot;Proton&quot; and &quot;Proton Drive&quot; are trademarks of Proton AG." />
       <SelectableTextBlock x:Name="LinkText" Classes="muted" />
+      <StackPanel Orientation="Horizontal" Spacing="4" Margin="-8,0,0,0">
+        <Button x:Name="PrivacyButton" Classes="ghost link">Privacy policy</Button>
+        <Button x:Name="SecurityButton" Classes="ghost link">Security policy</Button>
+      </StackPanel>
       <TextBlock Text="Licence" Classes="h2" Margin="0,8,0,0" />
     </StackPanel>
 

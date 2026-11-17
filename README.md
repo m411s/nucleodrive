@@ -20,11 +20,18 @@ cd pdrive-net
 ```
 
 That builds and installs for your user (needs the .NET 10 SDK). To build a `.deb` and an AppImage
-instead, run `./package.sh`. Then choose folders in the app's **Sync** tab, or run
+instead, run `./package.sh`. Then choose folders on the app's **Sync** page, or run
 `pdrivectl sync add Documents`.
 
 Everything else (how sync behaves, safety rules, configuration, development) is in
 **[pdrive-net/README.md](pdrive-net/README.md)**.
+
+## Privacy and security
+
+pdrive collects nothing: no telemetry, analytics or crash reports. Your files go only to Proton, encrypted
+by Proton's CLI, and pdrive never sees your password. Details in **[PRIVACY.md](PRIVACY.md)**.
+
+Found a security problem? Please report it privately, as described in **[SECURITY.md](SECURITY.md)**.
 
 ## What's in this repository
 

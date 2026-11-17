@@ -35,7 +35,11 @@ public sealed class HeadlessTests
         Assert.Contains("https://github.com/m411s/pdrive", texts);
         about.GetVisualDescendants().OfType<Button>().Single(b => b.Content as string == "Project on GitHub")
             .RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
-        Assert.Equal(["https://github.com/m411s/pdrive"], opened);
+        foreach (var name in (string[])["Privacy policy", "Security policy"])
+            about.GetVisualDescendants().OfType<Button>().Single(b => b.Content as string == name)
+                .RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+        Assert.Equal(["https://github.com/m411s/pdrive", "https://github.com/m411s/pdrive/blob/main/PRIVACY.md",
+            "https://github.com/m411s/pdrive/blob/main/SECURITY.md"], opened);
         about.Close();
     }
 

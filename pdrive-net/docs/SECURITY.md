@@ -1,5 +1,8 @@
 # Security review
 
+To report a vulnerability, see the [security policy](../../SECURITY.md). What pdrive stores and sends is in
+the [privacy policy](../../PRIVACY.md).
+
 Reviewed 2026-11-17 (commit a7bbc7f and later). Scope: the daemon, the sync engine, the app, the CLI
 wrapper and installer, `install.sh`, the .deb/AppImage packaging and the GitHub workflows.
 

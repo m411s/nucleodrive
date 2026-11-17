@@ -120,6 +120,15 @@
     <Setter Property="Opacity" Value="0.55" />
   </Style>
 
+  <!-- Text links (About) -->
+  <Style Selector="Button.ghost.link">
+    <Setter Property="Foreground" Value="{DynamicResource Pd.FolderTint}" />
+    <Setter Property="Padding" Value="8,4" />
+  </Style>
+  <Style Selector="Button.ghost.link:pointerover /template/ ContentPresenter">
+    <Setter Property="Foreground" Value="{DynamicResource Pd.FolderTint}" />
+  </Style>
+
   <!-- Wizard step dots -->
   <Style Selector="Border.stepDot">
     <Setter Property="Width" Value="8" />
