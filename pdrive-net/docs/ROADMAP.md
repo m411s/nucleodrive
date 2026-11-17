@@ -14,7 +14,8 @@ needs the groundwork below first, then one item per channel.
 
 ### Groundwork (needed by every channel)
 
-- **Licence.** The repo has none yet. Pick one (MIT or GPL-3.0) and add `LICENSE`; every store requires it.
+- **Licence.** Done: MIT (`LICENSE`). Packages still need it shipped as `/usr/share/doc/pdrive/copyright`
+  (.deb) and in the AppStream metainfo (`<project_license>MIT</project_license>`).
 - **Name and identity.** Stores reject anything that looks official. Keep "pdrive — unofficial client for
   Proton Drive"; never use Proton's logo or a `me.proton.*` / `ch.proton.*` ID. App ID e.g.
   `io.github.<owner>.pdrive` (Flathub requires that you control that domain, i.e. the GitHub account).

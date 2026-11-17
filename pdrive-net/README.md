@@ -147,3 +147,10 @@ Planned work is in `docs/ROADMAP.md` (next up: a Settings page to download the C
 - Sync has no "online-only" placeholder files (that would need a FUSE filesystem): synced folders are
   fully downloaded. Remote changes aren't instant (no event feed in the CLI).
 - Files that change continuously are uploaded at most once per 60 s of activity (the watcher's cap).
+
+## Licence
+
+MIT, see [LICENSE](../LICENSE). This covers pdrive's own code and its own icon. It does not cover
+Proton's proton-drive CLI, which pdrive downloads from proton.me and doesn't redistribute, or Proton's
+logo, which `install.sh` may download for your own machine. "Proton" and "Proton Drive" are trademarks
+of Proton AG; pdrive isn't affiliated with or endorsed by Proton.
