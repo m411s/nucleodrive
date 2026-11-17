@@ -15,3 +15,7 @@ publish/
 
 # Locally downloaded proton-drive CLI binary (not ours to commit)
 pdrive-net/cli/
+
+# Packaging output and downloaded build tools
+pdrive-net/dist/
+pdrive-net/.tools/

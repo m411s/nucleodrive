@@ -156,3 +156,19 @@ public sealed class SettingsViewModelTests
         Assert.False(vm.ServiceEnabled);
     }
 }
+
+public sealed class SystemWideStartupTests
+{
+    [Fact]
+    public void A_system_autostart_entry_counts_until_the_user_overrides_it()
+    {
+        using var tmp = new TempDir();
+        Directory.CreateDirectory(tmp["etc/autostart"]);
+        File.WriteAllText(tmp["etc/autostart/pdrive-tray.desktop"], "[Desktop Entry]\nExec=pdrive --tray\n");
+        var s = new StartupSettings(tmp["home-config"], "/opt/pdrive/pdrive", [tmp["etc"]]);
+        Assert.True(s.TrayAtLogin); // from the .deb's /etc/xdg/autostart
+        s.SetTrayAtLogin(false);
+        Assert.False(s.TrayAtLogin); // the user's Hidden=true entry wins
+        Assert.True(File.Exists(tmp["etc/autostart/pdrive-tray.desktop"]));
+    }
+}

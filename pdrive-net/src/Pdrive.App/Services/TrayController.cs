@@ -100,6 +100,18 @@ public static class StatusIcons
             : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local/share"),
         "pdrive", "icons");
 
+    /// <summary>Where to look for icons: the user's folder (install.sh), then $XDG_DATA_DIRS
+    /// (/usr/share/pdrive/icons from the .deb, or inside the AppImage).</summary>
+    public static IEnumerable<string> IconDirs()
+    {
+        yield return IconDir;
+        var dirs = Environment.GetEnvironmentVariable("XDG_DATA_DIRS") is { Length: > 0 } x ? x : "/usr/local/share:/usr/share";
+        foreach (var dir in dirs.Split(':', StringSplitOptions.RemoveEmptyEntries))
+            yield return Path.Combine(dir, "pdrive", "icons");
+    }
+
+    private static WindowIcon? Find(string file) => IconDirs().Select(d => Load(Path.Combine(d, file))).FirstOrDefault(i => i is not null);
+
     /// <summary>File name stem for a state: synced = idle, attention = sign in / confirm deletions.</summary>
     public static string NameFor(DaemonState state) => state switch
     {
@@ -112,7 +124,7 @@ public static class StatusIcons
     };
 
     /// <summary>The app icon install.sh prepared (Proton's badge, if downloaded), or null.</summary>
-    public static WindowIcon? InstalledAppIcon() => Load(Path.Combine(IconDir, "app-256.png"));
+    public static WindowIcon? InstalledAppIcon() => Find("app-256.png");
 
     private static WindowIcon? Load(string file)
     {
@@ -140,7 +152,7 @@ public static class StatusIcons
     {
         if (Cache.TryGetValue(state, out var icon))
             return icon;
-        if (Load(Path.Combine(IconDir, $"tray-{NameFor(state)}.png")) is { } installed)
+        if (Find($"tray-{NameFor(state)}.png") is { } installed)
             return Cache[state] = installed;
         var color = new SolidColorBrush(ColorFor(state));
         var bmp = new RenderTargetBitmap(new PixelSize(64, 64));

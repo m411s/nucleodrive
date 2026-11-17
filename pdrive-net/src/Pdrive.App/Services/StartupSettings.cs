@@ -20,10 +20,22 @@ public sealed class StartupSettings(string configHome, string appExecutable) : I
 {
     public const string ServiceName = "pdrive.service";
 
+    /// <param name="systemConfigDirs">$XDG_CONFIG_DIRS: where a system-wide install (the .deb) puts
+    /// its autostart entry; a user entry with the same name overrides it.</param>
+    public StartupSettings(string configHome, string appExecutable, IReadOnlyList<string>? systemConfigDirs = null)
+        : this(configHome, appExecutable)
+    {
+        _systemConfigDirs = systemConfigDirs ?? [];
+    }
+
+    private readonly IReadOnlyList<string> _systemConfigDirs = [];
+
     public static StartupSettings ForCurrentUser() => new(
         Environment.GetEnvironmentVariable("XDG_CONFIG_HOME") is { Length: > 0 } c ? c
             : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".config"),
-        Environment.ProcessPath ?? "pdrive");
+        // Inside an AppImage the process runs from a temporary mount; autostart must point at the AppImage file.
+        Environment.GetEnvironmentVariable("APPIMAGE") is { Length: > 0 } appImage ? appImage : Environment.ProcessPath ?? "pdrive",
+        (Environment.GetEnvironmentVariable("XDG_CONFIG_DIRS") is { Length: > 0 } x ? x : "/etc/xdg").Split(':', StringSplitOptions.RemoveEmptyEntries));
 
     public string AutostartFile => Path.Combine(configHome, "autostart", "pdrive-tray.desktop");
 
@@ -31,9 +43,11 @@ public sealed class StartupSettings(string configHome, string appExecutable) : I
     {
         get
         {
-            if (!File.Exists(AutostartFile))
+            var file = File.Exists(AutostartFile) ? AutostartFile
+                : _systemConfigDirs.Select(d => Path.Combine(d, "autostart", "pdrive-tray.desktop")).FirstOrDefault(File.Exists);
+            if (file is null)
                 return false;
-            var lines = File.ReadAllLines(AutostartFile).Select(l => l.Trim()).ToList();
+            var lines = File.ReadAllLines(file).Select(l => l.Trim()).ToList();
             return !lines.Contains("Hidden=true") && !lines.Contains("X-GNOME-Autostart-enabled=false");
         }
     }
@@ -64,17 +78,32 @@ public sealed class StartupSettings(string configHome, string appExecutable) : I
         var (code, output) = await SystemctlAsync("is-enabled", ServiceName);
         return output.Trim() switch
         {
-            "enabled" => true,
-            "disabled" => false,
+            "enabled" or "enabled-runtime" or "static" or "alias" => true,
+            "disabled" or "masked" or "masked-runtime" => false,
             _ => code == 0 ? true : null, // not installed, or no systemd
         };
     }
 
+    /// <summary>On: unmask, enable and start. Off: disable and stop; if it's still enabled (the .deb
+    /// enables it for all users), mask it for this user so it stays off.</summary>
     public async Task SetServiceEnabledAsync(bool enabled)
     {
-        var (code, output) = await SystemctlAsync(enabled ? "enable" : "disable", "--now", ServiceName);
-        if (code != 0)
-            throw new InvalidOperationException($"systemctl failed: {output.Trim()}");
+        if (enabled)
+        {
+            await SystemctlAsync("unmask", ServiceName);
+            await Run("enable", "--now", ServiceName);
+            return;
+        }
+        await Run("disable", "--now", ServiceName);
+        if (await IsServiceEnabledAsync() == true)
+            await Run("mask", "--now", ServiceName);
+
+        static async Task Run(params string[] args)
+        {
+            var (code, output) = await SystemctlAsync(args);
+            if (code != 0)
+                throw new InvalidOperationException($"systemctl failed: {output.Trim()}");
+        }
     }
 
     private static async Task<(int Code, string Output)> SystemctlAsync(params string[] args)

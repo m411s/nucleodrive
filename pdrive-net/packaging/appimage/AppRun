@@ -1,0 +1,103 @@
+#!/bin/sh
+# pdrive AppImage entry point.
+#   pdrive.AppImage [--tray]        the app (and the tray)
+#   pdrive.AppImage daemon          the sync/backup service (what the systemd unit runs)
+#   pdrive.AppImage ctl ARGS…       pdrivectl
+#   pdrive.AppImage integrate       set up the background service and login entry, then exit
+#
+# When the app starts it sets up, once, a systemd user service and a login (autostart) entry that
+# point at this AppImage file, so sync keeps running in the background. Files written by an earlier
+# run are updated if the AppImage moved. Anything pdrive installed another way (install.sh, the
+# .deb) is left alone. PDRIVE_NO_INTEGRATION=1 skips all of it.
+HERE="$(dirname "$(readlink -f "$0")")"
+LIB="$HERE/usr/lib/pdrive"
+export XDG_DATA_DIRS="$HERE/usr/share:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+MARK="# Written by the pdrive AppImage"
+
+integrate() {
+  [ -n "${APPIMAGE:-}" ] || return 0
+  [ "${PDRIVE_NO_INTEGRATION:-0}" = 1 ] && return 0
+  conf="${XDG_CONFIG_HOME:-$HOME/.config}"
+  unit="$conf/systemd/user/pdrive.service"
+  autostart="$conf/autostart/pdrive-tray.desktop"
+  apps="${XDG_DATA_HOME:-$HOME/.local/share}/applications/pdrive.desktop"
+
+  # ours = missing, or written by an AppImage run (safe to (re)write)
+  ours() { [ ! -e "$1" ] || grep -qx "$MARK" "$1"; }
+  system_unit=no
+  for d in /usr/lib/systemd/user /etc/systemd/user /usr/local/lib/systemd/user; do
+    [ -e "$d/pdrive.service" ] && system_unit=yes
+  done
+
+  if [ "$system_unit" = no ] && ours "$unit"; then
+    if ! grep -qF "ExecStart=\"$APPIMAGE\" daemon" "$unit" 2>/dev/null; then
+      mkdir -p "$(dirname "$unit")"
+      cat > "$unit" <<UNIT
+$MARK
+[Unit]
+Description=Proton Drive sync and backup (unofficial, AppImage)
+
+[Service]
+Type=notify
+# The AppImage runtime is the main process; the daemon is its child.
+NotifyAccess=all
+ExecStart="$APPIMAGE" daemon
+Restart=on-failure
+RestartSec=30
+TimeoutStopSec=60
+
+[Install]
+WantedBy=default.target
+UNIT
+      if [ "${PDRIVE_NO_SYSTEMD:-0}" != 1 ] && command -v systemctl >/dev/null 2>&1; then
+        systemctl --user daemon-reload >/dev/null 2>&1 || true
+        systemctl --user enable pdrive.service >/dev/null 2>&1 || true
+        systemctl --user restart pdrive.service >/dev/null 2>&1 || true
+      fi
+    fi
+  fi
+
+  if ours "$autostart" && ! grep -qF "Exec=\"$APPIMAGE\" --tray" "$autostart" 2>/dev/null; then
+    hidden=""
+    grep -qx "Hidden=true" "$autostart" 2>/dev/null && hidden="Hidden=true"
+    mkdir -p "$(dirname "$autostart")"
+    cat > "$autostart" <<DESK
+[Desktop Entry]
+$MARK
+Type=Application
+Name=Proton Drive (tray)
+Exec="$APPIMAGE" --tray
+Icon=pdrive
+X-GNOME-Autostart-enabled=true
+NoDisplay=true
+$hidden
+DESK
+  fi
+
+  if ours "$apps" && ! grep -qF "Exec=\"$APPIMAGE\"" "$apps" 2>/dev/null; then
+    mkdir -p "$(dirname "$apps")"
+    icon="${XDG_DATA_HOME:-$HOME/.local/share}/pdrive/appimage-icon.png"
+    mkdir -p "$(dirname "$icon")"
+    cp "$HERE/pdrive.png" "$icon" 2>/dev/null || true
+    cat > "$apps" <<DESK
+[Desktop Entry]
+$MARK
+Type=Application
+Name=Proton Drive (unofficial)
+Comment=Sync, browse and back up Proton Drive
+Exec="$APPIMAGE"
+Icon=$icon
+Categories=Network;FileTransfer;
+StartupWMClass=pdrive
+DESK
+  fi
+}
+
+case "${1:-}" in
+  daemon) shift; exec "$LIB/pdrive-daemon" "$@" ;;
+  ctl|pdrivectl) shift; exec "$LIB/pdrivectl" "$@" ;;
+  integrate) integrate; exit 0 ;;
+esac
+
+integrate
+exec "$LIB/pdrive" "$@"

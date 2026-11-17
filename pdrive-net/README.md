@@ -61,6 +61,27 @@ twice. `./uninstall.sh` removes everything except your settings (`--purge` remov
 On GNOME, tray icons need the "AppIndicator and KStatusNotifierItem Support" extension. KDE, XFCE and
 Cinnamon show them out of the box. Without a tray, use the app's Backup tab.
 
+## Packages (.deb, AppImage)
+
+```bash
+./package.sh
+```
+
+builds `dist/pdrive_<version>_amd64.deb` and `dist/pdrive-<version>-x86_64.AppImage`
+(`./package.sh deb` or `./package.sh appimage` for one). Both use pdrive's own icon; Proton's badge is
+never included.
+
+- **.deb**: `sudo apt install ./dist/pdrive_*.deb`. Installs to `/opt/pdrive` (`pdrive`, `pdrivectl` in
+  `/usr/bin`), the `pdrive` systemd **user** service (enabled for everyone; starts at login, or now with
+  `systemctl --user start pdrive`), the tray at login (`/etc/xdg/autostart`), and the launcher. Settings
+  can switch the tray and the service off per user. Don't combine it with `install.sh`; run
+  `./uninstall.sh` first.
+- **AppImage**: `chmod +x pdrive-*.AppImage`, then run it. `… daemon` runs the service, `… ctl ARGS` is
+  `pdrivectl`. The first launch sets up the background service, the login entry and a menu entry
+  pointing at the AppImage file (updated if you move it; never touching an install.sh/.deb setup).
+  `PDRIVE_NO_INTEGRATION=1` skips that.
+- Building the AppImage downloads appimagetool 1.9.1 once into `.tools/` (checked against its pinned SHA-256).
+
 ## Using it
 
 | | |
