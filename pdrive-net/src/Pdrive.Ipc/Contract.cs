@@ -55,6 +55,7 @@ public static class Rpc
     public const string GetSyncSettings = nameof(GetSyncSettings);
     public const string SetSyncFolders = nameof(SetSyncFolders);
     public const string ConfirmDeletions = nameof(ConfirmDeletions);
+    public const string SetSyncLocal = nameof(SetSyncLocal);
     public const string StatusChanged = nameof(StatusChanged);
 
     public static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)

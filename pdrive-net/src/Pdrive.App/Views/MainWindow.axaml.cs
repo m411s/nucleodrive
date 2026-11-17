@@ -127,16 +127,5 @@ public sealed partial class MainWindow : Window, IDialogs, IToaster
         _notifications?.Show(new Notification(error ? "Problem" : null, message,
             error ? NotificationType.Error : NotificationType.Information, TimeSpan.FromSeconds(error ? 8 : 4))));
 
-    private static WindowIcon? LoadAppIcon()
-    {
-        try
-        {
-            return StatusIcons.InstalledAppIcon()
-                   ?? new WindowIcon(Avalonia.Platform.AssetLoader.Open(new Uri("avares://pdrive/Assets/pdrive.png")));
-        }
-        catch (Exception)
-        {
-            return null; // asset or image backend unavailable (headless tests)
-        }
-    }
+    private static WindowIcon? LoadAppIcon() => StatusIcons.InstalledAppIconSafe();
 }

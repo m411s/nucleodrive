@@ -104,6 +104,8 @@ public sealed class RpcTarget(SyncWorker worker, TwoWaySyncWorker sync)
 
     public void ConfirmDeletions() => sync.ConfirmDeletions();
 
+    public void SetSyncLocal(string local) => Refusable(() => sync.SetLocal(local));
+
     private static void Refusable(Action action)
     {
         try

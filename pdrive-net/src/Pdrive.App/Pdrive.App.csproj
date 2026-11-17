@@ -23,5 +23,6 @@
   <ItemGroup>
     <!-- App icon; source artwork is assets/pdrive.svg -->
     <AvaloniaResource Include="../../assets/icons/pdrive-256.png" Link="Assets/pdrive.png" />
+    <AvaloniaResource Include="../../../LICENSE" Link="Assets/LICENSE.txt" />
   </ItemGroup>
 </Project>

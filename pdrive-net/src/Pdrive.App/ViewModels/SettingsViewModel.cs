@@ -264,6 +264,18 @@ public sealed partial class SettingsViewModel : ObservableObject
         }
     }
 
+    /// <summary>Opens the setup wizard again (set by the app).</summary>
+    public Action? ShowSetup { get; set; }
+
+    /// <summary>Opens the About dialog (set by the app).</summary>
+    public Action? ShowAbout { get; set; }
+
+    [RelayCommand]
+    private void RunSetup() => ShowSetup?.Invoke();
+
+    [RelayCommand]
+    private void About() => ShowAbout?.Invoke();
+
     /// <summary>Lets the daemon notice a new CLI or sign-in straight away.</summary>
     private async Task Nudge()
     {

@@ -45,13 +45,22 @@ public sealed class App : Application
         var http = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromMinutes(10) };
         http.DefaultRequestHeaders.UserAgent.ParseAdd("pdrive");
 
+        var cli = new CliSetup(CliInstaller.ForCurrentUser(http));
+        var startup = StartupSettings.ForCurrentUser();
+        var setupState = new SetupState(paths.ConfigDir);
+        var syncSetup = new SyncSetup(daemon, new ConfigStore(paths));
+
         _window = new MainWindow();
+        var settings = new SettingsViewModel(cli, drive, startup, daemon, _window, _window);
         var vm = new MainWindowViewModel(
             new BrowserViewModel(drive, _window, _window),
             new BackupViewModel(daemon, _window, _window, a => Dispatcher.UIThread.Post(a)),
             new SyncViewModel(daemon, drive, _window, a => Dispatcher.UIThread.Post(a), OpenInFileManager),
-            new SettingsViewModel(new CliSetup(CliInstaller.ForCurrentUser(http)), drive, StartupSettings.ForCurrentUser(), daemon, _window, _window));
+            settings);
         _window.DataContext = vm;
+        _showSetup = () => ShowSetup(new SetupViewModel(cli, drive, syncSetup, startup, setupState, daemon, _window), vm);
+        settings.ShowSetup = _showSetup;
+        settings.ShowAbout = ShowAbout;
         _window.Closing += (_, e) =>
         {
             if (_trayMode && !_quitting)
@@ -65,13 +74,62 @@ public sealed class App : Application
             }
         };
 
-        _tray = new TrayController(this, daemon, ShowWindow, () => Quit(desktop), OpenInFileManager);
+        _tray = new TrayController(this, daemon, ShowWindow, () => Quit(desktop), OpenInFileManager, ShowAbout);
         _monitor.Start();
         _singleInstance = SingleInstance.Listen(paths.AppSocket, () => Dispatcher.UIThread.Post(ShowWindow));
         desktop.Exit += (_, _) => Cleanup();
 
         if (!_trayMode)
             ShowWindow();
+
+        // First run: the setup wizard (also from the login autostart, so a fresh install greets you).
+        _ = Dispatcher.UIThread.InvokeAsync(async () =>
+        {
+            if (setupState.ShouldRun(await syncSetup.CurrentAsync()))
+                _showSetup();
+        });
+    }
+
+    private Action _showSetup = () => { };
+    private SetupWindow? _setupWindow;
+
+    private async void ShowSetup(SetupViewModel setup, MainWindowViewModel main)
+    {
+        if (_setupWindow is not null)
+        {
+            _setupWindow.Activate();
+            return;
+        }
+        _setupWindow = new SetupWindow { DataContext = setup };
+        _setupWindow.Closed += (_, _) => _setupWindow = null;
+        setup.Completed += () =>
+        {
+            _setupWindow?.Close();
+            _ = main.Browser.RefreshAsync();
+            _ = main.Sync.LoadChoicesAsync();
+            if (main.Settings is { } s)
+                _ = s.LoadAsync();
+            ((IToaster?)_window)?.Show("Setup finished. Syncing starts now.");
+        };
+        _setupWindow.Show();
+        _setupWindow.Activate();
+        try
+        {
+            await setup.InitializeAsync();
+        }
+        catch (Exception e)
+        {
+            setup.Error = "Couldn't prepare the setup: " + e.Message;
+        }
+    }
+
+    private void ShowAbout()
+    {
+        var about = new AboutWindow(OpenInFileManager);
+        if (_window is { IsVisible: true })
+            about.ShowDialog(_window);
+        else
+            about.Show();
     }
 
     private bool _quitting;

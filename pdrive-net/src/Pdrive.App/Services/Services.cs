@@ -34,6 +34,7 @@ public interface IDaemonControl
     Task<SyncSettingsInfo> GetSyncSettingsAsync();
     Task SetSyncFoldersAsync(string[] folders);
     Task ConfirmDeletionsAsync();
+    Task SetSyncLocalAsync(string local);
 }
 
 /// <summary><see cref="IDaemonControl"/> over the auto-reconnecting <see cref="DaemonMonitor"/>.</summary>
@@ -58,4 +59,5 @@ public sealed class MonitorDaemonControl(DaemonMonitor monitor) : IDaemonControl
     public Task<SyncSettingsInfo> GetSyncSettingsAsync() => Client.GetSyncSettingsAsync();
     public Task SetSyncFoldersAsync(string[] folders) => Client.SetSyncFoldersAsync(folders);
     public Task ConfirmDeletionsAsync() => Client.ConfirmDeletionsAsync();
+    public Task SetSyncLocalAsync(string local) => Client.SetSyncLocalAsync(local);
 }

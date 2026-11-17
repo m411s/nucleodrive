@@ -21,6 +21,33 @@ public static class TestAppBuilder
 public sealed class HeadlessTests
 {
     [AvaloniaFact]
+    public void About_shows_version_licence_and_project_link()
+    {
+        var opened = new List<string>();
+        var about = new AboutWindow(opened.Add);
+        about.Show();
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        var texts = about.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text ?? "").ToList();
+        Assert.Contains(texts, t => t.StartsWith("Version ", StringComparison.Ordinal));
+        Assert.Contains(texts, t => t.StartsWith("MIT License", StringComparison.Ordinal) && t.Contains("m411s"));
+        Assert.Contains("https://github.com/m411s/pdrive", texts);
+        about.GetVisualDescendants().OfType<Button>().Single(b => b.Content as string == "Project on GitHub")
+            .RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+        Assert.Equal(["https://github.com/m411s/pdrive"], opened);
+        about.Close();
+    }
+
+    [AvaloniaFact]
+    public void Setup_window_renders_the_current_step()
+    {
+        var w = new SetupWindow { DataContext = new SetupViewModel(null!, null!, null!, null!, null!, null!, null!) };
+        w.Show();
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        Assert.Contains(w.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "Install the Proton Drive CLI");
+        w.Close();
+    }
+
+    [AvaloniaFact]
     public void App_icon_is_embedded()
     {
         var uri = new Uri("avares://pdrive/Assets/pdrive.png");

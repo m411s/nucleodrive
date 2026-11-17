@@ -130,6 +130,22 @@ public sealed class SyncDaemonTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Sync_folder_location_can_be_set_until_folders_are_synced()
+    {
+        _d.WriteConfig(new SyncConfig { Sync = new TwoWaySettings { Local = SyncRoot } });
+        await _d.StartAsync();
+        var elsewhere = _d.Tmp["elsewhere"];
+        await _d.Client!.SetSyncLocalAsync(elsewhere, Ct);
+        Assert.True(Directory.Exists(elsewhere));
+        Assert.Equal(elsewhere, (await _d.Client.GetSyncSettingsAsync(Ct)).Local);
+
+        await _d.Client.SetSyncFoldersAsync(["Docs"], Ct);
+        var e = await Assert.ThrowsAsync<DaemonException>(() => _d.Client.SetSyncLocalAsync(SyncRoot, Ct));
+        Assert.Contains("Stop syncing", e.Message);
+        Assert.Equal(elsewhere, (await _d.Client.GetSyncSettingsAsync(Ct)).Local);
+    }
+
+    [Fact]
     public async Task No_folders_means_sync_is_off()
     {
         _d.WriteConfig(new SyncConfig { Sync = new TwoWaySettings { Local = SyncRoot } });

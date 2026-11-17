@@ -13,6 +13,14 @@ official `proton-drive` CLI. It replaces the Python prototype in `../proton-driv
 - **Settings**: sign in/out, install or update the `proton-drive` CLI (verified against Proton's
   published SHA-512), start at login, keep syncing in the background.
 
+## First start
+
+A setup wizard walks through signing in to Proton (installing the CLI first if needed), choosing the
+sync folder (`~/proton-drive` by default, created if missing) and which Drive folders to sync, and
+whether to start at login. It appears until it's completed, unless folders are already synced; run it
+again from **Settings › Run setup again…**. **Settings › About pdrive** (or the tray menu) shows the
+version, the licence and the project link.
+
 ## Two-way sync (`~/proton-drive`)
 
 Choose Drive folders in the app's **Sync** tab or with `pdrivectl sync add Photos`. Each one is mirrored

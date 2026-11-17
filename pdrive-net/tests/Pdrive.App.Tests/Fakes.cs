@@ -140,6 +140,17 @@ public sealed class FakeDaemon : IDaemonControl
 
     public Task ConfirmDeletionsAsync() => Record("confirm");
 
+    public bool Running { get; set; } = true;
+    public string SyncLocal { get; set; } = "/home/me/proton-drive";
+
+    public async Task SetSyncLocalAsync(string local)
+    {
+        if (!Running)
+            throw new DaemonException("The backup daemon isn't running.");
+        await Record("sync-local " + local);
+        SyncLocal = local;
+    }
+
     public static DaemonStatus WithSync(SyncState state, string message = "", int held = 0, params string[] folders) =>
         With(DaemonState.Idle, "No folders configured") with
         {

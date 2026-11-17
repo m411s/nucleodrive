@@ -1,0 +1,36 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Pdrive.App.Views.AboutWindow"
+        Title="About pdrive"
+        Width="520" Height="560" MinWidth="420" MinHeight="420"
+        WindowStartupLocation="CenterOwner">
+  <DockPanel Margin="24">
+    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="16" Margin="0,0,0,16">
+      <Image x:Name="Logo" Width="64" Height="64" />
+      <StackPanel VerticalAlignment="Center" Spacing="2">
+        <TextBlock Text="pdrive" FontSize="24" FontWeight="SemiBold" />
+        <TextBlock x:Name="VersionText" Opacity="0.7" />
+      </StackPanel>
+    </StackPanel>
+
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right" Margin="0,16,0,0">
+      <Button x:Name="GitHubButton">Project on GitHub</Button>
+      <Button x:Name="CloseButton" Classes="accent" IsDefault="True" IsCancel="True">Close</Button>
+    </StackPanel>
+
+    <StackPanel DockPanel.Dock="Top" Spacing="8" Margin="0,0,0,12">
+      <TextBlock TextWrapping="Wrap"
+                 Text="An unofficial Linux client for Proton Drive: two-way folder sync, one-way backup, file browser and tray icon, built on Proton's official proton-drive CLI." />
+      <TextBlock TextWrapping="Wrap" Opacity="0.7"
+                 Text="Not affiliated with or endorsed by Proton AG. &quot;Proton&quot; and &quot;Proton Drive&quot; are trademarks of Proton AG." />
+      <SelectableTextBlock x:Name="LinkText" Opacity="0.7" />
+      <TextBlock Text="Licence" FontWeight="SemiBold" Margin="0,8,0,0" />
+    </StackPanel>
+
+    <Border CornerRadius="6" Padding="12" Background="{DynamicResource CardBackgroundFillColorDefaultBrush}">
+      <ScrollViewer>
+        <SelectableTextBlock x:Name="LicenseBox" TextWrapping="Wrap" FontSize="12" FontFamily="monospace" />
+      </ScrollViewer>
+    </Border>
+  </DockPanel>
+</Window>

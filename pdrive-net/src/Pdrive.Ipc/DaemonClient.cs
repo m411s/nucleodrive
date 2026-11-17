@@ -49,6 +49,7 @@ public sealed class DaemonClient : IAsyncDisposable
     public Task<SyncSettingsInfo> GetSyncSettingsAsync(CancellationToken ct = default) => Call<SyncSettingsInfo>(Rpc.GetSyncSettings, [], ct);
     public Task SetSyncFoldersAsync(string[] folders, CancellationToken ct = default) => Call(Rpc.SetSyncFolders, [folders], ct);
     public Task ConfirmDeletionsAsync(CancellationToken ct = default) => Call(Rpc.ConfirmDeletions, [], ct);
+    public Task SetSyncLocalAsync(string local, CancellationToken ct = default) => Call(Rpc.SetSyncLocal, [local], ct);
 
     private async Task<T> Call<T>(string method, object?[] args, CancellationToken ct)
     {

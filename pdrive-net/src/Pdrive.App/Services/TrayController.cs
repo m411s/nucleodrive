@@ -19,7 +19,7 @@ public sealed class TrayController : IDisposable
     private readonly NativeMenuItem _openSync = new("Open sync folder");
     private readonly DispatcherTimer _clock;
 
-    public TrayController(Application app, IDaemonControl daemon, Action showWindow, Action quit, Action<string> openFolder)
+    public TrayController(Application app, IDaemonControl daemon, Action showWindow, Action quit, Action<string> openFolder, Action showAbout)
     {
         _daemon = daemon;
         _openSync.Click += (_, _) =>
@@ -28,6 +28,8 @@ public sealed class TrayController : IDisposable
                 openFolder(sync.LocalRoot);
         };
         var open = new NativeMenuItem("Open Proton Drive");
+        var aboutItem = new NativeMenuItem("About pdrive");
+        aboutItem.Click += (_, _) => showAbout();
         var quitItem = new NativeMenuItem("Quit");
         open.Click += (_, _) => showWindow();
         quitItem.Click += (_, _) => quit();
@@ -38,7 +40,7 @@ public sealed class TrayController : IDisposable
         {
             Icon = StatusIcons.For(DaemonState.Stopped),
             ToolTipText = "Proton Drive",
-            Menu = new NativeMenu { _status, _lastSync, new NativeMenuItemSeparator(), _syncNow, _pause, _openSync, open, new NativeMenuItemSeparator(), quitItem },
+            Menu = new NativeMenu { _status, _lastSync, new NativeMenuItemSeparator(), _syncNow, _pause, _openSync, open, new NativeMenuItemSeparator(), aboutItem, quitItem },
         };
         _icon.Clicked += (_, _) => showWindow();
         TrayIcon.SetIcons(app, [_icon]);
@@ -125,6 +127,19 @@ public static class StatusIcons
 
     /// <summary>The app icon install.sh prepared (Proton's badge, if downloaded), or null.</summary>
     public static WindowIcon? InstalledAppIcon() => Find("app-256.png");
+
+    /// <summary>The window icon: the installed one, else pdrive's own; null without an image backend.</summary>
+    public static WindowIcon? InstalledAppIconSafe()
+    {
+        try
+        {
+            return InstalledAppIcon() ?? new WindowIcon(Avalonia.Platform.AssetLoader.Open(new Uri("avares://pdrive/Assets/pdrive.png")));
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
 
     private static WindowIcon? Load(string file)
     {

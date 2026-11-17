@@ -80,6 +80,15 @@ public sealed class TwoWaySyncWorker : BackgroundService
         RequestFull();
     }
 
+    /// <summary>Sets where the sync folder lives (creating it). Refused while folders are synced.</summary>
+    /// <exception cref="ConfigException">Not usable, folders still synced, or config.json is broken.</exception>
+    public void SetLocal(string local)
+    {
+        var cfg = _configStore.Update(c => SyncRootRules.SetLocal(c, local));
+        Directory.CreateDirectory(cfg.Sync.LocalPath);
+        RequestFull();
+    }
+
     /// <summary>Lets the held-back deletions go through on the next pass.</summary>
     public void ConfirmDeletions()
     {
