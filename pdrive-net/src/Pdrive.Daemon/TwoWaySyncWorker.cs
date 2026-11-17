@@ -68,7 +68,9 @@ public sealed class TwoWaySyncWorker : BackgroundService
     /// <exception cref="ConfigException">Invalid folder names, or config.json is broken.</exception>
     public void SetFolders(IReadOnlyList<string> folders)
     {
-        var normalized = folders.Select(f => f.Trim().Trim('/')).Where(f => f.Length > 0).Distinct(StringComparer.Ordinal).ToList();
+        var trimmed = folders.Select(f => f.Trim().Trim('/')).Where(f => f.Length > 0).Distinct(StringComparer.Ordinal).ToList();
+        // A folder inside another listed folder is already synced by it; listing both would sync it twice.
+        var normalized = trimmed.Where(f => !trimmed.Any(o => f.StartsWith(o + "/", StringComparison.Ordinal))).ToList();
         var before = LoadConfigOrDefault().Sync.Folders;
         _configStore.Update(c => c with { Sync = c.Sync with { Folders = normalized } });
         foreach (var removed in before.Except(normalized, StringComparer.Ordinal))

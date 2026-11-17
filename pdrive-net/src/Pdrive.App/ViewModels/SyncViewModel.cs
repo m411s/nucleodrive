@@ -7,12 +7,135 @@ using Pdrive.Ipc;
 
 namespace Pdrive.App.ViewModels;
 
-/// <summary>One Drive folder in the "what to sync" list.</summary>
-public sealed partial class SyncFolderChoice(string path, bool isChecked) : ObservableObject
+/// <summary>One Drive folder in the "what to sync" tree. Its subfolders are listed from Drive only when
+/// it's first expanded (one CLI call per level). Switching a folder on includes everything under it.</summary>
+public sealed partial class SyncFolderChoice : ObservableObject
 {
-    public string Path { get; } = path;
+    private readonly Func<SyncFolderChoice, Task>? _loadChildren;
+    private bool _loaded;
+    private bool _loading;
 
-    [ObservableProperty] private bool _isChecked = isChecked;
+    /// <param name="loadChildren">Lists this folder's subfolders into <see cref="Merge"/>; null for a flat list.</param>
+    public SyncFolderChoice(string path, bool isChecked, SyncFolderChoice? parent = null, Func<SyncFolderChoice, Task>? loadChildren = null)
+    {
+        Path = path;
+        Parent = parent;
+        _isChecked = isChecked;
+        _loadChildren = loadChildren;
+        if (loadChildren is not null)
+            Children.Add(LoadingRow()); // shows the expander until we know
+    }
+
+    private SyncFolderChoice(string path) => (Path, IsLoadingRow) = (path, true);
+
+    private static SyncFolderChoice LoadingRow() => new("Loading…");
+
+    public string Path { get; }
+    public string Name => IsLoadingRow ? Path : Path[(Path.LastIndexOf('/') + 1)..];
+    public SyncFolderChoice? Parent { get; }
+    public bool IsLoadingRow { get; }
+    public bool IsFolderRow => !IsLoadingRow;
+    public ObservableCollection<SyncFolderChoice> Children { get; } = [];
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsOn), nameof(PartialText))]
+    private bool _isChecked;
+
+    [ObservableProperty] private bool _isExpanded;
+
+    /// <summary>A switched-on folder above this one already syncs it.</summary>
+    public bool IncludedByParent => Parent is { } p && (p.IsChecked || p.IncludedByParent);
+    public bool CanToggle => !IncludedByParent;
+
+    /// <summary>What the switch shows: on if this folder or one above it syncs.</summary>
+    public bool IsOn
+    {
+        get => IsChecked || IncludedByParent;
+        set
+        {
+            if (!IncludedByParent)
+                IsChecked = value;
+        }
+    }
+
+    public IEnumerable<SyncFolderChoice> Folders => Children.Where(c => !c.IsLoadingRow);
+
+    /// <summary>Switched-on subfolders somewhere below (among those listed so far).</summary>
+    public int SyncedBelow => Folders.Sum(c => (c.IsChecked ? 1 : 0) + c.SyncedBelow);
+
+    /// <summary>"2 subfolders sync" on a folder that's off but partly synced.</summary>
+    public string? PartialText => IsOn || SyncedBelow == 0 ? null
+        : SyncedBelow == 1 ? "1 subfolder syncs" : $"{SyncedBelow} subfolders sync";
+
+    partial void OnIsCheckedChanged(bool value)
+    {
+        foreach (var c in Folders)
+            c.InheritedChanged();
+        for (var p = Parent; p is not null; p = p.Parent)
+            p.OnPropertyChanged(nameof(PartialText));
+    }
+
+    private void InheritedChanged()
+    {
+        OnPropertyChanged(nameof(IncludedByParent));
+        OnPropertyChanged(nameof(CanToggle));
+        OnPropertyChanged(nameof(IsOn));
+        OnPropertyChanged(nameof(PartialText));
+        foreach (var c in Folders)
+            c.InheritedChanged();
+    }
+
+    partial void OnIsExpandedChanged(bool value)
+    {
+        if (value)
+            _ = TryLoadAsync();
+    }
+
+    private async Task TryLoadAsync()
+    {
+        try
+        {
+            await EnsureLoadedAsync();
+        }
+        catch (DriveException)
+        {
+            // the loader already told the user; opening it again retries
+        }
+    }
+
+    public async Task EnsureLoadedAsync()
+    {
+        if (_loaded || _loading || _loadChildren is null)
+            return;
+        _loading = true;
+        try
+        {
+            await _loadChildren(this);
+            _loaded = true;
+        }
+        finally
+        {
+            _loading = false;
+            foreach (var row in Children.Where(c => c.IsLoadingRow).ToList())
+                Children.Remove(row);
+            if (!_loaded && Children.Count == 0)
+                Children.Add(LoadingRow()); // failed: try again next time it's opened
+        }
+    }
+
+    /// <summary>Adds a subfolder unless it's already there (it may have been added by path before listing).</summary>
+    public SyncFolderChoice Merge(SyncFolderChoice child)
+    {
+        if (Folders.FirstOrDefault(c => c.Name == child.Name) is { } existing)
+            return existing;
+        var i = 0;
+        while (i < Children.Count && !Children[i].IsLoadingRow
+               && string.Compare(Children[i].Name, child.Name, StringComparison.OrdinalIgnoreCase) < 0)
+            i++;
+        Children.Insert(i, child);
+        OnPropertyChanged(nameof(PartialText));
+        return child;
+    }
 }
 
 /// <summary>The Sync page: two-way sync of chosen Drive folders into the local sync folder.</summary>
@@ -96,59 +219,137 @@ public sealed partial class SyncViewModel : ObservableObject
             _ = LoadChoicesAsync();
     }
 
-    /// <summary>Lists the top-level Drive folders, checked if synced; nested synced folders are listed too.</summary>
+    private HashSet<string> _synced = new(StringComparer.Ordinal);
+
+    /// <summary>Lists the top-level Drive folders as a tree, switched on if synced. Folders synced deeper
+    /// down (e.g. "Documents/Work") are listed and their parents opened, so you see them.</summary>
     [RelayCommand(CanExecute = nameof(IsRunning))]
     public async Task LoadChoicesAsync()
     {
         try
         {
-            var synced = (await _daemon.GetSyncSettingsAsync()).Folders;
+            _synced = new HashSet<string>((await _daemon.GetSyncSettingsAsync()).Folders, StringComparer.Ordinal);
             var names = new List<string>();
             if (_provider.Client is { } drive)
             {
                 try
                 {
-                    names.AddRange((await drive.ListAsync(RemotePath.Root)).Where(e => e.IsDir).Select(e => e.Name));
+                    names.AddRange((await drive.ListAsync(RemotePath.Root)).Where(e => e.IsDir && !e.NameUnavailable).Select(e => e.Name));
                 }
                 catch (DriveException e)
                 {
                     _toast.Show("Couldn't list Drive folders: " + e.FirstLine, error: true);
                 }
             }
+            _loadingChoices = true;
             Choices.Clear();
-            foreach (var n in names.Concat(synced).Distinct(StringComparer.Ordinal).Order(StringComparer.OrdinalIgnoreCase))
-            {
-                var choice = new SyncFolderChoice(n, synced.Contains(n));
-                choice.PropertyChanged += (_, _) => Changed();
-                Choices.Add(choice);
-            }
+            foreach (var n in names.Concat(_synced.Select(f => f.Split('/')[0])).Distinct(StringComparer.Ordinal).Order(StringComparer.OrdinalIgnoreCase))
+                Choices.Add(NewChoice(n, null));
+            foreach (var nested in _synced.Where(f => f.Contains('/')).Order(StringComparer.Ordinal))
+                await RevealAsync(nested);
+            _loadingChoices = false;
             ChoicesDirty = false;
+            OnPropertyChanged(nameof(SyncedCount));
         }
         catch (DaemonException e)
         {
             _toast.Show(e.Message, error: true);
         }
+        finally
+        {
+            _loadingChoices = false;
+        }
     }
 
-    /// <summary>Adds a nested Drive folder (e.g. "Documents/Work") to the list, checked.</summary>
+    private bool _loadingChoices;
+
+    private SyncFolderChoice NewChoice(string path, SyncFolderChoice? parent)
+    {
+        var choice = new SyncFolderChoice(path, _synced.Contains(path), parent, LoadSubfoldersAsync);
+        choice.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(SyncFolderChoice.IsChecked) && !_loadingChoices)
+                Changed();
+        };
+        return choice;
+    }
+
+    private async Task LoadSubfoldersAsync(SyncFolderChoice folder)
+    {
+        if (_provider.Client is not { } drive)
+            throw new DriveException("proton-drive CLI not found.");
+        try
+        {
+            var path = RemotePath.Join(RemotePath.Root, string.Join('/', folder.Path.Split('/').Select(RemotePath.EscapeName)));
+            foreach (var e in (await drive.ListAsync(path)).Where(e => e.IsDir && !e.NameUnavailable))
+                folder.Merge(NewChoice(folder.Path + "/" + e.Name, folder));
+        }
+        catch (DriveException e)
+        {
+            _toast.Show($"Couldn't list {folder.Path}: {e.FirstLine}", error: true);
+            throw;
+        }
+    }
+
+    /// <summary>Finds or adds the node for "A/B/C", listing and opening A and A/B on the way.</summary>
+    private async Task<SyncFolderChoice> RevealAsync(string path)
+    {
+        var parts = path.Split('/');
+        var node = Choices.FirstOrDefault(c => c.Path == parts[0]);
+        if (node is null)
+        {
+            node = NewChoice(parts[0], null);
+            Choices.Add(node);
+        }
+        for (var i = 1; i < parts.Length; i++)
+        {
+            try
+            {
+                await node.EnsureLoadedAsync();
+            }
+            catch (DriveException)
+            {
+                // added by path below; the toast already said why
+            }
+            node.IsExpanded = true;
+            node = node.Merge(NewChoice(string.Join('/', parts[..(i + 1)]), node));
+        }
+        return node;
+    }
+
+    /// <summary>Adds a nested Drive folder (e.g. "Documents/Work") to the tree, switched on.</summary>
     [RelayCommand(CanExecute = nameof(IsRunning))]
-    private void AddPath()
+    private async Task AddPathAsync()
     {
         var path = NewPath.Trim().Trim('/');
         if (path.StartsWith("my-files/", StringComparison.Ordinal))
             path = path["my-files/".Length..];
-        if (path.Length == 0)
+        if (path.Length == 0 || path.Split('/').Any(p => p.Length == 0 || p is "." or ".."))
             return;
-        if (Choices.FirstOrDefault(c => c.Path == path) is { } existing)
-            existing.IsChecked = true;
-        else
-        {
-            var choice = new SyncFolderChoice(path, true);
-            choice.PropertyChanged += (_, _) => Changed();
-            Choices.Add(choice);
-        }
-        Changed();
         NewPath = "";
+        var node = await RevealAsync(path);
+        if (node.IsChecked)
+            Changed();
+        else
+            node.IsChecked = true;
+    }
+
+    /// <summary>The folders to sync: each switched-on folder, without the ones below it (already included).</summary>
+    public IReadOnlyList<string> SelectedFolders()
+    {
+        var result = new List<string>();
+        void Walk(IEnumerable<SyncFolderChoice> nodes)
+        {
+            foreach (var n in nodes)
+            {
+                if (n.IsChecked)
+                    result.Add(n.Path);
+                else
+                    Walk(n.Folders);
+            }
+        }
+        Walk(Choices);
+        return result;
     }
 
     private async void Changed()
@@ -170,12 +371,12 @@ public sealed partial class SyncViewModel : ObservableObject
             await ApplyCommand.ExecuteAsync(null);
     }
 
-    public int SyncedCount => Choices.Count(c => c.IsChecked);
+    public int SyncedCount => SelectedFolders().Count;
 
     [RelayCommand(CanExecute = nameof(IsRunning))]
     private async Task ApplyAsync()
     {
-        var folders = Choices.Where(c => c.IsChecked).Select(c => c.Path).ToArray();
+        var folders = SelectedFolders().ToArray();
         try
         {
             await _daemon.SetSyncFoldersAsync(folders);

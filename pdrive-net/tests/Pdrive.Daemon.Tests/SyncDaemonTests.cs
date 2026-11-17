@@ -113,6 +113,10 @@ public sealed class SyncDaemonTests : IAsyncLifetime
         Assert.Contains("p.jpg", await RemoteNames("Photos"));
 
         await Assert.ThrowsAsync<DaemonException>(() => _d.Client.SetSyncFoldersAsync(["../etc"], Ct));
+
+        // a folder inside another listed one is dropped: the outer one already syncs it
+        await _d.Client.SetSyncFoldersAsync(["Docs/sub", "Docs", "Photos/2026"], Ct);
+        Assert.Equal(["Docs", "Photos/2026"], (await _d.Client.GetSyncSettingsAsync(Ct)).Folders);
     }
 
     [Fact]

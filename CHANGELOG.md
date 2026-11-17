@@ -3,6 +3,16 @@
 All notable changes to pdrive. Versions follow [Semantic Versioning](https://semver.org); before 1.0,
 minor versions may change behaviour.
 
+## Unreleased
+
+- **Sync page: folder tree.** Open any Drive folder to choose subfolders to sync, not only top-level
+  ones. Subfolders are listed only when you open a folder; folders that sync only partly say so.
+- **Faster downloads:** a folder's changed files come down in one CLI run instead of one per file
+  (100 new photos: about 2.5 minutes → a few seconds).
+- Files and folders whose names start with `-` now sync (passed to the CLI after `--`).
+- The service ignores a folder listed inside another synced folder (it was synced twice).
+- Removed the Python prototype from the repository.
+
 ## 0.1.0 — 2026-11-17
 
 First release.

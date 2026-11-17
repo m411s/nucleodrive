@@ -70,21 +70,30 @@
         </DockPanel>
         <Border Classes="card" Padding="6">
           <StackPanel>
-            <ItemsControl ItemsSource="{Binding Choices}">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="vm:SyncFolderChoice">
-                  <Border Classes="row">
-                    <DockPanel>
-                      <ToggleSwitch DockPanel.Dock="Right" IsChecked="{Binding IsChecked}" OnContent="" OffContent=""
-                                    MinWidth="0" Margin="0,-4" />
-                      <Path Classes="icon tint" Margin="0,0,12,0"
-                            Data="{StaticResource Icon.Folder}" />
-                      <TextBlock Text="{Binding Path}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+            <TreeView Classes="folders" ItemsSource="{Binding Choices}">
+              <TreeView.Styles>
+                <Style Selector="TreeViewItem" x:DataType="vm:SyncFolderChoice">
+                  <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+                </Style>
+              </TreeView.Styles>
+              <TreeView.ItemTemplate>
+                <TreeDataTemplate x:DataType="vm:SyncFolderChoice" ItemsSource="{Binding Children}">
+                  <Panel>
+                    <TextBlock Classes="muted small" Text="{Binding Name}" IsVisible="{Binding IsLoadingRow}" Margin="0,6" />
+                    <DockPanel IsVisible="{Binding IsFolderRow}" MinHeight="36">
+                      <ToggleSwitch DockPanel.Dock="Right" IsChecked="{Binding IsOn}" IsEnabled="{Binding CanToggle}"
+                                    OnContent="" OffContent="" MinWidth="0" Margin="8,-4,4,-4"
+                                    ToolTip.Tip="Sync this folder and everything in it" />
+                      <TextBlock DockPanel.Dock="Right" Classes="muted small" Text="{Binding PartialText}"
+                                 VerticalAlignment="Center" Margin="8,0,0,0"
+                                 IsVisible="{Binding PartialText, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                      <Path Classes="icon tint" Margin="0,0,12,0" Data="{StaticResource Icon.Folder}" />
+                      <TextBlock Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                     </DockPanel>
-                  </Border>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
+                  </Panel>
+                </TreeDataTemplate>
+              </TreeView.ItemTemplate>
+            </TreeView>
             <TextBlock Classes="muted" Margin="12,10" IsVisible="{Binding !Choices.Count}" TextWrapping="Wrap"
                        Text="Your Drive folders appear here once the background service is running and you're signed in." />
             <DockPanel Margin="8,8,8,6">
@@ -92,7 +101,7 @@
                       ToolTip.Tip="Add this folder">
                 <Path Classes="icon small" Data="{StaticResource Icon.Plus}" />
               </Button>
-              <TextBox Text="{Binding NewPath}" PlaceholderText="Add a folder inside a folder, e.g. Documents/Work" />
+              <TextBox Text="{Binding NewPath}" PlaceholderText="Or type a folder path, e.g. Documents/Work" />
             </DockPanel>
           </StackPanel>
         </Border>

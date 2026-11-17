@@ -36,7 +36,14 @@ public sealed class Screenshots
             new("Notes", false, null, "/my-files/Notes", "application/vnd.proton.doc"),
             new("README.md", false, 2_048, "/my-files/README.md") { ModifiedAt = DateTimeOffset.Now.AddHours(-3) },
         ];
+        drive.Tree["/my-files/Projects"] =
+        [
+            new("Website", true, null, "/my-files/Projects/Website"), new("Thesis", true, null, "/my-files/Projects/Thesis"),
+            new("Archive", true, null, "/my-files/Projects/Archive"),
+        ];
+        drive.Tree["/my-files/Photos"] = [new("2025", true, null, "/my-files/Photos/2025"), new("2026", true, null, "/my-files/Photos/2026")];
         var daemon = new FakeDaemon();
+        daemon.SyncFolders = ["Documents", "Projects/Thesis", "Projects/Website"];
         daemon.Folders.Add(new FolderInfo("/home/me/Pictures/Camera", "/my-files/Camera backup"));
         var vm = new MainWindowViewModel(
             new BrowserViewModel(drive, null, window, window),
@@ -63,6 +70,7 @@ public sealed class Screenshots
                 State = DaemonState.Idle, Message = "Up to date (3 uploaded)", LastSync = DateTimeOffset.Now.AddMinutes(-4),
             });
             await vm.Sync.LoadChoicesAsync();
+            await vm.Sync.Choices.Single(c => c.Path == "Documents").EnsureLoadedAsync();
             await vm.Backup.ReloadFoldersAsync();
             await vm.Settings!.LoadAsync();
             for (var i = 0; i < 4; i++)

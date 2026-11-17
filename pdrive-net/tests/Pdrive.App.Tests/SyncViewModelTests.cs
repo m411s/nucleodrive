@@ -1,3 +1,4 @@
+using Pdrive.Cli;
 using Pdrive.App.Services;
 using Pdrive.App.ViewModels;
 using Pdrive.Ipc;
@@ -15,22 +16,82 @@ public sealed class SyncViewModelTests
     public SyncViewModelTests() => _vm = new SyncViewModel(_daemon, _drive, _toast, a => a(), _opened.Add);
 
     [Fact]
-    public async Task Lists_drive_folders_with_synced_ones_checked_and_applies_changes()
+    public async Task Lists_drive_folders_as_a_tree_with_synced_ones_switched_on_and_applies_changes()
     {
+        _drive.Tree["/my-files"].Add(new("Documents", true, null, "/my-files/Documents"));
+        _drive.Tree["/my-files/Documents"] = [new("Work", true, null, "/my-files/Documents/Work"), new("Old", true, null, "/my-files/Documents/Old")];
         _daemon.SyncFolders = ["Docs", "Documents/Work"];
         _daemon.Publish(FakeDaemon.WithSync(SyncState.Idle, "Up to date"));
         await _vm.LoadChoicesAsync();
-        Assert.Equal(["Docs", "Documents/Work"], _vm.Choices.Select(c => c.Path)); // "Docs" is on Drive, the nested one is synced
-        Assert.All(_vm.Choices, c => Assert.True(c.IsChecked));
-        Assert.False(_vm.ChoicesDirty);
 
-        _vm.Choices[1].IsChecked = false;
+        Assert.Equal(["Docs", "Documents"], _vm.Choices.Select(c => c.Path));
+        var docs = _vm.Choices[0];
+        var documents = _vm.Choices[1];
+        Assert.True(docs.IsChecked);
+        Assert.False(documents.IsChecked);
+        Assert.True(documents.IsExpanded); // opened to show the synced subfolder
+        Assert.Equal(["Old", "Work"], documents.Folders.Select(f => f.Name));
+        Assert.True(documents.Folders.Single(f => f.Name == "Work").IsOn);
+        Assert.Equal("1 subfolder syncs", documents.PartialText);
+        Assert.False(_vm.ChoicesDirty);
+        Assert.Equal(["Docs", "Documents/Work"], _vm.SelectedFolders());
+
+        // subfolders are listed when a folder is opened; inside a synced folder they show on and locked
+        Assert.True(docs.Children.Single().IsLoadingRow);
+        await docs.EnsureLoadedAsync();
+        var inner = Assert.Single(docs.Folders);
+        Assert.Equal("Docs/Inner", inner.Path);
+        Assert.True(inner.IsOn);
+        Assert.False(inner.CanToggle);
+
+        documents.Folders.Single(f => f.Name == "Work").IsChecked = false;
         _vm.NewPath = "/my-files/Photos/2026/";
-        _vm.AddPathCommand.Execute(null);
+        await _vm.AddPathCommand.ExecuteAsync(null);
         Assert.True(_vm.ChoicesDirty);
+        Assert.Null(documents.PartialText);
         await _vm.ApplyCommand.ExecuteAsync(null);
         Assert.Contains("sync-folders Docs,Photos/2026", _daemon.Calls);
         Assert.False(_vm.ChoicesDirty);
+    }
+
+    [Fact]
+    public async Task Switching_a_parent_on_includes_its_subfolders()
+    {
+        _drive.Tree["/my-files"].Add(new("Documents", true, null, "/my-files/Documents"));
+        _drive.Tree["/my-files/Documents"] = [new("Work", true, null, "/my-files/Documents/Work")];
+        _daemon.SyncFolders = ["Documents/Work"];
+        _daemon.Publish(FakeDaemon.WithSync(SyncState.Idle, "Up to date"));
+        await _vm.LoadChoicesAsync();
+        var documents = _vm.Choices.Single(c => c.Path == "Documents");
+        var work = documents.Folders.Single();
+
+        documents.IsOn = true;
+        Assert.True(work.IsOn);
+        Assert.False(work.CanToggle);
+        Assert.Null(documents.PartialText);
+        Assert.Equal(["Documents"], _vm.SelectedFolders()); // never both a folder and one inside it
+
+        work.IsOn = false; // locked while the parent syncs
+        Assert.True(work.IsChecked);
+        documents.IsOn = false;
+        Assert.True(work.CanToggle);
+        Assert.Equal(["Documents/Work"], _vm.SelectedFolders());
+    }
+
+    [Fact]
+    public async Task A_folder_that_cannot_be_listed_can_be_opened_again()
+    {
+        _daemon.Publish(FakeDaemon.WithSync(SyncState.Idle, "Up to date"));
+        await _vm.LoadChoicesAsync();
+        var docs = _vm.Choices.Single();
+        _drive.ListError = new DriveException("network down");
+        await Assert.ThrowsAsync<DriveException>(docs.EnsureLoadedAsync);
+        Assert.True(docs.Children.Single().IsLoadingRow);
+        Assert.Contains(_toast.Shown, t => t.Message.Contains("network down", StringComparison.Ordinal));
+
+        _drive.ListError = null;
+        await docs.EnsureLoadedAsync();
+        Assert.Equal(["Docs/Inner"], docs.Folders.Select(f => f.Path));
     }
 
     [Fact]

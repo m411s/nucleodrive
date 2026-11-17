@@ -276,6 +276,20 @@
     <Setter Property="Background" Value="{DynamicResource Pd.Hover}" />
   </Style>
 
+  <!-- Folder tree on the Sync page: no selection highlight, the switches are the interaction -->
+  <Style Selector="TreeView.folders">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="TreeView.folders TreeViewItem">
+    <Setter Property="CornerRadius" Value="8" />
+  </Style>
+  <Style Selector="TreeView.folders TreeViewItem:selected /template/ Border#PART_LayoutRoot">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="TreeView.folders TreeViewItem /template/ Border#PART_LayoutRoot:pointerover">
+    <Setter Property="Background" Value="{DynamicResource Pd.Hover}" />
+  </Style>
+
   <!-- Breadcrumbs -->
   <Style Selector="Button.crumb">
     <Setter Property="Foreground" Value="{DynamicResource Pd.Muted}" />
