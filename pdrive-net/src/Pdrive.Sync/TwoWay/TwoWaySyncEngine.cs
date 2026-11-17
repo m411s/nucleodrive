@@ -117,7 +117,27 @@ public sealed class TwoWaySyncEngine(IDriveClient client, StateStore state, Free
         });
         if (plan.IsEmpty)
             return PassResult.Empty with { DeletionsHeld = plan.DeletionsHeld, HeldLocalDeletes = plan.DeletionsHeld ? plan.LocalDeletes : 0, HeldRemoteDeletes = plan.DeletionsHeld ? plan.RemoteDeletes : 0 };
-        return await new SyncExecutor(client, state, trash, root, folder, local, remote).ExecuteAsync(plan, progress, ct);
+        try
+        {
+            return await new SyncExecutor(client, state, trash, root, folder, local, remote).ExecuteAsync(plan, progress, ct);
+        }
+        finally
+        {
+            RemoveEmptyStaging(root);
+        }
+    }
+
+    /// <summary>Removes the staging folder once nothing is left in it (never deletes contents).</summary>
+    private static void RemoveEmptyStaging(string root)
+    {
+        try
+        {
+            Directory.Delete(Path.Combine(root, SyncPaths.StagingDir), recursive: false);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            // missing, or another pass is still using it
+        }
     }
 
     private async Task EnsureRemoteFolderAsync(string folder, int baselineCount, CancellationToken ct)
@@ -158,6 +178,7 @@ public sealed class TwoWaySyncEngine(IDriveClient client, StateStore state, Free
         finally
         {
             try { Directory.Delete(staging, recursive: true); } catch (IOException) { }
+            RemoveEmptyStaging(root);
         }
 
         var remote = await RemoteSnapshot.TakeAsync(client, folder, cfg.Exclude, 4, ct);

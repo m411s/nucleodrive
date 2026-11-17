@@ -145,6 +145,7 @@ public sealed class TwoWayEngineTests : IDisposable
         Assert.Equal("A-from-phone", _f.ReadLocal("Docs/a.txt"));
         Assert.Equal("D", _f.ReadLocal("Docs/sub/deep/d.txt"));
         Assert.False(Directory.Exists(_f.TrashFiles)); // an unedited local copy is just replaced
+        Assert.False(Directory.Exists(_f.LocalPath(".pdrive-staging"))); // no leftovers
         Assert.Equal(0, (await _f.Full()).Changes);
     }
 

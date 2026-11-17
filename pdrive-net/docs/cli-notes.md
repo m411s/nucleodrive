@@ -27,6 +27,18 @@ throwaway `/my-files/pdrive-test` folder, which was moved to the Drive trash aft
 | Other commands | `size`, `copy`, `restore`, `delete`, `empty-trash`, sharing, invitations, albums, photos, takeout. | Not used |
 | Speed | `list` takes ~2 s per folder (median 1.9 s, worst 30 s over 150 folders); each call starts fresh. Folder `modificationTime` does **not** change when contents change, so remote changes need a full crawl. | Sync: parallel crawl, interval-based remote checks |
 
+## Two-way sync, end to end (2026-11-17, installed daemon, real Drive)
+
+Test folder `/my-files/pdrive-sync-test` ⇄ `~/proton-drive/pdrive-sync-test`, trashed on both sides afterwards.
+
+| Step | Result |
+|---|---|
+| First sync (4 files on Drive) | all downloaded in 15 s, with Drive's modification times |
+| Local: new file, edit, rename, delete, new folder with a file | all on Drive within ~34 s; the rename kept its original revision (no re-upload); the deleted file went to the Drive trash |
+| Drive (via CLI): new file, edit, rename, trash | all applied locally within 14 s of `pdrivectl sync now`; the trashed file is in the desktop Trash |
+| Edited on both sides | newer local edit → uploaded; newer Drive edit → downloaded, the older local copy moved to the desktop Trash |
+| Daemon log | no warnings or errors |
+
 ## `filesystem list --json` schema
 
 A bare JSON array of nodes. Fixture: `tests/Pdrive.Cli.Tests/Fixtures/list-folder.json` (from the
