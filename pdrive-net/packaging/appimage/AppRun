@@ -84,7 +84,7 @@ $MARK
 Type=Application
 Name=pdrive (tray)
 Exec="$APPIMAGE" --tray
-Icon=pdrive
+Icon=io.github.m411s.pdrive
 X-GNOME-Autostart-enabled=true
 NoDisplay=true
 $hidden
@@ -93,7 +93,7 @@ DESK
 
   if ours "$apps" && ! grep -qF "Exec=\"$APPIMAGE\"" "$apps" 2>/dev/null; then
     mkdir -p "$(dirname "$apps")"
-    icon="${XDG_DATA_HOME:-$HOME/.local/share}/pdrive/appimage-icon.png"
+    icon="${XDG_DATA_HOME:-$HOME/.local/share}/pdrive/io.github.m411s.pdrive.png"
     mkdir -p "$(dirname "$icon")"
     cp "$HERE/pdrive.png" "$icon" 2>/dev/null || true
     cat > "$apps" <<DESK

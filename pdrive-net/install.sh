@@ -86,10 +86,12 @@ esac
 mkdir -p "$BIN" "$CONF/systemd/user" "$CONF/autostart" "$APPS"
 ln -sf "$LIB/pdrivectl" "$BIN/pdrivectl"
 
-# App icon (Icon=pdrive): scalable SVG plus PNGs for desktops/panels that want bitmaps.
-install -Dm644 "$DIR/assets/pdrive.svg" "$ICONS/scalable/apps/pdrive.svg"
+# App icon (Icon=io.github.m411s.pdrive): scalable SVG plus PNGs for desktops/panels that want bitmaps.
+# The icon's name is pdrive's app ID: a name GNOME Shell hasn't cached an older icon under.
+rm -f "$ICONS/scalable/apps/pdrive.svg" "$ICONS"/*/apps/pdrive.png # the earlier name
+install -Dm644 "$DIR/assets/pdrive.svg" "$ICONS/scalable/apps/io.github.m411s.pdrive.svg"
 for size in 16 24 32 48 64 128 256; do
-  install -Dm644 "$DIR/assets/icons/pdrive-$size.png" "$ICONS/${size}x${size}/apps/pdrive.png"
+  install -Dm644 "$DIR/assets/icons/pdrive-$size.png" "$ICONS/${size}x${size}/apps/io.github.m411s.pdrive.png"
 done
 
 ICON_DATA="${XDG_DATA_HOME:-$HOME/.local/share}/pdrive/icons"
@@ -139,7 +141,7 @@ cat > "$CONF/autostart/pdrive-tray.desktop" <<DESK
 Type=Application
 Name=pdrive (tray)
 Exec="$LIB/pdrive" --tray
-Icon=pdrive
+Icon=io.github.m411s.pdrive
 X-GNOME-Autostart-enabled=true
 NoDisplay=true
 $AUTOSTART_HIDDEN
@@ -153,7 +155,7 @@ Comment=Sync, browse and back up Proton Drive (unofficial client)
 GenericName=Proton Drive client
 Keywords=Proton;Drive;sync;cloud;backup;
 Exec="$LIB/pdrive"
-Icon=pdrive
+Icon=io.github.m411s.pdrive
 Categories=Network;FileTransfer;
 StartupWMClass=pdrive
 DESK

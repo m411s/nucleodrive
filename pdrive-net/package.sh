@@ -52,9 +52,9 @@ cp "$DIR/assets/icons/pdrive-256.png" "$ICONS/app-256.png"
 # Puts hicolor icons + tray icons under a share/ directory.
 install_icons() {
   local share="$1"
-  install -Dm644 "$DIR/assets/pdrive.svg" "$share/icons/hicolor/scalable/apps/pdrive.svg"
+  install -Dm644 "$DIR/assets/pdrive.svg" "$share/icons/hicolor/scalable/apps/io.github.m411s.pdrive.svg"
   for size in 16 24 32 48 64 128 256; do
-    install -Dm644 "$DIR/assets/icons/pdrive-$size.png" "$share/icons/hicolor/${size}x${size}/apps/pdrive.png"
+    install -Dm644 "$DIR/assets/icons/pdrive-$size.png" "$share/icons/hicolor/${size}x${size}/apps/io.github.m411s.pdrive.png"
   done
   mkdir -p "$share/pdrive/icons"
   cp "$ICONS"/*.png "$share/pdrive/icons/"
@@ -106,7 +106,7 @@ Comment=Sync, browse and back up Proton Drive (unofficial client)
 GenericName=Proton Drive client
 Keywords=Proton;Drive;sync;cloud;backup;
 Exec=pdrive
-Icon=pdrive
+Icon=io.github.m411s.pdrive
 Categories=Network;FileTransfer;
 StartupWMClass=pdrive
 DESK
@@ -116,7 +116,7 @@ DESK
 Type=Application
 Name=pdrive (tray)
 Exec=pdrive --tray
-Icon=pdrive
+Icon=io.github.m411s.pdrive
 X-GNOME-Autostart-enabled=true
 NoDisplay=true
 DESK

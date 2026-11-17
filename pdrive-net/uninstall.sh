@@ -15,7 +15,7 @@ fi
 rm -f "$CONF/systemd/user/pdrive.service" "$CONF/autostart/pdrive-tray.desktop" "$APPS/pdrive.desktop"
 [ -L "$HOME/.local/bin/pdrivectl" ] && rm -f "$HOME/.local/bin/pdrivectl"
 rm -rf "$LIB"
-rm -f "$ICONS/scalable/apps/pdrive.svg" "$ICONS"/*/apps/pdrive.png
+rm -f "$ICONS/scalable/apps/pdrive.svg" "$ICONS"/*/apps/pdrive.png "$ICONS/scalable/apps/io.github.m411s.pdrive.svg" "$ICONS"/*/apps/io.github.m411s.pdrive.png
 DATA="${XDG_DATA_HOME:-$HOME/.local/share}/pdrive"
 rm -rf "$DATA/icons"
 # The CLI installed from Settings stays (it's useful on its own) unless --purge.
