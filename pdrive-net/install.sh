@@ -111,6 +111,9 @@ fi
 if [ -f "$ICONS/icon-theme.cache" ] && command -v gtk-update-icon-cache >/dev/null; then
   gtk-update-icon-cache -q -t -f "$ICONS" || true
 fi
+# Without a cache, GTK and GNOME Shell only rescan the theme when its top folder changes; writing into
+# 48x48/apps and the like doesn't, so a new icon name shows as a generic one until the next login.
+touch --no-create "$ICONS" 2>/dev/null || true
 
 cat > "$CONF/systemd/user/pdrive.service" <<UNIT
 [Unit]
