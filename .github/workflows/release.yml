@@ -16,6 +16,10 @@ jobs:
   package:
     runs-on: ubuntu-24.04 # x86_64 (package.sh pins appimagetool for x86_64)
     timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write # build provenance (signed by GitHub's Sigstore instance)
+      attestations: write
     defaults:
       run:
         working-directory: pdrive-net
@@ -65,6 +69,16 @@ jobs:
           ./squashfs-root/AppRun ctl --help >/dev/null
           rm -rf squashfs-root
 
+      # Signed build provenance for each package: `gh attestation verify <file> -R <owner>/<repo>`.
+      # GitHub only offers attestations for public repositories (or Enterprise Cloud), so this is
+      # skipped while the repository is private.
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        if: github.ref_type == 'tag' && !github.event.repository.private
+        with:
+          subject-path: |
+            pdrive-net/dist/*.deb
+            pdrive-net/dist/*.AppImage
+
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: pdrive-${{ steps.version.outputs.version }}
@@ -99,7 +113,7 @@ jobs:
 
           - **.deb** (Debian/Ubuntu): `sudo apt install ./pdrive_*.deb`; the sync service starts at your next login (or `systemctl --user start pdrive`).
           - **AppImage**: `chmod +x pdrive-*.AppImage` and run it; the first launch sets up the background service and login entry.
-          - Check downloads with `sha256sum -c SHA256SUMS`.
+          - Check downloads with `sha256sum -c SHA256SUMS`, and (once the repository is public) where they were built with `gh attestation verify <file> -R m411s/pdrive`.
 
           The app installs Proton's official `proton-drive` CLI for you (Settings › Install the CLI), verified against Proton's published checksum.
           EOF
