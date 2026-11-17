@@ -41,6 +41,10 @@
         </Border>
 
         <ListBox x:Name="Nav" Classes="nav" SelectedIndex="{Binding PageIndex}">
+          <!-- not virtualising: that panel sets IsVisible on items itself, overriding the bindings below -->
+          <ListBox.ItemsPanel>
+            <ItemsPanelTemplate><StackPanel /></ItemsPanelTemplate>
+          </ListBox.ItemsPanel>
           <ListBoxItem>
             <StackPanel Orientation="Horizontal" Spacing="12">
               <Path Classes="icon" Data="{StaticResource Icon.Folder}" />
@@ -53,7 +57,7 @@
               <TextBlock Text="Sync" VerticalAlignment="Center" />
             </StackPanel>
           </ListBoxItem>
-          <ListBoxItem>
+          <ListBoxItem IsVisible="{Binding ShowBackup}">
             <StackPanel Orientation="Horizontal" Spacing="12">
               <Path Classes="icon" Data="{StaticResource Icon.Archive}" />
               <TextBlock Text="Backup" VerticalAlignment="Center" />

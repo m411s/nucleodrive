@@ -24,6 +24,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public SyncViewModel Sync { get; }
     public SettingsViewModel? Settings { get; }
 
+    /// <summary>One-way backup is hidden in the window for now (it still works through pdrivectl and the daemon).</summary>
+    public bool ShowBackup { get; init; }
+
+    public const int FilesPage = 0, SyncPage = 1, BackupPage = 2, SettingsPage = 3;
+
     /// <summary>0 Files, 1 Sync, 2 Backup, 3 Settings.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CurrentPage))]

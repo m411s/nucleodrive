@@ -69,7 +69,7 @@
               <StackPanel VerticalAlignment="Center" Spacing="1">
                 <TextBlock Text="Sync in the background" />
                 <TextBlock Classes="muted small" TextWrapping="Wrap"
-                           Text="The background service syncs and backs up, with or without the window or tray icon" />
+                           Text="The background service keeps syncing, with or without the window or tray icon" />
               </StackPanel>
             </DockPanel>
           </Border>

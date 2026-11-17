@@ -4,8 +4,41 @@ Ideas:
 
 - Edit the rest of `config.json` in Settings (sync folder location, check interval, parallel listings,
   deletion threshold, exclude patterns), so the file never needs editing by hand.
+- Bring the Backup page back in the window once it's polished (it's hidden for now; one-way backups still
+  work through `pdrivectl add` and the daemon).
 - Rename, delete, new folder and sharing in the Files page (the CLI has `rename`, `trash`,
   `create-folder` and `sharing` commands).
+
+## Windows and macOS clients
+
+Proton already ships official Drive apps for Windows and macOS, so check first what pdrive would add
+there (the CLI-based design, two-way sync of chosen folders, backups, open source). The app (Avalonia),
+the sync planner and executor, the CLI wrapper and the IPC contracts are cross-platform .NET already.
+These parts are Linux-specific and need a counterpart:
+
+| Today (Linux) | Windows | macOS |
+|---|---|---|
+| systemd user service (`Type=notify`) | Task Scheduler logon task, or the daemon hosted in the tray process | launchd LaunchAgent (`~/Library/LaunchAgents`) |
+| Unix socket in `$XDG_RUNTIME_DIR` + `SO_PEERCRED` | Named pipe with a per-user ACL (or AF_UNIX on Windows 10 1803+) | Unix socket + `getpeereid`/`LOCAL_PEERCRED` |
+| `flock` single instance | Named mutex | `flock` works as is |
+| `statx` P/Invoke (inode, mtime) | File ID + `GetFileInformationByHandleEx` | `stat` (different struct layout) |
+| Freedesktop Trash | Recycle Bin (`IFileOperation`) | `NSFileManager.trashItem` |
+| XDG paths, `.desktop` autostart | `%LOCALAPPDATA%`, `HKCU\…\Run` | `~/Library/Application Support`, `SMAppService` login item |
+| `xdg-open` | `explorer.exe` | `open` |
+| .deb / AppImage | MSIX or Inno Setup, winget; code signing certificate | Signed and notarised `.app` in a `.dmg` (Apple Developer ID), Homebrew cask |
+
+Sync rules that matter more there:
+
+- **Case-insensitive file systems** (NTFS, APFS by default): `Report.pdf` and `report.pdf` on Drive map to one
+  local file. Detect and keep one online-only with a warning (same work as the NFC/NFD item in SECURITY.md).
+- **Windows names**: `< > : " | ? *`, trailing dots or spaces and reserved names (`CON`, `NUL`, `COM1`…) can't
+  exist locally; keep such items online-only. Long paths need `\\?\` or the long-path setting.
+- **Symlinks/junctions and reparse points** (OneDrive placeholders, etc.) must be ignored like symlinks today.
+
+First step: check whether Proton publishes the proton-drive CLI for `windows-x64`/`windows-arm64` and
+`darwin-arm64`/`darwin-x64` (its release index lists the platforms). Without it there's nothing to build on.
+Then: abstract the platform services behind interfaces (service manager, IPC transport, trash, file IDs,
+autostart, open folder), add CI runners for both systems, and start with Windows (no notarisation needed for a first test build).
 
 ## Distribution: Flatpak, Snap, APT repository, stores
 
@@ -31,7 +64,7 @@ needs the groundwork below first, then one item per channel.
 - **CI** (GitHub Actions). Run `test.sh` on every push. On a tag, build the .deb and AppImage for
   amd64 and arm64 and attach them to a GitHub Release. Add zsync update info to the AppImage, so
   AppImageUpdate and Gear Lever can update it.
-- **Screenshots** of the Files, Sync, Backup and Settings pages, for every store page.
+- **Screenshots** of the Files, Sync and Settings pages, for every store page (`PDRIVE_SCREENSHOTS=dir` renders them).
 
 ### Flatpak / Flathub
 

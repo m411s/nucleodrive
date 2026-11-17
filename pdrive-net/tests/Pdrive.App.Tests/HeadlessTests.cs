@@ -103,8 +103,11 @@ public sealed class HeadlessTests
         Assert.Contains("Downloading Docs/a.txt", texts);
         Assert.Contains("/home/me/proton-drive", texts);
 
-        // the sidebar list drives the page too
-        window.GetVisualDescendants().OfType<ListBox>().Single(l => l.Name == "Nav").SelectedIndex = 0;
+        // the sidebar list drives the page too; Backup is hidden for now
+        var nav = window.GetVisualDescendants().OfType<ListBox>().Single(l => l.Name == "Nav");
+        Assert.False(((ListBoxItem)nav.Items[MainWindowViewModel.BackupPage]!).IsVisible);
+        Assert.False(((ListBoxItem)nav.Items[MainWindowViewModel.SettingsPage]!).IsVisible); // no settings VM here
+        nav.SelectedIndex = 0;
         Assert.Same(browser, vm.CurrentPage);
         window.Close();
     }

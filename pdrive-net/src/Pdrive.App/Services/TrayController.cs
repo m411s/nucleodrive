@@ -19,7 +19,8 @@ public sealed class TrayController : IDisposable
     private readonly NativeMenuItem _openSync = new("Open sync folder");
     private readonly DispatcherTimer _clock;
 
-    public TrayController(Application app, IDaemonControl daemon, Action showWindow, Action quit, Action<string> openFolder, Action showAbout)
+    public TrayController(Application app, IDaemonControl daemon, Action showWindow, Action quit, Action<string> openFolder, Action showAbout,
+        Action showSettings)
     {
         _daemon = daemon;
         _openSync.Click += (_, _) =>
@@ -28,6 +29,8 @@ public sealed class TrayController : IDisposable
                 openFolder(sync.LocalRoot);
         };
         var open = new NativeMenuItem("Open Proton Drive");
+        var settingsItem = new NativeMenuItem("Settings");
+        settingsItem.Click += (_, _) => showSettings();
         var aboutItem = new NativeMenuItem("About pdrive");
         aboutItem.Click += (_, _) => showAbout();
         var quitItem = new NativeMenuItem("Quit");
@@ -40,7 +43,7 @@ public sealed class TrayController : IDisposable
         {
             Icon = StatusIcons.For(DaemonState.Stopped),
             ToolTipText = "Proton Drive",
-            Menu = new NativeMenu { _status, _lastSync, new NativeMenuItemSeparator(), _syncNow, _pause, _openSync, open, new NativeMenuItemSeparator(), aboutItem, quitItem },
+            Menu = new NativeMenu { _status, _lastSync, new NativeMenuItemSeparator(), _syncNow, _pause, _openSync, open, settingsItem, new NativeMenuItemSeparator(), aboutItem, quitItem },
         };
         _icon.Clicked += (_, _) => showWindow();
         TrayIcon.SetIcons(app, [_icon]);
