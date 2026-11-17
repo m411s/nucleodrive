@@ -89,6 +89,18 @@ public sealed class ProtonDriveCli : IDriveClient
         RunAsync(["filesystem", "download", "-f", "rename", "-d", "merge", remotePath, localDir],
             size is { } s ? TransferTimeout.For(s) : null, output, ct);
 
+    public async Task<DriveEntry> InfoAsync(string remotePath, CancellationToken ct = default) =>
+        ListingParser.ParseInfo(await RunAsync(["filesystem", "info", remotePath, "--json"], ShortTimeout, null, ct), remotePath);
+
+    public Task TrashAsync(IReadOnlyList<string> remotePaths, CancellationToken ct = default) =>
+        remotePaths.Count == 0 ? Task.CompletedTask : RunAsync(["filesystem", "trash", .. remotePaths], ShortTimeout, null, ct);
+
+    public Task RenameAsync(string remotePath, string newName, CancellationToken ct = default) =>
+        RunAsync(["filesystem", "rename", remotePath, newName], ShortTimeout, null, ct);
+
+    public Task MoveAsync(IReadOnlyList<string> remotePaths, string targetParent, CancellationToken ct = default) =>
+        remotePaths.Count == 0 ? Task.CompletedTask : RunAsync(["filesystem", "move", .. remotePaths, targetParent], ShortTimeout, null, ct);
+
     private async Task<string> RunAsync(IEnumerable<string> args, TimeSpan? timeout, IProgress<string>? output, CancellationToken ct)
     {
         using var timeoutCts = new CancellationTokenSource();

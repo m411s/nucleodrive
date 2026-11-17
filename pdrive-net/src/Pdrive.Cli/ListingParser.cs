@@ -6,6 +6,18 @@ public sealed record DriveEntry(string Name, bool IsDir, long? Size, string Path
 {
     /// <summary>Proton Docs/Sheets live only on Drive; `filesystem download` skips them.</summary>
     public bool IsProtonDocument => MediaType?.StartsWith("application/vnd.proton.", StringComparison.Ordinal) == true;
+
+    /// <summary>Node id (stable across renames and moves).</summary>
+    public string? Uid { get; init; }
+
+    /// <summary>Id of the current revision; changes whenever the content changes.</summary>
+    public string? RevisionUid { get; init; }
+
+    /// <summary>The file's own modification time as uploaded (claimedModificationTime), else the node's.</summary>
+    public DateTimeOffset? ModifiedAt { get; init; }
+
+    /// <summary>SHA-1 of the content as claimed by the uploader (lowercase hex), if known.</summary>
+    public string? Sha1 { get; init; }
 }
 
 /// <summary>Parser for `filesystem list --json`. The real schema (cli-drive 0.9.0, see
@@ -15,6 +27,22 @@ public sealed record DriveEntry(string Name, bool IsDir, long? Size, string Path
 public static class ListingParser
 {
     private static readonly string[] ListKeys = ["items", "entries", "children", "nodes", "files", "data", "result"];
+
+    /// <summary>Parses `filesystem info PATH --json` (a single node object).</summary>
+    public static DriveEntry ParseInfo(string raw, string path)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(raw);
+            var entry = ParseItem(doc.RootElement, RemotePath.Parent(path))
+                ?? throw new DriveException($"Unrecognised node format from the CLI:\n{Truncate(raw, 300)}");
+            return entry with { Path = path };
+        }
+        catch (JsonException e)
+        {
+            throw new DriveException($"Could not parse CLI output as JSON: {e.Message}\n{Truncate(raw, 300)}", e);
+        }
+    }
 
     public static IReadOnlyList<DriveEntry> Parse(string raw, string parent)
     {
@@ -110,8 +138,27 @@ public static class ListingParser
             : RemotePath.Join(parent, segment);
 
         var mediaType = First(item, "mediaType", "mimeType") is { ValueKind: JsonValueKind.String } m ? m.GetString() : null;
-        return new DriveEntry(name!, isDir, size, path, mediaType);
+        var revision = First(item, "activeRevision") is { ValueKind: JsonValueKind.Object } r ? r : (JsonElement?)null;
+        var modified = Time(revision is { } r1 ? First(r1, "claimedModificationTime") : null)
+                       ?? Time(First(item, "folder") is { ValueKind: JsonValueKind.Object } f ? First(f, "claimedModificationTime") : null)
+                       ?? Time(First(item, "modificationTime"));
+        string? sha1 = null;
+        if (revision is { } r2 && First(r2, "claimedDigests") is { ValueKind: JsonValueKind.Object } digests
+            && First(digests, "sha1") is { ValueKind: JsonValueKind.String } s1)
+            sha1 = s1.GetString()?.ToLowerInvariant();
+
+        return new DriveEntry(name!, isDir, size, path, mediaType)
+        {
+            Uid = uid,
+            RevisionUid = revision is { } r3 && First(r3, "uid") is { ValueKind: JsonValueKind.String } ru ? ru.GetString() : null,
+            ModifiedAt = modified,
+            Sha1 = sha1,
+        };
     }
+
+    private static DateTimeOffset? Time(JsonElement? v) =>
+        v is { ValueKind: JsonValueKind.String } s && DateTimeOffset.TryParse(s.GetString(), System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.AssumeUniversal, out var t) ? t : null;
 
     private static long? Int(JsonElement? v) =>
         v is { ValueKind: JsonValueKind.Number } n && n.TryGetInt64(out var i) ? i : null;

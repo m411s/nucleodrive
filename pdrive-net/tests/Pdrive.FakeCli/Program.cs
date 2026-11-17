@@ -6,6 +6,7 @@
 //   FAKE_SIGNED_OUT=1    every filesystem command fails like the real CLI when signed out
 //   FAKE_OFFLINE=1       every filesystem command fails with a network error
 //   FAKE_SLOW=seconds    uploads sleep this long first (for cancellation/timeout tests)
+//   FAKE_TREE=file.json  a persistent fake Drive (TreeDrive.cs) instead of the fixed listings below
 using System.Text.Json;
 
 var a = args.ToList();
@@ -45,6 +46,9 @@ if (a.Count >= 1 && a[0] == "filesystem")
         return Fail("You need to login first");
     if (Environment.GetEnvironmentVariable("FAKE_OFFLINE") == "1")
         return Fail("network error: connection refused");
+    // Persistent fake Drive (used by the two-way sync tests); see TreeDrive.cs.
+    if (Environment.GetEnvironmentVariable("FAKE_TREE") is { Length: > 0 } tree)
+        return TreeDrive.Run(a, tree, x => Rec(x));
 }
 
 if (Cmd("filesystem", "list"))

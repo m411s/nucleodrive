@@ -20,4 +20,16 @@ public interface IDriveClient
 
     /// <param name="size">Expected bytes, if known; sets the timeout. Without it (e.g. folders) there is none.</param>
     Task DownloadAsync(string remotePath, string localDir, long? size = null, IProgress<string>? output = null, CancellationToken ct = default);
+
+    /// <summary>Metadata of one node (`filesystem info`).</summary>
+    Task<DriveEntry> InfoAsync(string remotePath, CancellationToken ct = default);
+
+    /// <summary>Moves nodes to the Drive trash (recoverable; never a permanent delete).</summary>
+    Task TrashAsync(IReadOnlyList<string> remotePaths, CancellationToken ct = default);
+
+    /// <summary>Renames a node in place.</summary>
+    Task RenameAsync(string remotePath, string newName, CancellationToken ct = default);
+
+    /// <summary>Moves nodes into another folder (names unchanged).</summary>
+    Task MoveAsync(IReadOnlyList<string> remotePaths, string targetParent, CancellationToken ct = default);
 }

@@ -55,6 +55,13 @@ public sealed class FakeDrive : IDriveClient
         Downloads.Add((remotePath, localDir, size));
         return Task.CompletedTask;
     }
+
+    public Task<DriveEntry> InfoAsync(string remotePath, CancellationToken ct = default) =>
+        Task.FromResult(Tree.Values.SelectMany(l => l).First(e => e.Path == remotePath));
+
+    public Task TrashAsync(IReadOnlyList<string> remotePaths, CancellationToken ct = default) => Task.CompletedTask;
+    public Task RenameAsync(string remotePath, string newName, CancellationToken ct = default) => Task.CompletedTask;
+    public Task MoveAsync(IReadOnlyList<string> remotePaths, string targetParent, CancellationToken ct = default) => Task.CompletedTask;
 }
 
 public sealed class FakeDialogs : IDialogs

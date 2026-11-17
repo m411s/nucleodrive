@@ -39,6 +39,9 @@ public sealed class FakeCli
         return this;
     }
 
+    /// <summary>Switches the fake to a persistent Drive stored in <paramref name="treeFile"/>.</summary>
+    public FakeCli UseTree(string treeFile) => Set("FAKE_TREE", treeFile);
+
     public ProtonDriveCli Client(string? conflictStrategy = null) =>
         new(BinaryPath, new DriveCliOptions
         {

@@ -149,6 +149,10 @@ public sealed class RealCliFormatTests
         Assert.Equal(40_000_000, es.Single(e => e.Name == "big.bin").Size);
         Assert.Equal("/my-files/pdrive-test/back\\slash.txt", es[1].Path);
         Assert.Equal("text/plain;charset=utf-8", es[3].MediaType);
+        Assert.Equal("VOLUME~NODE08", es[3].Uid);
+        Assert.Equal("VOLUME~NODE09", es[3].RevisionUid);
+        Assert.Equal(DateTimeOffset.Parse("2026-11-17T09:40:18.176Z", System.Globalization.CultureInfo.InvariantCulture), es[3].ModifiedAt);
+        Assert.Equal("<sha1>", es[3].Sha1);
         Assert.False(es[3].IsProtonDocument);
     }
 
