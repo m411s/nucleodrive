@@ -3,34 +3,48 @@
 All notable changes to pdrive. Versions follow [Semantic Versioning](https://semver.org); before 1.0,
 minor versions may change behaviour.
 
-## Unreleased
+## 0.2.0 — 2026-11-17
 
-- **Choose how often Drive is checked** on the Sync page: every 30 minutes, hour (default), 2 or 4 hours,
-  or only on Sync now; with "Last check took 26 s · next check around 15:40". Also `pdrivectl sync interval`.
-- **What the Proton Drive CLI can't do**, explained in Settings and the README (changes elsewhere aren't
-  instant, no online-only files, Docs/Sheets stay online, only My files, …).
-- **Use-at-your-own-risk notice** in the README, About, the setup wizard and release notes: unofficial,
-  for personal non-commercial use, no responsibility for data loss.
-- **New app icon** (a white cloud with a sync loop on a violet tile) and a violet accent (#7C3AED) of its
-  own instead of Proton's #6D4AFF; the app is called "pdrive" (searchable as Proton Drive client).
-- **Drive is checked hourly** (was every 15 min), backing off to every 4 hours while nothing changes:
-  Proton asks third-party apps not to traverse the file tree frequently. Local changes still upload
-  within seconds, and Sync now checks straight away. Existing configs keep their value.
-- "pdrive is a third-party app, not made or supported by Proton" wherever you sign in.
-  Proton's Drive badge is no longer used or downloaded (Proton's rules for third-party apps don't allow
-  its logos); a copy left by an earlier install is removed.
-- **Sync page: folder tree.** Open any Drive folder to choose subfolders to sync, not only top-level
-  ones. Subfolders are listed only when you open a folder; folders that sync only partly say so.
-- **Light, dark or automatic** (follows the system) in Settings › Appearance; remembered in `~/.config/pdrive/theme`.
-- **Fewer CLI runs everywhere:** saving files checks Drive with one listing per folder instead of one
-  call per file; a folder tree copied into the sync folder goes up in one upload; new folders take one
-  call instead of two; downloads for several folders run at once; checks of Drive back off while
-  nothing changes (`sync.remote_interval_max_minutes`, 240).
-- **Faster downloads:** a folder's changed files come down in one CLI run instead of one per file
-  (100 new photos: about 2.5 minutes → a few seconds).
+### Sync
+
+- **Folder tree on the Sync page.** Open any Drive folder to choose subfolders to sync, not only
+  top-level ones. Subfolders are listed only when you open a folder; folders that sync only partly say so.
+- **Choose how often Drive is checked:** every 30 minutes, every hour (default), every 2 or 4 hours, or
+  only on Sync now, with "Last check took 26 s · next check around 15:40". Also `pdrivectl sync interval`.
+- **Drive is checked hourly** by default (was every 15 minutes), backing off to every 4 hours while
+  nothing changes; Proton asks third-party apps not to traverse the file tree frequently. Local changes
+  still upload within seconds, and Sync now checks straight away. Existing configs keep their value.
 - Files and folders whose names start with `-` now sync (passed to the CLI after `--`).
 - The service ignores a folder listed inside another synced folder (it was synced twice).
-- Removed the Python prototype from the repository.
+
+### Faster
+
+- Saving files checks Drive with one listing per folder instead of one call per file (20 files: ~30 s of
+  checks → ~1.5 s).
+- A folder's changed files download in one CLI run, and several folders at once (100 new photos in
+  5 folders: ~2.5 minutes → a few seconds).
+- A folder tree copied into the sync folder goes up in one upload (20 subfolders: ~90 s → ~10 s).
+- New folders on Drive take one CLI call instead of two.
+
+### App
+
+- **New look:** a new app icon (a white cloud with a sync loop on a violet tile) and a violet accent
+  (#7C3AED) of its own; the app is called "pdrive" (searchable as a Proton Drive client).
+- **Light, dark or automatic** (follows the system) in Settings › Appearance.
+- **What the Proton Drive CLI can't do**, explained in Settings and the README.
+
+### Proton's rules for third-party apps
+
+- A **use-at-your-own-risk notice** in the README, About, the setup wizard and the release notes:
+  unofficial, for personal non-commercial use, no responsibility for data loss.
+- "pdrive is a third-party app, not made or supported by Proton" wherever you sign in.
+- Proton's Drive badge is no longer used or downloaded as the icon; a copy left by an earlier install
+  is removed.
+
+### Repository
+
+- Public, with a privacy policy (`PRIVACY.md`) and a security policy (`SECURITY.md`).
+- Removed the Python prototype.
 
 ## 0.1.0 — 2026-11-17
 
