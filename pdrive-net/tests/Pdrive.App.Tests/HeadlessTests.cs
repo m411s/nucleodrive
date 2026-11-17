@@ -21,6 +21,17 @@ public static class TestAppBuilder
 public sealed class HeadlessTests
 {
     [AvaloniaFact]
+    public void App_icon_is_embedded()
+    {
+        var uri = new Uri("avares://pdrive/Assets/pdrive.png");
+        Assert.True(Avalonia.Platform.AssetLoader.Exists(uri));
+        using var png = Avalonia.Platform.AssetLoader.Open(uri);
+        Span<byte> magic = stackalloc byte[4];
+        png.ReadExactly(magic);
+        Assert.Equal([0x89, (byte)'P', (byte)'N', (byte)'G'], magic.ToArray());
+    }
+
+    [AvaloniaFact]
     public async Task Main_window_shows_entries_and_backup_status()
     {
         var window = new MainWindow();

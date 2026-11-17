@@ -112,10 +112,11 @@ public sealed class ProtonDriveCliTests : IDisposable
     }
 
     [Fact]
-    public void Missing_binary_gives_helpful_error()
+    public void Missing_binary_is_not_found_anywhere()
     {
-        var e = Assert.Throws<DriveException>(() => new ProtonDriveCli(BinaryLocator.Find(_ => null) ?? throw new DriveException("proton-drive CLI not found")));
-        Assert.Contains("not found", e.Message);
+        // An empty home and PATH, so the result doesn't depend on this machine's ~/.local/bin.
+        var env = new Dictionary<string, string?> { ["PATH"] = "", ["HOME"] = _tmp.Path };
+        Assert.Null(BinaryLocator.Find(k => env.GetValueOrDefault(k)));
     }
 
     [Fact]

@@ -17,7 +17,7 @@ public sealed partial class MainWindow : Window, IDialogs, IToaster
     public MainWindow()
     {
         AvaloniaXamlLoader.Load(this);
-        Icon = StatusIconsSafe();
+        Icon = LoadAppIcon();
 
         DragDrop.SetAllowDrop(this, true);
         AddHandler(DragDrop.DragOverEvent, OnDragOver);
@@ -77,15 +77,15 @@ public sealed partial class MainWindow : Window, IDialogs, IToaster
         _notifications?.Show(new Notification(error ? "Problem" : null, message,
             error ? NotificationType.Error : NotificationType.Information, TimeSpan.FromSeconds(error ? 8 : 4))));
 
-    private static WindowIcon? StatusIconsSafe()
+    private static WindowIcon? LoadAppIcon()
     {
         try
         {
-            return StatusIcons.For(Pdrive.Ipc.DaemonState.Idle);
+            return new WindowIcon(Avalonia.Platform.AssetLoader.Open(new Uri("avares://pdrive/Assets/pdrive.png")));
         }
         catch (Exception)
         {
-            return null; // no rendering backend (headless tests)
+            return null; // asset or image backend unavailable (headless tests)
         }
     }
 }

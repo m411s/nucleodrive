@@ -19,6 +19,7 @@ LIB="$HOME/.local/lib/pdrive"
 BIN="$HOME/.local/bin"
 CONF="${XDG_CONFIG_HOME:-$HOME/.config}"
 APPS="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
+ICONS="${XDG_DATA_HOME:-$HOME/.local/share}/icons/hicolor"
 
 case "$(uname -m)" in
   x86_64) RID=linux-x64 ;;
@@ -79,6 +80,16 @@ fi
 mkdir -p "$BIN" "$CONF/systemd/user" "$CONF/autostart" "$APPS"
 ln -sf "$LIB/pdrivectl" "$BIN/pdrivectl"
 
+# App icon (Icon=pdrive): scalable SVG plus PNGs for desktops/panels that want bitmaps.
+install -Dm644 "$DIR/assets/pdrive.svg" "$ICONS/scalable/apps/pdrive.svg"
+for size in 16 24 32 48 64 128 256; do
+  install -Dm644 "$DIR/assets/icons/pdrive-$size.png" "$ICONS/${size}x${size}/apps/pdrive.png"
+done
+# Only refresh an existing cache: creating one here would hide icons other apps add later.
+if [ -f "$ICONS/icon-theme.cache" ] && command -v gtk-update-icon-cache >/dev/null; then
+  gtk-update-icon-cache -q -t -f "$ICONS" || true
+fi
+
 cat > "$CONF/systemd/user/pdrive.service" <<UNIT
 [Unit]
 Description=Proton Drive one-way backup (unofficial)
@@ -99,7 +110,7 @@ cat > "$CONF/autostart/pdrive-tray.desktop" <<DESK
 Type=Application
 Name=Proton Drive Backup (tray)
 Exec="$LIB/pdrive" --tray
-Icon=folder-remote
+Icon=pdrive
 X-GNOME-Autostart-enabled=true
 NoDisplay=true
 DESK
@@ -110,7 +121,7 @@ Type=Application
 Name=Proton Drive (unofficial)
 Comment=Browse Proton Drive and manage folder backups
 Exec="$LIB/pdrive"
-Icon=folder-remote
+Icon=pdrive
 Categories=Network;FileTransfer;
 StartupWMClass=pdrive
 DESK

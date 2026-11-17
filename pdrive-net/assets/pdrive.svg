@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- pdrive app icon: a cloud with an upload arrow on a teal tile. Original artwork for this
+     unofficial app; deliberately not Proton's logo or colours. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#14b8a6"/>
+      <stop offset="1" stop-color="#0f766e"/>
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="240" height="240" rx="56" ry="56" fill="url(#tile)"/>
+  <!-- cloud -->
+  <g fill="#ffffff">
+    <circle cx="96" cy="140" r="40"/>
+    <circle cx="146" cy="118" r="54"/>
+    <circle cx="186" cy="152" r="30"/>
+    <rect x="56" y="140" width="160" height="56" rx="28" ry="28"/>
+  </g>
+  <!-- upload arrow -->
+  <g fill="#0f766e">
+    <polygon points="98,150 136,108 174,150"/>
+    <rect x="124" y="146" width="24" height="38" rx="4" ry="4"/>
+  </g>
+</svg>
