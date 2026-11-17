@@ -110,7 +110,7 @@ public sealed class TrayController : IDisposable
 }
 
 /// <summary>Tray icons per state: the icons install.sh generates (app icon + status dot, in
-/// $XDG_DATA_HOME/pdrive/icons), or, if they're missing, a drawn coloured disc with a white "P".</summary>
+/// $XDG_DATA_HOME/pdrive/icons), or, if they're missing, a drawn coloured disc with a white cloud.</summary>
 public static class StatusIcons
 {
     private static readonly Dictionary<DaemonState, WindowIcon> Cache = [];
@@ -192,20 +192,13 @@ public static class StatusIcons
         using (var ctx = bmp.CreateDrawingContext())
         {
             ctx.DrawEllipse(color, null, new Rect(4, 4, 56, 56));
-            ctx.DrawRectangle(Brushes.White, null, new Rect(24, 18, 7, 28));          // stem
-            ctx.DrawGeometry(Brushes.White, null, HalfDisc(new Point(35, 28), 11, 10)); // bowl
-            ctx.DrawGeometry(color, null, HalfDisc(new Point(35, 28), 5.5, 5));        // counter
+            ctx.DrawGeometry(Brushes.White, null, Cloud); // pdrive's cloud, as in the app icon
         }
         return Cache[state] = new WindowIcon(bmp);
     }
 
-    private static StreamGeometry HalfDisc(Point center, double rx, double ry)
-    {
-        var g = new StreamGeometry();
-        using var c = g.Open();
-        c.BeginFigure(new Point(center.X, center.Y - ry), true);
-        c.ArcTo(new Point(center.X, center.Y + ry), new Size(rx, ry), 0, false, SweepDirection.Clockwise);
-        c.EndFigure(true);
-        return g;
-    }
+    /// <summary>The app icon's cloud, scaled into a 64×64 disc.</summary>
+    private static readonly Geometry Cloud = StreamGeometry.Parse(
+        "M21 43 C15 43 11 39 11 34 C11 29 15 26 19 25.5 C20.5 19 26 15 32 15 C38.5 15 43.5 19 44.5 25 " +
+        "C49 25.5 53 29 53 34 C53 39 49 43 44 43 Z");
 }

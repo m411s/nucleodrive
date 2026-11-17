@@ -82,7 +82,7 @@ UNIT
 [Desktop Entry]
 $MARK
 Type=Application
-Name=Proton Drive (tray)
+Name=pdrive (tray)
 Exec="$APPIMAGE" --tray
 Icon=pdrive
 X-GNOME-Autostart-enabled=true
@@ -100,8 +100,10 @@ DESK
 [Desktop Entry]
 $MARK
 Type=Application
-Name=Proton Drive (unofficial)
-Comment=Sync, browse and back up Proton Drive
+Name=pdrive
+Comment=Sync, browse and back up Proton Drive (unofficial client)
+GenericName=Proton Drive client
+Keywords=Proton;Drive;sync;cloud;backup;
 Exec="$APPIMAGE"
 Icon=$icon
 Categories=Network;FileTransfer;

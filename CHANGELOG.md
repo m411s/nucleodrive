@@ -5,6 +5,9 @@ minor versions may change behaviour.
 
 ## Unreleased
 
+- **New look of its own:** new app icon (a cloud with a sync loop on a teal-to-blue tile) and a matching
+  teal accent instead of Proton's purple; the app is called "pdrive" (searchable as Proton Drive client).
+  Proton's Drive badge is no longer used as the icon unless you ask for it (`PROTON_BADGE=1 ./install.sh`).
 - **Sync page: folder tree.** Open any Drive folder to choose subfolders to sync, not only top-level
   ones. Subfolders are listed only when you open a folder; folders that sync only partly say so.
 - **Faster downloads:** a folder's changed files come down in one CLI run instead of one per file

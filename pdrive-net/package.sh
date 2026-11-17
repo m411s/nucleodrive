@@ -46,7 +46,7 @@ done
 echo "==> Icons"
 ICONS="$BUILD/icons"
 mkdir -p "$ICONS"
-"$DIR/assets/make-tray-icons.sh" "$DIR/assets/icons/pdrive-256.png" "$ICONS"
+"$DIR/assets/make-tray-icons.sh" "$DIR/assets/icons/pdrive-tray-base.png" "$ICONS"
 cp "$DIR/assets/icons/pdrive-256.png" "$ICONS/app-256.png"
 
 # Puts hicolor icons + tray icons under a share/ directory.
@@ -101,8 +101,10 @@ UNIT
   install -Dm644 /dev/stdin "$root/usr/share/applications/pdrive.desktop" <<'DESK'
 [Desktop Entry]
 Type=Application
-Name=Proton Drive (unofficial)
-Comment=Sync, browse and back up Proton Drive
+Name=pdrive
+Comment=Sync, browse and back up Proton Drive (unofficial client)
+GenericName=Proton Drive client
+Keywords=Proton;Drive;sync;cloud;backup;
 Exec=pdrive
 Icon=pdrive
 Categories=Network;FileTransfer;
@@ -112,7 +114,7 @@ DESK
   install -Dm644 /dev/stdin "$root/etc/xdg/autostart/pdrive-tray.desktop" <<'DESK'
 [Desktop Entry]
 Type=Application
-Name=Proton Drive (tray)
+Name=pdrive (tray)
 Exec=pdrive --tray
 Icon=pdrive
 X-GNOME-Autostart-enabled=true
@@ -198,8 +200,10 @@ build_appimage() {
   cat > "$app/pdrive.desktop" <<'DESK'
 [Desktop Entry]
 Type=Application
-Name=Proton Drive (unofficial)
-Comment=Sync, browse and back up Proton Drive
+Name=pdrive
+Comment=Sync, browse and back up Proton Drive (unofficial client)
+GenericName=Proton Drive client
+Keywords=Proton;Drive;sync;cloud;backup;
 Exec=pdrive
 Icon=pdrive
 Categories=Network;FileTransfer;

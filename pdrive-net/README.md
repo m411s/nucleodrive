@@ -49,9 +49,10 @@ Needs the .NET 10 SDK to build (the installed app is self-contained). The `proto
 installed from the app (**Settings › Install the CLI**), or by hand from
 https://proton.me/download/drive/cli/index.html into `~/.local/bin` (or set `PROTON_DRIVE_BIN`).
 
-`install.sh` downloads Proton's Drive badge to use as the app icon (onto this computer only; it's
-Proton's trademark and isn't part of this repo). `NO_BADGE=1` keeps pdrive's own icon. Tray state
-icons need ImageMagick; rendering the badge needs librsvg (`python3-gi` with GdkPixbuf).
+pdrive uses its own icon (a cloud with a sync loop, `assets/pdrive.svg`), deliberately unlike Proton's
+logos and colours. `PROTON_BADGE=1 ./install.sh` uses Proton's Drive badge instead, downloaded onto this
+computer only (it's Proton's trademark and never part of this repo). Tray state icons need ImageMagick;
+rendering the badge needs librsvg (`python3-gi` with GdkPixbuf).
 
 ```bash
 ./install.sh

@@ -4,7 +4,7 @@
         xmlns:pages="using:Pdrive.App.Views.Pages"
         x:Class="Pdrive.App.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
-        Title="Proton Drive (unofficial)"
+        Title="pdrive"
         Background="{DynamicResource Pd.Window}"
         Width="940" Height="640" MinWidth="640" MinHeight="420">
   <Window.DataTemplates>
@@ -21,8 +21,8 @@
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="10" Margin="8,0,0,20">
           <Image x:Name="Logo" Width="26" Height="26" />
           <StackPanel VerticalAlignment="Center">
-            <TextBlock Text="Proton Drive" FontWeight="SemiBold" FontSize="14" />
-            <TextBlock Text="unofficial" Classes="muted small" />
+            <TextBlock Text="pdrive" FontWeight="SemiBold" FontSize="15" />
+            <TextBlock Text="for Proton Drive" Classes="muted small" />
           </StackPanel>
         </StackPanel>
 

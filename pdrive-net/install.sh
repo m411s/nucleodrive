@@ -10,7 +10,8 @@
 #   NO_SYSTEMD=1   don't touch systemd (e.g. no user session, or testing with a fake HOME)
 #   NO_BUILD=1     reuse an existing publish in $LIB (only rewrite the unit/desktop files)
 #   NO_TRAY=1      don't start the tray now (it still starts at login)
-#   NO_BADGE=1     don't download Proton's Drive badge; use pdrive's own icon
+#   PROTON_BADGE=1 use Proton's Drive badge (downloaded from Proton, never shipped) instead of pdrive's
+#                  own icon. Off by default: it's Proton's trademark, and pdrive isn't Proton's app.
 #
 # Config and state (kept across reinstalls): ~/.config/pdrive, ~/.local/state/pdrive.
 # On first start the daemon imports the Python prototype's config and state (proton-drive-gui).
@@ -106,8 +107,8 @@ from gi.repository import GdkPixbuf
 GdkPixbuf.Pixbuf.new_from_file_at_size(sys.argv[1], int(sys.argv[3]), int(sys.argv[3])).savev(sys.argv[2], "png", [], [])
 PY
 }
-base="$DIR/assets/icons/pdrive-256.png"
-if [ "${NO_BADGE:-0}" != "1" ] && command -v curl >/dev/null; then
+base="$DIR/assets/icons/pdrive-tray-base.png" # the plain cloud: the sync loop is a smudge at tray size
+if [ "${PROTON_BADGE:-0}" = "1" ] && command -v curl >/dev/null; then
   tmp_badge="$ICON_DATA/.drive-badge.download"
   if curl -fsSL --max-time 30 --proto =https -o "$tmp_badge" "$BADGE_URL" \
      && head -c 512 "$tmp_badge" | grep -q "<svg" && ! grep -qiE "<script|javascript:|xlink:href=\"http|href=\"http" "$tmp_badge"; then
@@ -131,14 +132,14 @@ PY
 then
   badge="$ICON_DATA/drive-folder.svg"
 fi
-if [ "${NO_BADGE:-0}" != "1" ] && [ -f "$badge" ] && render_svg "$badge" "$ICON_DATA/app-256.png" 256; then
+if [ "${PROTON_BADGE:-0}" = "1" ] && [ -f "$badge" ] && render_svg "$badge" "$ICON_DATA/app-256.png" 256; then
   base="$ICON_DATA/app-256.png"
   install -Dm644 "$badge" "$ICONS/scalable/apps/pdrive.svg"
   for size in 16 24 32 48 64 128 256; do
     render_svg "$badge" "$ICONS/${size}x${size}/apps/pdrive.png" "$size" || true
   done
 else
-  rm -f "$ICON_DATA/app-256.png"
+  rm -f "$ICON_DATA/app-256.png" "$ICON_DATA/drive-badge.svg" "$ICON_DATA/drive-folder.svg"
 fi
 # Tray state icons (synced, syncing, paused, error, attention, stopped) from whichever icon is in use.
 if command -v magick >/dev/null || command -v convert >/dev/null; then
@@ -179,7 +180,7 @@ grep -qx "Hidden=true" "$CONF/autostart/pdrive-tray.desktop" 2>/dev/null && AUTO
 cat > "$CONF/autostart/pdrive-tray.desktop" <<DESK
 [Desktop Entry]
 Type=Application
-Name=Proton Drive (tray)
+Name=pdrive (tray)
 Exec="$LIB/pdrive" --tray
 Icon=pdrive
 X-GNOME-Autostart-enabled=true
@@ -190,8 +191,10 @@ DESK
 cat > "$APPS/pdrive.desktop" <<DESK
 [Desktop Entry]
 Type=Application
-Name=Proton Drive (unofficial)
-Comment=Sync, browse and back up Proton Drive
+Name=pdrive
+Comment=Sync, browse and back up Proton Drive (unofficial client)
+GenericName=Proton Drive client
+Keywords=Proton;Drive;sync;cloud;backup;
 Exec="$LIB/pdrive"
 Icon=pdrive
 Categories=Network;FileTransfer;

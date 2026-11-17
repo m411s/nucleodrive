@@ -1,34 +1,34 @@
-<!-- pdrive's look: Fluent with a purple accent, cards, line icons, quiet buttons, smooth hover. -->
+<!-- pdrive's look: Fluent with a teal accent (from the app icon; not Proton's purple), cards, line icons, quiet buttons, smooth hover. -->
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Styles.Resources>
     <ResourceDictionary>
       <ResourceDictionary.ThemeDictionaries>
         <ResourceDictionary x:Key="Light">
-          <SolidColorBrush x:Key="Pd.Window" Color="#F6F6F8" />
-          <SolidColorBrush x:Key="Pd.Sidebar" Color="#EEEDF3" />
+          <SolidColorBrush x:Key="Pd.Window" Color="#F6F7F9" />
+          <SolidColorBrush x:Key="Pd.Sidebar" Color="#ECEFF2" />
           <SolidColorBrush x:Key="Pd.Card" Color="#FFFFFF" />
-          <SolidColorBrush x:Key="Pd.CardBorder" Color="#E6E4EC" />
-          <SolidColorBrush x:Key="Pd.Hover" Color="#F0EEF8" />
-          <SolidColorBrush x:Key="Pd.Selected" Color="#E7E2FF" />
-          <SolidColorBrush x:Key="Pd.Muted" Color="#6B6A75" />
-          <SolidColorBrush x:Key="Pd.FolderTint" Color="#6D4AFF" />
+          <SolidColorBrush x:Key="Pd.CardBorder" Color="#E2E6EA" />
+          <SolidColorBrush x:Key="Pd.Hover" Color="#EDF3F5" />
+          <SolidColorBrush x:Key="Pd.Selected" Color="#DAF1F4" />
+          <SolidColorBrush x:Key="Pd.Muted" Color="#667078" />
+          <SolidColorBrush x:Key="Pd.FolderTint" Color="#0E8AA1" />
           <SolidColorBrush x:Key="Pd.Warning" Color="#FFF4DB" />
           <SolidColorBrush x:Key="Pd.WarningBorder" Color="#F2C46B" />
-          <SolidColorBrush x:Key="Pd.DropFill" Color="#F2F3EFFF" />
+          <SolidColorBrush x:Key="Pd.DropFill" Color="#F2EAF7F9" />
         </ResourceDictionary>
         <ResourceDictionary x:Key="Dark">
-          <SolidColorBrush x:Key="Pd.Window" Color="#17161C" />
-          <SolidColorBrush x:Key="Pd.Sidebar" Color="#1E1D24" />
-          <SolidColorBrush x:Key="Pd.Card" Color="#22212A" />
-          <SolidColorBrush x:Key="Pd.CardBorder" Color="#2E2C38" />
-          <SolidColorBrush x:Key="Pd.Hover" Color="#2A2833" />
-          <SolidColorBrush x:Key="Pd.Selected" Color="#352C5E" />
-          <SolidColorBrush x:Key="Pd.Muted" Color="#A3A1AE" />
-          <SolidColorBrush x:Key="Pd.FolderTint" Color="#9C86FF" />
+          <SolidColorBrush x:Key="Pd.Window" Color="#15181C" />
+          <SolidColorBrush x:Key="Pd.Sidebar" Color="#1B1F24" />
+          <SolidColorBrush x:Key="Pd.Card" Color="#20252B" />
+          <SolidColorBrush x:Key="Pd.CardBorder" Color="#2C333A" />
+          <SolidColorBrush x:Key="Pd.Hover" Color="#263038" />
+          <SolidColorBrush x:Key="Pd.Selected" Color="#123D47" />
+          <SolidColorBrush x:Key="Pd.Muted" Color="#9EA8B0" />
+          <SolidColorBrush x:Key="Pd.FolderTint" Color="#3FC6D8" />
           <SolidColorBrush x:Key="Pd.Warning" Color="#3A3020" />
           <SolidColorBrush x:Key="Pd.WarningBorder" Color="#7A6230" />
-          <SolidColorBrush x:Key="Pd.DropFill" Color="#F2221A3D" />
+          <SolidColorBrush x:Key="Pd.DropFill" Color="#F2112E36" />
         </ResourceDictionary>
       </ResourceDictionary.ThemeDictionaries>
       <SolidColorBrush x:Key="Pd.Green" Color="#1FB58E" />
