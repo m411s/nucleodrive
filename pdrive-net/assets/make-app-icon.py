@@ -35,13 +35,13 @@ cloud = ("M78 188 "
 
 svg = f'''<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
-  <!-- pdrive app icon{' (small sizes: no sync loop)' if small else ''}: a cloud with a two-way sync loop on a teal-to-blue tile. Original artwork for
-       this unofficial app; deliberately unlike Proton's logos and colours (no purple, no "P"). -->
+  <!-- pdrive app icon{' (small sizes: no sync loop)' if small else ''}: a cloud with a two-way sync loop on a purple tile in the app's accent
+       colours. Original artwork for this unofficial app; not Proton's logo (no "P", no Drive folder shape). -->
   <defs>
     <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#2DD4BF"/>
-      <stop offset="0.55" stop-color="#0EA5B7"/>
-      <stop offset="1" stop-color="#1D6FD8"/>
+      <stop offset="0" stop-color="#A08BFF"/>
+      <stop offset="0.5" stop-color="#6D4AFF"/>
+      <stop offset="1" stop-color="#4A2BD9"/>
     </linearGradient>
     <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#ffffff" stop-opacity="0.22"/>
