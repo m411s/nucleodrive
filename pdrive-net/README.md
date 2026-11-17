@@ -109,6 +109,8 @@ your Drive or settings.
 
 ## Known gaps
 
+Planned work is in `docs/ROADMAP.md` (next up: a Settings page to download the CLI and sign in).
+
 - Built and checked against cli-drive 0.9.0 (`docs/cli-notes.md`). The CLI's JSON and messages are
   undocumented, so a newer CLI may need small adjustments there. Changed files become new revisions
   (`conflict_strategy`, default `create-new-revision`), so old versions stay in Drive's version history.
