@@ -69,7 +69,9 @@ public static class SyncPlanner
         }
 
         var ops = new List<SyncOp>();
-        var skipUnder = new List<string>(); // subtrees handled by a folder-level trash
+        // Subtrees handled by a folder-level trash, or under an unreadable (ignored) local folder,
+        // whose contents we can't see and so must not treat as deleted.
+        var skipUnder = l.Values.Where(x => x.Ignored && x.IsDir).Select(x => x.Path).ToList();
         var paths = new SortedSet<string>(b.Keys.Concat(l.Keys).Concat(r.Keys), StringComparer.Ordinal);
 
         foreach (var p in paths)

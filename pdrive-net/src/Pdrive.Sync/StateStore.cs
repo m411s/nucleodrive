@@ -13,7 +13,7 @@ public readonly record struct FileSig(long Mtime, long Size)
 
 /// <summary>SQLite state: what was uploaded where, plus a few daemon settings (pause, last sync).
 /// Thread-safe; one connection guarded by a lock.</summary>
-public sealed class StateStore : IDisposable
+public sealed partial class StateStore : IDisposable
 {
     private readonly SqliteConnection _db;
     private readonly Lock _gate = new();
@@ -35,6 +35,17 @@ public sealed class StateStore : IDisposable
                 PRIMARY KEY (local_root, remote_root, rel_path)
             );
             CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS sync_base (
+                folder      TEXT NOT NULL,
+                path        TEXT NOT NULL,
+                is_dir      INTEGER NOT NULL,
+                uid         TEXT,
+                rev         TEXT,
+                local_size  INTEGER NOT NULL,
+                local_mtime INTEGER NOT NULL,
+                inode       INTEGER NOT NULL,
+                PRIMARY KEY (folder, path)
+            );
             """);
     }
 

@@ -97,6 +97,10 @@ public sealed class SyncPlannerTests
     }
 
     [Fact]
+    public void Nothing_under_an_unreadable_local_folder_is_touched() =>
+        Assert.True(Plan([BD("d"), BF("d/a"), BF("d/b")], [new LocalItem("d", true, 0, 0, 0, Ignored: true)], [RD("d"), RF("d/a"), RF("d/b", "r2")]).IsEmpty);
+
+    [Fact]
     public void Proton_documents_stay_online_only() => Assert.True(Plan([], [], [RF("doc", doc: true)]).IsEmpty);
 
     // ---- folders ----

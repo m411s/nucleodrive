@@ -7,6 +7,7 @@
 //   FAKE_OFFLINE=1       every filesystem command fails with a network error
 //   FAKE_SLOW=seconds    uploads sleep this long first (for cancellation/timeout tests)
 //   FAKE_TREE=file.json  a persistent fake Drive (TreeDrive.cs) instead of the fixed listings below
+//   FAKE_LIST_FAIL=text  (tree mode) listings of paths containing text fail
 using System.Text.Json;
 
 var a = args.ToList();

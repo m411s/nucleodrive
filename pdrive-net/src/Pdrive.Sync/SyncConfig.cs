@@ -12,7 +12,25 @@ public sealed record FolderPair(string Local, string Remote)
     [JsonIgnore] public string RemoteRoot => Remote.TrimEnd('/');
 }
 
-/// <summary>config.json. Same shape as the Python prototype, plus <c>conflict_strategy</c> and <c>watch</c>.</summary>
+/// <summary>The "sync" section: Drive folders mirrored two-way into a local folder.</summary>
+public sealed record TwoWaySettings
+{
+    /// <summary>Local folder that mirrors /my-files (only the chosen folders exist in it).</summary>
+    public string Local { get; init; } = "~/proton-drive";
+
+    /// <summary>Drive folders to sync, relative to /my-files with raw names ("Photos", "Documents/Work").</summary>
+    public IReadOnlyList<string> Folders { get; init; } = [];
+
+    public double RemoteIntervalMinutes { get; init; } = 15;
+    public int ParallelListings { get; init; } = 4;
+    public int MaxDeletesWithoutConfirm { get; init; } = 50;
+
+    [JsonIgnore] public string LocalPath => Path.TrimEndingDirectorySeparator(Path.GetFullPath(PdrivePaths.ExpandHome(Local)));
+    [JsonIgnore] public TimeSpan RemoteInterval => TimeSpan.FromMinutes(Math.Max(1, RemoteIntervalMinutes));
+}
+
+/// <summary>config.json. Same shape as the Python prototype, plus <c>conflict_strategy</c>, <c>watch</c>
+/// and the two-way <c>sync</c> section.</summary>
 public sealed record SyncConfig
 {
     public static readonly IReadOnlyList<string> DefaultExclude = [".*", "*~", "*.tmp", "*.part", "*.crdownload"];
@@ -27,6 +45,8 @@ public sealed record SyncConfig
 
     [JsonIgnore] public string FileConflictStrategy => ConflictStrategy ?? Pdrive.Cli.UploadFileStrategies.Default;
     public bool Watch { get; init; } = true; // live change detection (inotify); the interval scan always runs too
+
+    public TwoWaySettings Sync { get; init; } = new();
 
     [JsonIgnore] public TimeSpan Interval => TimeSpan.FromMinutes(Math.Max(1, IntervalMinutes));
     [JsonIgnore] public TimeSpan MinAge => TimeSpan.FromSeconds(MinAgeSeconds);
@@ -125,6 +145,26 @@ public sealed class ConfigStore(PdrivePaths paths)
         if (!(cfg.MinAgeSeconds >= 0)) throw Bad("'min_age_seconds' must be a number >= 0");
         if (cfg.Exclude is null || cfg.Exclude.Any(p => p is null)) throw Bad("'exclude' must be a list of patterns");
         if (cfg.Folders is null) throw Bad("'folders' must be a list");
+        if (cfg.Sync is null || cfg.Sync.Folders is null || string.IsNullOrWhiteSpace(cfg.Sync.Local))
+            throw Bad("'sync' needs a 'local' folder and a list of 'folders'");
+        foreach (var f in cfg.Sync.Folders)
+        {
+            if (string.IsNullOrWhiteSpace(f) || f.StartsWith('/') || f.EndsWith('/') || f.Split('/').Any(s => s is "" or "." or ".."))
+                throw Bad($"sync folder '{f}' must be a path relative to /my-files, like \"Photos\" or \"Documents/Work\"");
+        }
+        if (cfg.Sync.Folders.Distinct(StringComparer.Ordinal).Count() != cfg.Sync.Folders.Count
+            || cfg.Sync.Folders.Any(a => cfg.Sync.Folders.Any(b => a != b && a.StartsWith(b + "/", StringComparison.Ordinal))))
+            throw Bad("sync folders must not repeat or contain each other");
+        if (cfg.Sync.ParallelListings is < 1 or > 16) throw Bad("'sync.parallel_listings' must be between 1 and 16");
+        if (cfg.Sync.MaxDeletesWithoutConfirm < 0) throw Bad("'sync.max_deletes_without_confirm' must be >= 0");
+        if (!(cfg.Sync.RemoteIntervalMinutes > 0)) throw Bad("'sync.remote_interval_minutes' must be a positive number");
+        var syncRoot = cfg.Sync.LocalPath;
+        foreach (var f in cfg.Folders)
+        {
+            var backup = f.LocalPath;
+            if (backup == syncRoot || backup.StartsWith(syncRoot + "/", StringComparison.Ordinal) || syncRoot.StartsWith(backup + "/", StringComparison.Ordinal))
+                throw Bad($"backup folder {backup} overlaps the sync folder {syncRoot}; sync already covers it");
+        }
         if (cfg.ConflictStrategy is { } cs && !Pdrive.Cli.UploadFileStrategies.All.Contains(cs))
             throw Bad($"'conflict_strategy' must be one of: {string.Join(", ", Pdrive.Cli.UploadFileStrategies.All)}");
         foreach (var f in cfg.Folders)

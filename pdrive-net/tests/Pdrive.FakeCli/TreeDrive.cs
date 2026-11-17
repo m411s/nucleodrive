@@ -61,6 +61,8 @@ internal static class TreeDrive
         {
             case "list":
             {
+                if (Environment.GetEnvironmentVariable("FAKE_LIST_FAIL") is { Length: > 0 } failList && Arg(2).Contains(failList))
+                    throw new CliError("fake: listing failed");
                 var node = Resolve(s, Arg(2));
                 if (node.Type != "folder")
                     throw new CliError($"Not a folder: {node.Name}");
