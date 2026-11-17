@@ -2,10 +2,14 @@
   <Folder Name="/src/">
     <Project Path="src/Pdrive.Cli/Pdrive.Cli.csproj" />
     <Project Path="src/Pdrive.Sync/Pdrive.Sync.csproj" />
+    <Project Path="src/Pdrive.Ipc/Pdrive.Ipc.csproj" />
+    <Project Path="src/Pdrive.Daemon/Pdrive.Daemon.csproj" />
+    <Project Path="src/Pdrive.Ctl/Pdrive.Ctl.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Pdrive.FakeCli/Pdrive.FakeCli.csproj" />
     <Project Path="tests/Pdrive.Cli.Tests/Pdrive.Cli.Tests.csproj" />
     <Project Path="tests/Pdrive.Sync.Tests/Pdrive.Sync.Tests.csproj" />
+    <Project Path="tests/Pdrive.Daemon.Tests/Pdrive.Daemon.Tests.csproj" />
   </Folder>
 </Solution>

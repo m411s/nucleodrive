@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>pdrive-daemon</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Pdrive.Sync/Pdrive.Sync.csproj" />
+    <ProjectReference Include="../Pdrive.Ipc/Pdrive.Ipc.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Pdrive.Daemon.Tests" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>pdrivectl</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="System.CommandLine" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Pdrive.Sync/Pdrive.Sync.csproj" />
+    <ProjectReference Include="../Pdrive.Ipc/Pdrive.Ipc.csproj" />
+  </ItemGroup>
+</Project>
