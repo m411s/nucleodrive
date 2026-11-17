@@ -3,6 +3,13 @@
 All notable changes to pdrive. Versions follow [Semantic Versioning](https://semver.org); before 1.0,
 minor versions may change behaviour.
 
+## 0.2.1 — 2026-11-17
+
+- **App icon fix:** the dock and app menu could keep showing an old icon (GNOME Shell keeps icons it has
+  loaded by name), or a generic gear right after installing. The icon is now named after pdrive's app ID,
+  `io.github.m411s.pdrive`, and `install.sh` tells GNOME about new icons straight away.
+- The release notes no longer say attestations need a public repository.
+
 ## 0.2.0 — 2026-11-17
 
 ### Sync
