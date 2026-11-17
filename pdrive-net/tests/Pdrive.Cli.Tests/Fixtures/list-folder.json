@@ -1,0 +1,175 @@
+[
+  {
+    "uid": "VOLUME~NODE01",
+    "parentUid": "VOLUME~NODE02",
+    "name": {
+      "ok": true,
+      "value": "sub"
+    },
+    "keyAuthor": {
+      "ok": true,
+      "value": "user@example.com"
+    },
+    "nameAuthor": {
+      "ok": true,
+      "value": "user@example.com"
+    },
+    "directRole": "admin",
+    "ownedBy": {
+      "email": "user@example.com"
+    },
+    "type": "folder",
+    "isShared": false,
+    "isSharedByUrl": false,
+    "creationTime": "2026-11-17T09:39:57.000Z",
+    "modificationTime": "2026-11-17T09:39:57.000Z",
+    "folder": {
+      "isImported": false
+    },
+    "treeEventScopeId": "VOLUME~NODE03"
+  },
+  {
+    "uid": "VOLUME~NODE04",
+    "parentUid": "VOLUME~NODE02",
+    "name": {
+      "ok": true,
+      "value": "big.bin"
+    },
+    "keyAuthor": {
+      "ok": true,
+      "value": "user@example.com"
+    },
+    "nameAuthor": {
+      "ok": true,
+      "value": "user@example.com"
+    },
+    "directRole": "admin",
+    "ownedBy": {
+      "email": "user@example.com"
+    },
+    "type": "file",
+    "mediaType": "application/octet-stream",
+    "isShared": false,
+    "isSharedByUrl": false,
+    "creationTime": "2026-11-17T09:40:23.000Z",
+    "modificationTime": "2026-11-17T09:40:29.000Z",
+    "totalStorageSize": 40003275,
+    "activeRevision": {
+      "uid": "VOLUME~NODE05",
+      "state": "active",
+      "creationTime": "2026-11-17T09:40:23.000Z",
+      "contentAuthor": {
+        "ok": true,
+        "value": "user@example.com"
+      },
+      "storageSize": 40003275,
+      "isImported": false,
+      "claimedSize": 40000000,
+      "claimedModificationTime": "2026-11-17T09:40:14.114Z",
+      "claimedDigests": {
+        "sha1": "<sha1>",
+        "sha1Verified": false
+      },
+      "claimedAdditionalMetadata": {
+        "Media": {}
+      }
+    },
+    "treeEventScopeId": "VOLUME~NODE03"
+  },
+  {
+    "uid": "VOLUME~NODE06",
+    "parentUid": "VOLUME~NODE02",
+    "name": {
+      "ok": true,
+      "value": "back\\slash.txt"
+    },
+    "keyAuthor": {
+      "ok": true,
+      "value": "user@example.com"
+    },
+    "nameAuthor": {
+      "ok": true,
+      "value": "user@example.com"
+    },
+    "directRole": "admin",
+    "ownedBy": {
+      "email": "user@example.com"
+    },
+    "type": "file",
+    "mediaType": "text/plain;charset=utf-8",
+    "isShared": false,
+    "isSharedByUrl": false,
+    "creationTime": "2026-11-17T09:40:22.000Z",
+    "modificationTime": "2026-11-17T09:40:22.000Z",
+    "totalStorageSize": 80,
+    "activeRevision": {
+      "uid": "VOLUME~NODE07",
+      "state": "active",
+      "creationTime": "2026-11-17T09:40:22.000Z",
+      "contentAuthor": {
+        "ok": true,
+        "value": "user@example.com"
+      },
+      "storageSize": 80,
+      "isImported": false,
+      "claimedSize": 2,
+      "claimedModificationTime": "2026-11-17T09:40:14.051Z",
+      "claimedDigests": {
+        "sha1": "<sha1>",
+        "sha1Verified": false
+      },
+      "claimedAdditionalMetadata": {
+        "Media": {}
+      }
+    },
+    "treeEventScopeId": "VOLUME~NODE03"
+  },
+  {
+    "uid": "VOLUME~NODE08",
+    "parentUid": "VOLUME~NODE02",
+    "name": {
+      "ok": true,
+      "value": "hello.txt"
+    },
+    "keyAuthor": {
+      "ok": true,
+      "value": "user@example.com"
+    },
+    "nameAuthor": {
+      "ok": true,
+      "value": "user@example.com"
+    },
+    "directRole": "admin",
+    "ownedBy": {
+      "email": "user@example.com"
+    },
+    "type": "file",
+    "mediaType": "text/plain;charset=utf-8",
+    "isShared": false,
+    "isSharedByUrl": false,
+    "creationTime": "2026-11-17T09:40:16.000Z",
+    "modificationTime": "2026-11-17T09:40:21.000Z",
+    "totalStorageSize": 190,
+    "activeRevision": {
+      "uid": "VOLUME~NODE09",
+      "state": "active",
+      "creationTime": "2026-11-17T09:40:21.000Z",
+      "contentAuthor": {
+        "ok": true,
+        "value": "user@example.com"
+      },
+      "storageSize": 99,
+      "isImported": false,
+      "claimedSize": 21,
+      "claimedModificationTime": "2026-11-17T09:40:18.176Z",
+      "claimedDigests": {
+        "sha1": "<sha1>",
+        "sha1Verified": false
+      },
+      "claimedAdditionalMetadata": {
+        "Media": {}
+      }
+    },
+    "treeEventScopeId": "VOLUME~NODE03"
+  }
+]

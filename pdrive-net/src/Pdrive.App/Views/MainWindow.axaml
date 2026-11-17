@@ -41,7 +41,7 @@
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="vm:EntryViewModel">
                 <DockPanel>
-                  <Button DockPanel.Dock="Right" Classes="subtle" ToolTip.Tip="Download"
+                  <Button DockPanel.Dock="Right" Classes="subtle" ToolTip.Tip="Download" IsVisible="{Binding CanDownload}"
                           Command="{Binding $parent[ListBox].((vm:BrowserViewModel)DataContext).DownloadCommand}"
                           CommandParameter="{Binding}">⤓</Button>
                   <TextBlock DockPanel.Dock="Right" Text="{Binding SizeText}" Opacity="0.6"

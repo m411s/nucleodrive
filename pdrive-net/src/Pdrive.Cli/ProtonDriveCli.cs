@@ -125,12 +125,56 @@ public sealed class ProtonDriveCli : IDriveClient
 
         if (result.ExitCode != 0)
         {
-            var err = stderr.ToString().Trim();
-            var msg = err.Length > 0 ? err : stdout.ToString().Trim();
-            if (msg.Length == 0)
-                msg = $"exit code {result.ExitCode}";
+            var msg = CliErrorText.From(stdout.ToString(), stderr.ToString(), result.ExitCode);
             throw AuthHeuristics.LooksLikeAuthError(msg) ? new AuthException(msg) : new DriveException(msg);
         }
         return stdout.ToString();
+    }
+}
+
+/// <summary>Builds a useful error message from a failed CLI run. Observed with cli-drive 0.9.0:
+/// <list type="bullet">
+/// <item>plain errors: one line on stderr ("You need to login first", "Node not found: x");</item>
+/// <item>partial transfer failure: stderr "1 item(s) failed to upload", details in the stdout summary
+/// ("Failed: 1 items" then "  - name: Error: EACCES: …");</item>
+/// <item>crash: stderr is only a "=====" rule; the cause ("ENOENT: …") is in a stack trace on stdout.</item>
+/// </list>
+/// The most specific line comes first, since status lines and toasts show only the first line.</summary>
+public static class CliErrorText
+{
+    public static string From(string stdout, string stderr, int exitCode)
+    {
+        static bool Meaningful(string line) => line.Any(char.IsLetter);
+        var outLines = stdout.Split('\n').Select(l => l.TrimEnd()).ToList();
+
+        var details = new List<string>();
+        var failedAt = outLines.FindIndex(l => l.TrimStart().StartsWith("Failed:", StringComparison.Ordinal));
+        if (failedAt >= 0)
+        {
+            details.AddRange(outLines.Skip(failedAt + 1)
+                .TakeWhile(l => l.TrimStart().StartsWith("- ", StringComparison.Ordinal))
+                .Select(l => l.TrimStart()[2..]));
+        }
+        else if (outLines.FirstOrDefault(IsErrorLine) is { } crash)
+        {
+            details.Add(crash.Trim());
+        }
+
+        var errLines = stderr.Split('\n').Select(l => l.Trim()).Where(Meaningful);
+        var all = details.Concat(errLines).Distinct().ToList();
+        if (all.Count == 0)
+            all.AddRange(outLines.Select(l => l.Trim()).Where(Meaningful).Take(5));
+        return all.Count > 0 ? string.Join('\n', all) : $"exit code {exitCode}";
+    }
+
+    // "ENOENT: no such file…", "EACCES: …", "TypeError: …", "Error: …" at the start of a line.
+    private static bool IsErrorLine(string line)
+    {
+        var t = line.TrimStart();
+        var colon = t.IndexOf(": ", StringComparison.Ordinal);
+        if (colon <= 0)
+            return false;
+        var head = t[..colon];
+        return head.All(char.IsLetter) && (head.EndsWith("Error", StringComparison.Ordinal) || (head.Length >= 4 && head[0] == 'E' && head.All(char.IsUpper)));
     }
 }

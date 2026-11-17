@@ -136,7 +136,7 @@ public sealed class SyncEngineTests : IDisposable
         var last = seen[^1];
         Assert.Equal((2, 2), (last.FilesDone, last.FilesTotal));
         Assert.Equal(last.BytesTotal, last.BytesDone);
-        Assert.Contains(seen, p => p.CliLine?.StartsWith("uploaded") == true);
+        Assert.Contains(seen, p => p.CliLine?.StartsWith("Transfer summary") == true);
     }
 
     [Fact]

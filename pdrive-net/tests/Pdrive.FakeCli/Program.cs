@@ -52,7 +52,16 @@ if (Cmd("filesystem", "list"))
     switch (a[2])
     {
         case "/my-files":
-            Console.WriteLine("""[{"name": "b.txt", "type": "file", "size": 2048}, {"name": "Documents", "type": "folder"}]""");
+            // Shape of cli-drive 0.9.0 (trimmed; see tests/Pdrive.Cli.Tests/Fixtures/list-folder.json).
+            Console.WriteLine("""
+                [
+                  {"uid": "V~F1", "parentUid": "V~R", "name": {"ok": true, "value": "b.txt"}, "type": "file",
+                   "mediaType": "text/plain", "totalStorageSize": 9999,
+                   "activeRevision": {"uid": "V~R1", "state": "active", "storageSize": 2100, "claimedSize": 2048}},
+                  {"uid": "V~D1", "parentUid": "V~R", "name": {"ok": true, "value": "Documents"}, "type": "folder",
+                   "folder": {"isImported": false}}
+                ]
+                """);
             return 0;
         case "/nope":
             return Fail("You need to login first");
@@ -74,13 +83,26 @@ if (Cmd("filesystem", "upload"))
         return Fail("fake: upload without -f/-d would prompt for conflict resolution");
     if (double.TryParse(Environment.GetEnvironmentVariable("FAKE_SLOW"), out var slow))
         Thread.Sleep(TimeSpan.FromSeconds(slow));
+    // Like the real CLI: the good files in a batch are uploaded, failures are listed in the summary
+    // on stdout, stderr says how many failed, and the exit code is 1.
     var failOn = Environment.GetEnvironmentVariable("FAKE_FAIL");
-    if (!string.IsNullOrEmpty(failOn) && rest.Any(x => x.Contains(failOn)))
-        return Fail("boom");
-    Rec(["upload", .. rest]);
-    Rec("strategy", fileStrategy, folderStrategy);
-    Console.WriteLine($"uploaded {string.Join(' ', rest)}");
-    return 0;
+    var dest = rest[^1];
+    var files = rest[..^1];
+    var failed = string.IsNullOrEmpty(failOn) ? [] : files.Where(f => f.Contains(failOn)).ToList();
+    var ok = files.Except(failed).ToList();
+    if (ok.Count > 0)
+    {
+        Rec(["upload", .. ok, dest]);
+        Rec("strategy", fileStrategy, folderStrategy);
+    }
+    Console.WriteLine("Transfer summary:");
+    Console.WriteLine($"  Uploaded: {ok.Count} items ({ok.Count} B)");
+    if (failed.Count == 0)
+        return 0;
+    Console.WriteLine($"  Failed: {failed.Count} items");
+    foreach (var f in failed)
+        Console.WriteLine($"  - {Path.GetFileName(f)}: Error: boom");
+    return Fail($"{failed.Count} item(s) failed to upload");
 }
 
 if (Cmd("filesystem", "create-folder"))

@@ -2,10 +2,16 @@ using System.Text.Json;
 
 namespace Pdrive.Cli;
 
-public sealed record DriveEntry(string Name, bool IsDir, long? Size, string Path);
+public sealed record DriveEntry(string Name, bool IsDir, long? Size, string Path, string? MediaType = null)
+{
+    /// <summary>Proton Docs/Sheets live only on Drive; `filesystem download` skips them.</summary>
+    public bool IsProtonDocument => MediaType?.StartsWith("application/vnd.proton.", StringComparison.Ordinal) == true;
+}
 
-/// <summary>Tolerant parser for `filesystem list --json`: the schema isn't documented,
-/// so it accepts a bare list or an object wrapping one, and several key spellings.</summary>
+/// <summary>Parser for `filesystem list --json`. The real schema (cli-drive 0.9.0, see
+/// tests/Pdrive.Cli.Tests/Fixtures/list-folder.json) is a bare list of nodes with
+/// name {ok, value}, type file|folder, uid, mediaType and activeRevision.claimedSize. It stays
+/// tolerant of other shapes and spellings in case the undocumented format changes.</summary>
 public static class ListingParser
 {
     private static readonly string[] ListKeys = ["items", "entries", "children", "nodes", "files", "data", "result"];
@@ -60,23 +66,55 @@ public static class ListingParser
         if (item.ValueKind != JsonValueKind.Object)
             return null;
 
-        var name = First(item, "name", "Name", "title")?.ToString();
-        if (string.IsNullOrEmpty(name))
+        // cli-drive 0.9.0: "name": {"ok": true, "value": "file.txt"}; ok=false when it can't be decrypted.
+        var uid = First(item, "uid") is { ValueKind: JsonValueKind.String } u ? u.GetString() : null;
+        string? name;
+        var nameOk = true;
+        if (First(item, "name", "Name", "title") is { ValueKind: JsonValueKind.Object } nameObj)
+        {
+            nameOk = !(nameObj.TryGetProperty("ok", out var ok) && ok.ValueKind == JsonValueKind.False);
+            name = nameObj.TryGetProperty("value", out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
+        }
+        else
+        {
+            name = First(item, "name", "Name", "title")?.ToString();
+        }
+        string segment;
+        if (nameOk && !string.IsNullOrEmpty(name))
+        {
+            segment = RemotePath.EscapeName(name);
+        }
+        else if (uid is not null)
+        {
+            // The CLI accepts node UIDs in paths where names can't be used.
+            segment = uid;
+            var nodeId = uid.Split('~')[^1];
+            name = $"(name unavailable) {nodeId[..Math.Min(8, nodeId.Length)]}";
+        }
+        else
+        {
             return null;
+        }
 
         var kind = (First(item, "type", "kind", "nodeType", "node_type")?.ToString() ?? "").ToLowerInvariant();
         var isDir = Truthy(First(item, "isFolder", "is_folder", "isDirectory", "is_dir"))
                     || kind.Contains("folder") || kind.Contains("dir");
 
-        long? size = First(item, "size", "Size", "claimedSize", "totalStorageSize") is { ValueKind: JsonValueKind.Number } s
-                     && s.TryGetInt64(out var n) ? n : null;
+        // Real content size is activeRevision.claimedSize. totalStorageSize counts every revision
+        // plus encryption overhead, so it's deliberately not used.
+        var size = Int(First(item, "claimedSize", "size", "Size"))
+                   ?? (First(item, "activeRevision") is { ValueKind: JsonValueKind.Object } rev ? Int(First(rev, "claimedSize", "size")) : null);
 
         var path = First(item, "path", "fullPath") is { ValueKind: JsonValueKind.String } p && p.GetString() is { Length: > 0 } ps
             ? ps
-            : RemotePath.Join(parent, RemotePath.EscapeName(name));
+            : RemotePath.Join(parent, segment);
 
-        return new DriveEntry(name, isDir, size, path);
+        var mediaType = First(item, "mediaType", "mimeType") is { ValueKind: JsonValueKind.String } m ? m.GetString() : null;
+        return new DriveEntry(name!, isDir, size, path, mediaType);
     }
+
+    private static long? Int(JsonElement? v) =>
+        v is { ValueKind: JsonValueKind.Number } n && n.TryGetInt64(out var i) ? i : null;
 
     /// <summary>First key that is present and not null.</summary>
     private static JsonElement? First(JsonElement obj, params ReadOnlySpan<string> keys)

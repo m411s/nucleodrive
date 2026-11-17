@@ -131,3 +131,75 @@ public sealed class RemotePathTests
         Assert.Equal("/my-files/a\\/b", e.Path);
     }
 }
+
+/// <summary>Formats observed from the real CLI (cli-drive 0.9.0).</summary>
+public sealed class RealCliFormatTests
+{
+    private static string Fixture(string name) => File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", name));
+
+    [Fact]
+    public void Parses_a_real_listing()
+    {
+        var es = ListingParser.Parse(Fixture("list-folder.json"), "/my-files/pdrive-test");
+        Assert.Equal(["sub", "back\\slash.txt", "big.bin", "hello.txt"], es.Select(e => e.Name));
+        Assert.True(es[0].IsDir);
+        Assert.Null(es[0].Size);
+        // claimedSize (content), not totalStorageSize (all revisions + encryption overhead: 190)
+        Assert.Equal(21, es.Single(e => e.Name == "hello.txt").Size);
+        Assert.Equal(40_000_000, es.Single(e => e.Name == "big.bin").Size);
+        Assert.Equal("/my-files/pdrive-test/back\\slash.txt", es[1].Path);
+        Assert.Equal("text/plain;charset=utf-8", es[3].MediaType);
+        Assert.False(es[3].IsProtonDocument);
+    }
+
+    [Fact]
+    public void Undecryptable_names_fall_back_to_the_uid_in_paths()
+    {
+        var e = ListingParser.Parse("""
+            [{"uid": "VOL~NODEABCDEFGHIJ", "name": {"ok": false, "error": {"message": "x"}}, "type": "file"}]
+            """, "/my-files").Single();
+        Assert.Equal("/my-files/VOL~NODEABCDEFGHIJ", e.Path);
+        Assert.StartsWith("(name unavailable) NODEABCD", e.Name);
+    }
+
+    [Fact]
+    public void Proton_documents_are_recognised()
+    {
+        var e = ListingParser.Parse("""
+            [{"uid": "V~N", "name": {"ok": true, "value": "Notes"}, "type": "file", "mediaType": "application/vnd.proton.doc"}]
+            """, "/my-files").Single();
+        Assert.True(e.IsProtonDocument);
+    }
+
+    [Fact]
+    public void Partial_upload_failure_puts_the_failing_file_first()
+    {
+        var msg = CliErrorText.From(
+            "Transfer summary:\n  Uploaded: 0 items (0 B)\n  Failed: 1 items\n  - noread.txt: Error: EACCES: permission denied, open '/home/user/noread.txt'\n",
+            "1 item(s) failed to upload\n", 1);
+        Assert.Equal("noread.txt: Error: EACCES: permission denied, open '/home/user/noread.txt'", msg.Split('\n')[0]);
+        Assert.Contains("1 item(s) failed to upload", msg);
+    }
+
+    [Fact]
+    public void Crash_with_only_a_rule_on_stderr_uses_the_error_from_stdout()
+    {
+        var msg = CliErrorText.From("""
+            Transfer summary:
+              Uploaded: 0 items (0 B)
+            157 |         const stats = await lstat(absolutePath);
+                                              ^
+            ENOENT: no such file or directory, lstat '/home/user/missing.txt'
+                path: "/home/user/missing.txt",
+                  at async enqueueLocalPath (src/commands/fileSystem/transferQueue.ts:157:29)
+            """, "===============================================\n", 1);
+        Assert.Equal("ENOENT: no such file or directory, lstat '/home/user/missing.txt'", msg);
+    }
+
+    [Theory]
+    [InlineData("", "You need to login first\n", 1, "You need to login first")]
+    [InlineData("", "Node not found: nope.txt\n", 1, "Node not found: nope.txt")]
+    [InlineData("", "", 3, "exit code 3")]
+    public void Plain_errors(string stdout, string stderr, int code, string expected) =>
+        Assert.Equal(expected, CliErrorText.From(stdout, stderr, code));
+}

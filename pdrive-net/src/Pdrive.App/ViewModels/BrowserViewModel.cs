@@ -12,7 +12,10 @@ public sealed class EntryViewModel(DriveEntry entry)
     public DriveEntry Entry { get; } = entry;
     public string Name => Entry.Name;
     public bool IsDir => Entry.IsDir;
-    public string SizeText => Units.Bytes(Entry.Size);
+    public string SizeText => Entry.IsProtonDocument ? "Proton Docs/Sheets (open on the web)" : Units.Bytes(Entry.Size);
+
+    /// <summary>The CLI skips Proton Docs/Sheets on download, so don't offer it.</summary>
+    public bool CanDownload => !Entry.IsProtonDocument;
     public string Path => Entry.Path;
 }
 
@@ -147,7 +150,7 @@ public sealed partial class BrowserViewModel : ObservableObject
     [RelayCommand(AllowConcurrentExecutions = true)]
     private async Task DownloadAsync(EntryViewModel? entry)
     {
-        if (_client is null || entry is null)
+        if (_client is null || entry is not { CanDownload: true })
             return;
         var folder = await _dialogs.PickFolderAsync($"Download “{entry.Name}” to…");
         if (folder is null)

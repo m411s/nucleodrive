@@ -117,6 +117,18 @@ public sealed class BrowserViewModelTests
     }
 
     [Fact]
+    public async Task Proton_documents_cannot_be_downloaded()
+    {
+        _drive.Tree["/my-files"].Add(new DriveEntry("Notes", false, null, "/my-files/Notes", "application/vnd.proton.doc"));
+        await _vm.RefreshAsync();
+        var doc = _vm.Entries.Single(e => e.Name == "Notes");
+        Assert.False(doc.CanDownload);
+        _dialogs.Folder = "/tmp";
+        await _vm.DownloadCommand.ExecuteAsync(doc);
+        Assert.Empty(_drive.Downloads);
+    }
+
+    [Fact]
     public async Task Missing_cli_shows_its_error()
     {
         var vm = new BrowserViewModel(null, "proton-drive CLI not found. Download it…", _dialogs, _toast);

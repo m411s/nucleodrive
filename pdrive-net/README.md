@@ -39,7 +39,7 @@ Cinnamon show them out of the box. Without a tray, use the app's Backup tab.
 | App | `pdrive`: Files and Backup tabs. `pdrive --tray` starts hidden (used at login). Launching again shows the running window. |
 | CLI | `pdrivectl status \| list \| add LOCAL REMOTE \| remove LOCAL \| now \| pause \| resume` |
 | Daemon | `systemctl --user status pdrive`, logs with `journalctl --user -u pdrive` |
-| Config | `~/.config/pdrive/config.json`: `interval_minutes` (15), `min_age_seconds` (5), `exclude` (`.*`, `*~`, `*.tmp`, `*.part`, `*.crdownload`), `folders`, `conflict_strategy` (passed to `upload --conflict-strategy`), `watch` (true) |
+| Config | `~/.config/pdrive/config.json`: `interval_minutes` (15), `min_age_seconds` (5), `exclude` (`.*`, `*~`, `*.tmp`, `*.part`, `*.crdownload`), `folders`, `conflict_strategy` for files that already exist on Drive (`create-new-revision` default, `rename`, `replace`, `skip`), `watch` (true) |
 | State | `~/.local/state/pdrive/state.db` (SQLite: what was uploaded where, pause, last sync) |
 
 A broken `config.json` shows as an error in the status; the daemon keeps running on the last good
@@ -83,8 +83,10 @@ your Drive or settings.
 
 ## Known gaps
 
-- **Not yet checked against the real CLI**: the listing JSON schema, whether `mkdir` exists, which
-  `--conflict-strategy` values exist and what re-uploading does without one, the wording of sign-in errors,
-  progress output, and keyring access from the systemd service. See `docs/cli-notes.md`.
+- Built and checked against cli-drive 0.9.0 (`docs/cli-notes.md`). The CLI's JSON and messages are
+  undocumented, so a newer CLI may need small adjustments there. Changed files become new revisions
+  (`conflict_strategy`, default `create-new-revision`), so old versions stay in Drive's version history.
+- The CLI prints no progress when it isn't attached to a terminal, so progress is per file and
+  per batch, not within one large file.
 - No delete, rename, mkdir or share in the browser yet. No two-way sync.
 - Files that change continuously are uploaded at most once per 60 s of activity (the watcher's cap).

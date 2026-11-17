@@ -108,7 +108,7 @@ public sealed class ProtonDriveCliTests : IDisposable
     {
         var lines = new List<string>();
         await _cli.UploadAsync(["/tmp/x"], "/my-files", new SyncProgress<string>(lines.Add), Ct);
-        Assert.Contains(lines, l => l.StartsWith("uploaded"));
+        Assert.Contains(lines, l => l.StartsWith("Transfer summary"));
     }
 
     [Fact]

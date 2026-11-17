@@ -1,35 +1,59 @@
 # proton-drive CLI: checked behaviour
 
-Checked against **cli-drive 0.9.0+75612299 (SDK js 0.22.2)**, the build at `pdrive-net/cli/proton-drive`
-(sha256 `4f66f984…a332501`, not committed). It's Proton's Drive SDK CLI built from their JavaScript client.
+Checked on 2026-11-17 against **cli-drive 0.9.0+75612299 (SDK js 0.22.2)**, the build at
+`pdrive-net/cli/proton-drive` (sha256 `4f66f984…a332501`, not committed). It's Proton's Drive SDK CLI
+built from their JavaScript client.
 
-Source: `--help` for every command used, plus read-only runs while signed out. Everything that
-needs a signed-in session is still open (bottom table).
+How: `--help` for every command used, read-only runs signed out and signed in, and test writes in a
+throwaway `/my-files/pdrive-test` folder, which was moved to the Drive trash afterwards.
 
-## Confirmed
+## Commands and options
 
-| Question | Answer | Code |
+| Topic | Behaviour | Code |
 |---|---|---|
-| Create a folder | **`filesystem create-folder parentPath name`**. There is no `mkdir`; the prototype's guess always failed silently. | `ProtonDriveCli.MkdirAsync` |
-| Upload conflicts | `-f/--file-conflict-strategy`: `create-new-revision`, `rename`, `replace` (trashes the remote copy), `skip`. `-d/--folder-conflict-strategy`: `merge`, `rename`, `replace`, `skip`. **Without them the CLI prompts**, which would stall a non-interactive call until its timeout. | Always passed. Files default to `create-new-revision` (old content stays in version history; config `conflict_strategy` overrides, validated against these values); folders always `merge`. |
-| Same content | "Files with the same content are automatically skipped." Re-uploading unchanged files is harmless. | (safety net for migration) |
-| Download conflicts | `-f`: `rename`, `remove` (deletes the local copy), `skip`; `-d`: `merge`, `rename`, `remove`, `skip`. Also prompts without them. | Always `-f rename -d merge`: never deletes local files. |
-| JSON output | `-j/--json` is a global option. | `filesystem list PATH --json` |
-| Paths | POSIX paths always; `/` lists top-level sections; root is `/my-files`. **A `/` inside a node name is escaped as `\/`.** Node UIDs work where names can't be decrypted or clash. | `RemotePath.EscapeName/UnescapeName`; listing paths and remote folders are escaped. |
-| Signed out | stderr `You need to login first`, exit code 1, nothing on stdout (also with `--json`). | Matched by `AuthHeuristics` ("login"). |
-| Session storage | Loaded "from secrets" (system keyring), entry `ch.proton.drive/drive-sdk-cli/auth-session`. | |
-| Sign-in | `auth login` opens a browser (sign-in can happen on another device). "Keep the terminal open until authentication completes." | `LoginAsync` (300 s timeout) |
-| Version check | `--version` prints the CLI and SDK versions and whether it's the latest. | |
-| Other commands | `info`, `size`, `rename`, `copy`, `move`, `trash`, `restore`, `delete`, `empty-trash`, sharing, invitations, albums, photos, takeout. | Not used yet: future browser features (rename, trash, share). |
+| Create a folder | `filesystem create-folder parentPath name`. **There is no `mkdir`.** Prints the new node; if it exists: stderr `A file or folder with that name already exists`, exit 1; missing parent: `Node not found: <name>`, exit 1. | `ProtonDriveCli.MkdirAsync`; the engine ignores "exists" and creates parents first |
+| Upload conflicts | `-f`: `create-new-revision`, `rename`, `replace` (trashes the remote copy), `skip`. `-d`: `merge`, `rename`, `replace`, `skip`. **Without them the CLI prompts.** | Always passed: files `create-new-revision` (config `conflict_strategy` overrides, validated), folders `merge` |
+| Unchanged content | Skipped automatically: `Skipped: 1 items` / `- hello.txt`, exit 0. Re-uploading after a migration is harmless. | |
+| Changed content | With `create-new-revision`: uploaded as a new revision; `totalStorageSize` then covers all revisions. | |
+| Upload output | No progress when stdout isn't a terminal; only `Transfer summary:` / `Uploaded: N items (size)`. 38 MiB took 8 s. | `UploadAsync(output)` forwards the summary lines |
+| Partial upload failure | The good files are uploaded; stdout summary has `Failed: N items` then `  - name: Error: …`; stderr `N item(s) failed to upload`; exit 1. | `CliErrorText` puts the file's error first; the engine retries one by one (good files are then skipped as unchanged) |
+| Crash (e.g. missing local file) | Nothing uploaded; stack trace and `ENOENT: …` on **stdout**; stderr is only a `=====` rule; exit 1. | `CliErrorText` picks the `ENOENT:` / `…Error:` line |
+| Download conflicts | `-f`: `rename`, `remove` (deletes the local copy), `skip`; `-d`: `merge`, `rename`, `remove`, `skip`. Prompts without them. A second download of `hello.txt` produced `hello (1).txt`. Missing remote: `Node not found: nope.txt`, exit 1. Proton Docs/Sheets are skipped. | Always `-f rename -d merge`; the app hides Download for Docs/Sheets |
+| Backslash in a local name | `back\slash.txt` uploads and is listed with that exact name. | `RemotePath.EscapeName` escapes only `/` |
+| `/` in a node name | Escaped as `\/` in paths (per help). Node UIDs work where a name can't be decrypted or clashes. | Listing paths are escaped; undecryptable names use the uid |
+| JSON | `-j/--json` is a global option. Without it, create-folder prints a JS object dump. | `filesystem list PATH --json` |
+| Other commands | `info`, `size`, `rename`, `copy`, `move`, `trash`, `restore`, `delete`, `empty-trash`, sharing, invitations, albums, photos, takeout. `trash` prints `✅ name`. | Not used yet: future browser features |
 
-## Still open (needs a signed-in session)
+## `filesystem list --json` schema
 
-| Question | How to check | Code that depends on it |
+A bare JSON array of nodes. Fixture: `tests/Pdrive.Cli.Tests/Fixtures/list-folder.json` (from the
+test folder; uids and emails replaced).
+
+| Field | Meaning |
+|---|---|
+| `uid`, `parentUid` | node ids (`volume~node`), usable in paths |
+| `name` | `{"ok": true, "value": "file.txt"}`; `ok: false` when it can't be decrypted |
+| `type` | `file` or `folder` (top-level `/` also lists sections) |
+| `mediaType` | files only, e.g. `video/mp4`, `application/vnd.proton.doc` / `.sheet` |
+| `activeRevision.claimedSize` | **content size**, the one to show |
+| `activeRevision.storageSize` | encrypted size of the current revision |
+| `totalStorageSize` | all revisions + overhead (190 for a 21-byte file with 2 revisions) |
+| `creationTime`, `modificationTime`, `activeRevision.claimedModificationTime` | ISO 8601 |
+| also | `keyAuthor`, `nameAuthor`, `ownedBy.email`, `directRole`, `isShared`, `isSharedByUrl`, `folder.claimedModificationTime`, `treeEventScopeId`, `activeRevision.claimedDigests.sha1` |
+
+## Session and errors
+
+| Topic | Behaviour | Code |
 |---|---|---|
-| `list --json` schema (keys for name, type, size, path) | `proton-drive filesystem list /my-files --json > tests/Fixtures/cli/list-root.json` | `ListingParser` (tolerant today) |
-| Network-error wording (must NOT look like sign-in) | run a list with the network off | `AuthHeuristics` |
-| Upload progress output | upload a large file with `-v` and see what's printed | `UploadAsync(output)` |
-| `create-folder` when the folder exists | create the same folder twice in a test folder | engine ignores the failure; confirm it's harmless |
-| Backslash in a local name, e.g. `a\b.txt` | upload one into a test folder | `RemotePath.EscapeName` escapes only `/` |
-| Keyring reachable from the systemd user service | `systemd-run --user --wait --pipe proton-drive filesystem list /my-files --json` | daemon "Sign in required" |
-| `auth login` without a terminal (from the app) | Sign in from the app's Files tab | `LoginAsync` |
+| Signed out | stderr `You need to login first`, exit 1, nothing on stdout (also with `--json`). | `AuthHeuristics` ("login") |
+| Session storage | System keyring, entry `ch.proton.drive/drive-sdk-cli/auth-session`. | |
+| From a systemd user service | **Works**: `systemd-run --user --wait --pipe proton-drive filesystem list /my-files --json` listed the root. | `pdrive.service` |
+| Sign-in | `auth login` opens a browser (or use another device); keep the process running until done. | `LoginAsync` (300 s) |
+| Verbose | `-v` prints coloured `DEBUG/INFO` logs to stderr. | not used |
+
+## Still open
+
+- **Network-error wording**: not tested (it needs the network turned off). Anything that doesn't
+  look like a sign-in problem is shown as an error, which is the safe default.
+- **`auth login` started from the app** (no terminal): should work (it only opens a browser), but untried.
+- **Name with `/` from Drive**: the escaping follows the help text; no such node was available to test.
