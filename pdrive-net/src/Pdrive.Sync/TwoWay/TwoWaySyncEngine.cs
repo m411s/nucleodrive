@@ -14,7 +14,8 @@ public sealed class SyncFolderException(string message) : Exception(message);
 /// (`info`, or a crawl for a deleted folder), so local edits go up in seconds without a full crawl.</item>
 /// <item><b>First sync</b> of an empty or missing local folder: one recursive download, then adopt.</item>
 /// </list></summary>
-public sealed class TwoWaySyncEngine(IDriveClient client, StateStore state, FreedesktopTrash trash)
+/// <param name="log">Receives one line per change made, for the journal.</param>
+public sealed class TwoWaySyncEngine(IDriveClient client, StateStore state, FreedesktopTrash trash, Action<string>? log = null)
 {
     /// <summary>Local passes with more changed paths than this do a full pass instead.</summary>
     public const int MaxLocalPassChecks = 200;
@@ -119,7 +120,7 @@ public sealed class TwoWaySyncEngine(IDriveClient client, StateStore state, Free
             return PassResult.Empty with { DeletionsHeld = plan.DeletionsHeld, HeldLocalDeletes = plan.DeletionsHeld ? plan.LocalDeletes : 0, HeldRemoteDeletes = plan.DeletionsHeld ? plan.RemoteDeletes : 0 };
         try
         {
-            return await new SyncExecutor(client, state, trash, root, folder, local, remote).ExecuteAsync(plan, progress, ct);
+            return await new SyncExecutor(client, state, trash, root, folder, local, remote, log).ExecuteAsync(plan, progress, ct);
         }
         finally
         {
@@ -214,6 +215,7 @@ public sealed class TwoWaySyncEngine(IDriveClient client, StateStore state, Free
             records.Add(new BaseItem(r.Path, false, r.Uid, r.RevisionUid, after.Size, after.Mtime100ns, after.Inode));
         }
         state.UpsertBaseline(folder, records);
+        log?.Invoke($"Downloaded {remotePath} for the first time: {records.Count(r => !r.IsDir)} files in {records.Count(r => r.IsDir)} folders");
     }
 
     private static async Task ReportStagingAsync(string staging, string remotePath, IProgress<string>? progress, CancellationToken ct)

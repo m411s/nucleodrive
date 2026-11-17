@@ -24,11 +24,14 @@ public sealed class SyncExecutor
     private readonly Dictionary<string, LocalItem> _local;
     private readonly Dictionary<string, RemoteItem> _remote;
     private readonly List<string> _errors = [];
+    private readonly Action<string>? _log;
     private int _uploaded, _downloaded, _moved, _trashedLocal, _trashedRemote;
 
+    /// <param name="log">Receives one line per change made (for the journal).</param>
     public SyncExecutor(IDriveClient client, StateStore state, FreedesktopTrash trash, string root, string folder,
-        Dictionary<string, LocalItem> local, Dictionary<string, RemoteItem> remote)
+        Dictionary<string, LocalItem> local, Dictionary<string, RemoteItem> remote, Action<string>? log = null)
     {
+        _log = log;
         _client = client;
         _state = state;
         _trash = trash;
@@ -132,6 +135,7 @@ public sealed class SyncExecutor
         _state.RekeyBaseline(_folder, m.From, m.To);
         SyncPlanner.Rekey(_local, m.From, m.To, (x, p) => x with { Path = p });
         SyncPlanner.Rekey(_remote, m.From, m.To, (x, p) => x with { Path = p });
+        _log?.Invoke($"Renamed locally to match Drive: {m.From} → {m.To}");
         _moved++;
         return Task.CompletedTask;
     }
@@ -151,6 +155,7 @@ public sealed class SyncExecutor
         _state.RekeyBaseline(_folder, m.From, m.To);
         SyncPlanner.Rekey(_local, m.From, m.To, (x, p) => x with { Path = p });
         SyncPlanner.Rekey(_remote, m.From, m.To, (x, p) => x with { Path = p });
+        _log?.Invoke($"Renamed on Drive to match this computer: {m.From} → {m.To}");
         _moved++;
     }
 
@@ -168,6 +173,7 @@ public sealed class SyncExecutor
         var info = await _client.InfoAsync(SyncPaths.Remote(rel), ct);
         var st = Posix.TryStat(SyncPaths.Local(_root, rel));
         _state.UpsertBaseline(_folder, [new BaseItem(rel, true, info.Uid, null, 0, 0, st?.Inode ?? 0)]);
+        _log?.Invoke($"Created folder on Drive: {rel}");
     }
 
     private Task CreateLocalFolder(string rel)
@@ -176,6 +182,7 @@ public sealed class SyncExecutor
         Directory.CreateDirectory(path);
         var st = Posix.TryStat(path);
         _state.UpsertBaseline(_folder, [new BaseItem(rel, true, _remote.GetValueOrDefault(rel)?.Uid, null, 0, 0, st?.Inode ?? 0)]);
+        _log?.Invoke($"Created folder locally: {rel}");
         return Task.CompletedTask;
     }
 
@@ -230,6 +237,8 @@ public sealed class SyncExecutor
         }
         _state.UpsertBaseline(_folder, records);
         _uploaded += records.Count;
+        foreach (var r in records)
+            _log?.Invoke($"Uploaded: {r.Path}");
     }
 
     private async Task DownloadAsync(DownloadOp d, CancellationToken ct)
@@ -257,7 +266,10 @@ public sealed class SyncExecutor
                     return;
                 }
                 if (d.TrashLocalFirst)
-                    _trash.Trash(target);
+                {
+                    var trashed = _trash.Trash(target);
+                    _log?.Invoke($"Conflict: Drive's newer version of {d.Path} wins; the local copy was moved to {trashed}");
+                }
             }
             else if (known is not null)
             {
@@ -268,6 +280,7 @@ public sealed class SyncExecutor
             var st = Posix.TryStat(target)!.Value;
             _state.UpsertBaseline(_folder, [new BaseItem(d.Path, false, d.Remote.Uid, d.Remote.RevisionUid, st.Size, st.Mtime100ns, st.Inode)]);
             _downloaded++;
+            _log?.Invoke($"Downloaded: {d.Path}");
         }
         finally
         {
@@ -305,6 +318,7 @@ public sealed class SyncExecutor
         {
             _state.RemoveBaseline(_folder, t.Path);
             _trashedRemote += t.Count;
+            _log?.Invoke($"Moved to the Drive trash (deleted on this computer): {t.Path}{(t.IsDir ? $" ({t.Count} items)" : "")}");
         }
     }
 
@@ -321,9 +335,10 @@ public sealed class SyncExecutor
             _errors.Add($"{t.Path}: changed locally during sync; will retry");
             return Task.CompletedTask;
         }
-        _trash.Trash(path);
+        var trashedTo = _trash.Trash(path);
         _state.RemoveBaseline(_folder, t.Path);
         _trashedLocal += t.Count;
+        _log?.Invoke($"Moved to the desktop Trash (deleted on Drive): {t.Path} → {trashedTo}");
         return Task.CompletedTask;
     }
 

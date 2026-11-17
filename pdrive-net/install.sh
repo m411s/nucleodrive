@@ -93,7 +93,7 @@ fi
 
 cat > "$CONF/systemd/user/pdrive.service" <<UNIT
 [Unit]
-Description=Proton Drive one-way backup (unofficial)
+Description=Proton Drive sync and backup (unofficial)
 
 [Service]
 Type=notify

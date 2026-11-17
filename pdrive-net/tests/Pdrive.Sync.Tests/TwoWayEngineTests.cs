@@ -15,6 +15,7 @@ public sealed class TwoWayFixture : IDisposable
     public StateStore State { get; }
     public TwoWaySyncEngine Engine { get; }
     public SyncConfig Cfg { get; set; }
+    public List<string> Log { get; } = [];
     private int _otherDevice;
 
     public static CancellationToken Ct => TestContext.Current.CancellationToken;
@@ -27,7 +28,7 @@ public sealed class TwoWayFixture : IDisposable
         Fake = new FakeCli(Tmp["fake.log"]).UseTree(Tmp["tree.json"]);
         Cli = Fake.Client();
         State = new StateStore(Tmp["state.db"]);
-        Engine = new TwoWaySyncEngine(Cli, State, new FreedesktopTrash(Tmp["data"], mountPoints: () => ["/"]));
+        Engine = new TwoWaySyncEngine(Cli, State, new FreedesktopTrash(Tmp["data"], mountPoints: () => ["/"]), m => { lock (Log) Log.Add(m); });
         Cfg = new SyncConfig { MinAgeSeconds = 0, Sync = new TwoWaySettings { Local = Root, Folders = ["Docs"] } };
     }
 
@@ -129,6 +130,32 @@ public sealed class TwoWayEngineTests : IDisposable
         Assert.Equal("Downloading /my-files/Docs for the first time…", messages[0]);
         Assert.Contains(messages, m => m.StartsWith("Matching the downloaded files with /my-files/Docs… (", StringComparison.Ordinal) && m.EndsWith("folders checked)", StringComparison.Ordinal));
         Assert.Contains(messages, m => m.StartsWith("Checking /my-files/Docs on Drive", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Every_change_is_logged()
+    {
+        await _f.SyncedStart();
+        Assert.Contains("Downloaded /my-files/Docs for the first time: 2 files in 1 folders", _f.Log);
+        _f.Log.Clear();
+
+        _f.WriteLocal("Docs/new.txt", "N");
+        File.Move(_f.LocalPath("Docs/a.txt"), _f.LocalPath("Docs/a2.txt"));
+        File.Delete(_f.LocalPath("Docs/sub/b.txt"));
+        await _f.WriteRemote("Docs/from-phone.txt", "P");
+        await _f.Full();
+        Assert.Contains("Uploaded: Docs/new.txt", _f.Log);
+        Assert.Contains("Renamed on Drive to match this computer: Docs/a.txt → Docs/a2.txt", _f.Log);
+        Assert.Contains("Moved to the Drive trash (deleted on this computer): Docs/sub/b.txt", _f.Log);
+        Assert.Contains("Downloaded: Docs/from-phone.txt", _f.Log);
+        _f.Log.Clear();
+
+        _f.WriteLocal("Docs/new.txt", "older local edit", TwoWayFixture.Old.AddHours(1));
+        await _f.WriteRemote("Docs/new.txt", "newer Drive edit", TwoWayFixture.Old.AddHours(2));
+        await _f.Cli.TrashAsync(["/my-files/Docs/from-phone.txt"], TwoWayFixture.Ct);
+        await _f.Full();
+        Assert.Contains(_f.Log, l => l.StartsWith("Conflict: Drive's newer version of Docs/new.txt wins; the local copy was moved to ", StringComparison.Ordinal));
+        Assert.Contains(_f.Log, l => l.StartsWith("Moved to the desktop Trash (deleted on Drive): Docs/from-phone.txt → ", StringComparison.Ordinal));
     }
 
     [Fact]

@@ -177,10 +177,14 @@ public sealed class TwoWaySyncWorker : BackgroundService
                 Publish(SyncState.Syncing, full ? $"Checking {folder}…" : $"Syncing local changes in {folder}…", sync, errors);
                 try
                 {
-                    var engine = new TwoWaySyncEngine(client, _state, _trash);
+                    var engine = new TwoWaySyncEngine(client, _state, _trash, change => _log.LogInformation("{Folder}: {Change}", folder, change));
+                    var started = System.Diagnostics.Stopwatch.StartNew();
                     var result = full
                         ? await engine.FullPassAsync(sync, cfg, folder, confirm, progress, runCts.Token)
                         : await engine.LocalPassAsync(sync, cfg, folder, confirm, progress, runCts.Token);
+                    if (full || result.Changes > 0)
+                        _log.LogInformation("{Folder}: {Kind} in {Seconds:0} s: {Summary}", folder,
+                            full ? "checked Drive" : "synced local changes", started.Elapsed.TotalSeconds, Summarize(result));
                     changes += result.Changes;
                     errors.AddRange(result.Errors.Select(e => $"{folder}/{e}"));
                     lock (_gate)
@@ -246,6 +250,19 @@ public sealed class TwoWaySyncWorker : BackgroundService
             if (full)
                 _nextFull = DateTimeOffset.UtcNow + sync.RemoteInterval;
         }
+    }
+
+    private static string Summarize(PassResult r)
+    {
+        var parts = new List<string>();
+        if (r.Uploaded > 0) parts.Add($"{r.Uploaded} uploaded");
+        if (r.Downloaded > 0) parts.Add($"{r.Downloaded} downloaded");
+        if (r.Moved > 0) parts.Add($"{r.Moved} renamed/moved");
+        if (r.TrashedRemote > 0) parts.Add($"{r.TrashedRemote} moved to the Drive trash");
+        if (r.TrashedLocal > 0) parts.Add($"{r.TrashedLocal} moved to the desktop Trash");
+        if (r.DeletionsHeld) parts.Add($"{r.HeldLocalDeletes + r.HeldRemoteDeletes} deletions waiting for confirmation");
+        if (r.Errors.Count > 0) parts.Add($"{r.Errors.Count} problem(s)");
+        return parts.Count == 0 ? "up to date" : string.Join(", ", parts);
     }
 
     private void UpdateWatcher(TwoWaySettings? sync, SyncConfig cfg)

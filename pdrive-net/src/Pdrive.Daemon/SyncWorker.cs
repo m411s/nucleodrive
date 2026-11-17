@@ -261,6 +261,8 @@ public sealed class SyncWorker : BackgroundService
             {
                 SetStatus(DaemonState.Idle, result.Uploaded > 0 ? $"Up to date ({result.Uploaded} uploaded)" : "Up to date");
             }
+            if (result.Uploaded > 0)
+                _log.LogInformation("Backup: uploaded {Count} new or changed file(s)", result.Uploaded);
         }
         catch (ConfigException e)
         {
