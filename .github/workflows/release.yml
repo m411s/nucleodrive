@@ -114,7 +114,7 @@ jobs:
 
           - **.deb** (Debian/Ubuntu): `sudo apt install ./pdrive_*.deb`; the sync service starts at your next login (or `systemctl --user start pdrive`).
           - **AppImage**: `chmod +x pdrive-*.AppImage` and run it; the first launch sets up the background service and login entry.
-          - Check downloads with `sha256sum -c SHA256SUMS`, and (once the repository is public) where they were built with `gh attestation verify <file> -R m411s/pdrive`.
+          - Check downloads with `sha256sum -c SHA256SUMS`, and where they were built with `gh attestation verify <file> -R m411s/pdrive`.
 
           The app installs Proton's official `proton-drive` CLI for you (Settings › Install the CLI), verified against Proton's published checksum.
           EOF
