@@ -9,6 +9,7 @@
 # Options (environment):
 #   NO_SYSTEMD=1   don't touch systemd (e.g. no user session, or testing with a fake HOME)
 #   NO_BUILD=1     reuse an existing publish in $LIB (only rewrite the unit/desktop files)
+#   NO_TRAY=1      don't start the tray now (it still starts at login)
 #
 # Config and state (kept across reinstalls): ~/.config/pdrive, ~/.local/state/pdrive.
 # On first start the daemon imports the Python prototype's config and state (proton-drive-gui).
@@ -134,6 +135,12 @@ else
   echo "systemd not used; start the daemon yourself: \"$LIB/pdrive-daemon\""
 fi
 
+# Start (or restart, after an update) the tray now instead of waiting for the next login.
+if [ "${NO_TRAY:-0}" != "1" ] && { [ -n "${WAYLAND_DISPLAY:-}" ] || [ -n "${DISPLAY:-}" ]; }; then
+  pkill -u "$(id -u)" -f "^$LIB/pdrive --tray\$" 2>/dev/null && sleep 1 || true
+  setsid -f "$LIB/pdrive" --tray >/dev/null 2>&1 < /dev/null && echo "Tray started (it also starts at login)."
+fi
+
 case ":$PATH:" in *":$BIN:"*) ;; *) echo "Note: $BIN is not on your PATH." ;; esac
 echo "Next:  pdrivectl add ~/Documents /my-files/Documents   (or use the Backup tab in the app)"
-echo "Tray starts at next login, or now: \"$LIB/pdrive\" --tray &"
+echo "On GNOME the tray icon needs the AppIndicator extension (Ubuntu has it enabled by default)."

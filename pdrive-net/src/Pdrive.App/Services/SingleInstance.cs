@@ -7,14 +7,15 @@ namespace Pdrive.App.Services;
 /// <summary>One app instance per user: later launches send "show" over a Unix socket and exit.</summary>
 public static class SingleInstance
 {
-    public static bool TrySignalExisting(string socketPath)
+    /// <summary>True if another instance is running; with <paramref name="show"/> it is asked to show its window.</summary>
+    public static bool TrySignalExisting(string socketPath, bool show = true)
     {
         try
         {
             SocketPath.Validate(socketPath);
             using var s = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);
             s.Connect(new UnixDomainSocketEndPoint(socketPath));
-            s.Send(Encoding.ASCII.GetBytes("show\n"));
+            s.Send(Encoding.ASCII.GetBytes(show ? "show\n" : "ping\n"));
             return true;
         }
         catch (Exception e) when (e is SocketException or DaemonException)
