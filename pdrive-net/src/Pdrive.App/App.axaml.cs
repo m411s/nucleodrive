@@ -55,7 +55,8 @@ public sealed class App : Application
         _window = new MainWindow();
         var vm = new MainWindowViewModel(
             new BrowserViewModel(client, clientError, _window, _window),
-            new BackupViewModel(daemon, _window, _window, a => Dispatcher.UIThread.Post(a)));
+            new BackupViewModel(daemon, _window, _window, a => Dispatcher.UIThread.Post(a)),
+            new SyncViewModel(daemon, client, _window, a => Dispatcher.UIThread.Post(a), OpenInFileManager));
         _window.DataContext = vm;
         _window.Closing += (_, e) =>
         {
@@ -70,7 +71,7 @@ public sealed class App : Application
             }
         };
 
-        _tray = new TrayController(this, daemon, ShowWindow, () => Quit(desktop));
+        _tray = new TrayController(this, daemon, ShowWindow, () => Quit(desktop), OpenInFileManager);
         _monitor.Start();
         _singleInstance = SingleInstance.Listen(paths.AppSocket, () => Dispatcher.UIThread.Post(ShowWindow));
         desktop.Exit += (_, _) => Cleanup();
@@ -92,6 +93,18 @@ public sealed class App : Application
         {
             _browserLoaded = true; // first CLI call only once the window is actually shown
             _ = vm.Browser.RefreshAsync();
+        }
+    }
+
+    private static void OpenInFileManager(string folder)
+    {
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("xdg-open", [folder]) { UseShellExecute = false })?.Dispose();
+        }
+        catch (System.ComponentModel.Win32Exception)
+        {
+            // no xdg-open; nothing sensible to do
         }
     }
 

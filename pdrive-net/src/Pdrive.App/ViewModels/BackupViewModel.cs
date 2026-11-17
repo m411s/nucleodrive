@@ -129,8 +129,9 @@ public sealed partial class BackupViewModel : ObservableObject
     }
 }
 
-public sealed class MainWindowViewModel(BrowserViewModel browser, BackupViewModel backup)
+public sealed class MainWindowViewModel(BrowserViewModel browser, BackupViewModel backup, SyncViewModel sync)
 {
     public BrowserViewModel Browser { get; } = browser;
     public BackupViewModel Backup { get; } = backup;
+    public SyncViewModel Sync { get; } = sync;
 }

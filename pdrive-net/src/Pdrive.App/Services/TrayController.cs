@@ -16,11 +16,17 @@ public sealed class TrayController : IDisposable
     private readonly NativeMenuItem _lastSync = new() { IsEnabled = false };
     private readonly NativeMenuItem _syncNow = new("Sync now");
     private readonly NativeMenuItem _pause = new("Pause");
+    private readonly NativeMenuItem _openSync = new("Open sync folder");
     private readonly DispatcherTimer _clock;
 
-    public TrayController(Application app, IDaemonControl daemon, Action showWindow, Action quit)
+    public TrayController(Application app, IDaemonControl daemon, Action showWindow, Action quit, Action<string> openFolder)
     {
         _daemon = daemon;
+        _openSync.Click += (_, _) =>
+        {
+            if (_daemon.Status.Sync is { LocalRoot.Length: > 0 } sync)
+                openFolder(sync.LocalRoot);
+        };
         var open = new NativeMenuItem("Open Proton Drive");
         var quitItem = new NativeMenuItem("Quit");
         open.Click += (_, _) => showWindow();
@@ -32,7 +38,7 @@ public sealed class TrayController : IDisposable
         {
             Icon = StatusIcons.For(DaemonState.Stopped),
             ToolTipText = "Proton Drive",
-            Menu = new NativeMenu { _status, _lastSync, new NativeMenuItemSeparator(), _syncNow, _pause, open, new NativeMenuItemSeparator(), quitItem },
+            Menu = new NativeMenu { _status, _lastSync, new NativeMenuItemSeparator(), _syncNow, _pause, _openSync, open, new NativeMenuItemSeparator(), quitItem },
         };
         _icon.Clicked += (_, _) => showWindow();
         TrayIcon.SetIcons(app, [_icon]);
@@ -47,15 +53,17 @@ public sealed class TrayController : IDisposable
 
     private void Update(DaemonStatus s)
     {
-        if (_shown != s.State)
+        var (state, message, last) = TrayState.Combine(s);
+        if (_shown != state)
         {
-            _icon.Icon = StatusIcons.For(s.State);
-            _shown = s.State;
+            _icon.Icon = StatusIcons.For(state);
+            _shown = state;
         }
-        var tip = $"Proton Drive – {s.Message}";
+        var tip = $"Proton Drive – {message}";
         _icon.ToolTipText = tip.Length > 120 ? tip[..120] : tip;
-        _status.Header = s.Message.Length > 80 ? s.Message[..80] + "…" : s.Message;
-        _lastSync.Header = "Last sync: " + Units.Ago(s.LastSync);
+        _status.Header = message.Length > 80 ? message[..80] + "…" : message;
+        _lastSync.Header = "Last sync: " + Units.Ago(last);
+        _openSync.IsEnabled = s.Sync is { Folders.Count: > 0 };
         var running = s.State != DaemonState.Stopped;
         _syncNow.IsEnabled = running && s.State != DaemonState.Paused;
         _pause.IsEnabled = running;

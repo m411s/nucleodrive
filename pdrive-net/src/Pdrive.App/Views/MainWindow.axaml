@@ -62,6 +62,60 @@
       </DockPanel>
     </TabItem>
 
+    <!-- Sync tab -->
+    <TabItem Header="Sync">
+      <ScrollViewer DataContext="{Binding Sync}" x:DataType="vm:SyncViewModel">
+        <StackPanel Spacing="12" Margin="0,8">
+          <Border Padding="16" CornerRadius="8" Background="{DynamicResource CardBackgroundFillColorDefaultBrush}">
+            <StackPanel Spacing="6">
+              <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
+                  <Button Command="{Binding OpenFolderCommand}">Open folder</Button>
+                  <Button Command="{Binding SyncNowCommand}">Sync now</Button>
+                </StackPanel>
+                <TextBlock Text="{Binding StateText}" FontSize="20" FontWeight="SemiBold" />
+              </DockPanel>
+              <TextBlock Text="{Binding Message}" TextWrapping="Wrap" />
+              <TextBlock Text="{Binding LocalRoot, StringFormat='Local folder: {0}'}" Opacity="0.7" IsVisible="{Binding IsRunning}" />
+              <TextBlock Text="{Binding LastScanText}" Opacity="0.6" IsVisible="{Binding HasFolders}" />
+              <Button Classes="accent" Command="{Binding ConfirmDeletionsCommand}" IsVisible="{Binding NeedsConfirmation}"
+                      HorizontalAlignment="Left">Confirm the deletions</Button>
+            </StackPanel>
+          </Border>
+
+          <TextBlock Text="Drive folders to sync" FontWeight="SemiBold" />
+          <TextBlock Opacity="0.6" TextWrapping="Wrap"
+                     Text="Checked folders are kept identical in both places. Changes on this computer upload within seconds; changes made elsewhere arrive at the next check of Drive. Deleted files go to the Trash on the other side. If a file changed in both places, the newer version wins (the other is kept in the Trash or Drive's version history)." />
+          <ItemsControl ItemsSource="{Binding Choices}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:SyncFolderChoice">
+                <CheckBox IsChecked="{Binding IsChecked}" Content="{Binding Path}" />
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <DockPanel>
+            <Button DockPanel.Dock="Right" Command="{Binding AddPathCommand}" Margin="8,0,0,0">Add</Button>
+            <TextBox Text="{Binding NewPath}" PlaceholderText="Folder inside My files, e.g. Documents/Work" />
+          </DockPanel>
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Button Classes="accent" Command="{Binding ApplyCommand}" IsEnabled="{Binding ChoicesDirty}">Apply</Button>
+            <Button Command="{Binding LoadChoicesCommand}">Reload list</Button>
+          </StackPanel>
+
+          <StackPanel Spacing="4" IsVisible="{Binding Errors.Count}">
+            <TextBlock Text="Problems" FontWeight="SemiBold" />
+            <ItemsControl ItemsSource="{Binding Errors}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="x:String">
+                  <SelectableTextBlock Text="{Binding}" TextWrapping="Wrap" Opacity="0.8" />
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </StackPanel>
+      </ScrollViewer>
+    </TabItem>
+
     <!-- Backup tab -->
     <TabItem Header="Backup">
       <ScrollViewer DataContext="{Binding Backup}" x:DataType="vm:BackupViewModel">

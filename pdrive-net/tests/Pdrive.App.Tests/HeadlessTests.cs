@@ -38,7 +38,8 @@ public sealed class HeadlessTests
         var daemon = new FakeDaemon();
         var browser = new BrowserViewModel(new FakeDrive(), null, window, window);
         var backup = new BackupViewModel(daemon, window, window, a => a());
-        window.DataContext = new MainWindowViewModel(browser, backup);
+        var sync = new SyncViewModel(daemon, new FakeDrive(), window, a => a(), _ => { });
+        window.DataContext = new MainWindowViewModel(browser, backup, sync);
         window.Show();
 
         await browser.RefreshAsync();
@@ -51,11 +52,19 @@ public sealed class HeadlessTests
 
         daemon.Publish(FakeDaemon.With(DaemonState.Idle, "Up to date (3 uploaded)"));
         var tabs = window.GetLogicalDescendants().OfType<TabControl>().Single();
-        tabs.SelectedIndex = 1;
+        tabs.SelectedIndex = 2;
         Avalonia.Threading.Dispatcher.UIThread.RunJobs();
         texts = window.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToList();
         Assert.Contains("Up to date (3 uploaded)", texts);
         Assert.Contains("/home/me/Docs", texts);
+
+        daemon.Publish(FakeDaemon.WithSync(SyncState.Syncing, "Downloading Docs/a.txt"));
+        tabs.SelectedIndex = 1;
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        texts = window.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToList();
+        Assert.Contains("Syncing", texts);
+        Assert.Contains("Downloading Docs/a.txt", texts);
+        Assert.Contains("Local folder: /home/me/proton-drive", texts);
         window.Close();
     }
 }

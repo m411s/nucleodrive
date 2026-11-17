@@ -110,4 +110,21 @@ public sealed class FakeDaemon : IDaemonControl
     public Task<FolderInfo[]> ListFoldersAsync() => Task.FromResult(Folders.ToArray());
     public Task AddFolderAsync(string local, string remote) => Record($"add {local} {remote}");
     public Task RemoveFolderAsync(string local) => Record($"remove {local}");
+
+    public string[] SyncFolders { get; set; } = ["Docs"];
+    public Task<SyncSettingsInfo> GetSyncSettingsAsync() => Task.FromResult(new SyncSettingsInfo("/home/me/proton-drive", SyncFolders, 15));
+
+    public async Task SetSyncFoldersAsync(string[] folders)
+    {
+        await Record("sync-folders " + string.Join(',', folders));
+        SyncFolders = folders;
+    }
+
+    public Task ConfirmDeletionsAsync() => Record("confirm");
+
+    public static DaemonStatus WithSync(SyncState state, string message = "", int held = 0, params string[] folders) =>
+        With(DaemonState.Idle, "No folders configured") with
+        {
+            Sync = new SyncInfo(state, message, "/home/me/proton-drive", folders.Length > 0 ? folders : ["Docs"], null, held, []),
+        };
 }
