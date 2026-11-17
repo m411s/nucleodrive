@@ -1,9 +1,11 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/Pdrive.Cli/Pdrive.Cli.csproj" />
+    <Project Path="src/Pdrive.Sync/Pdrive.Sync.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Pdrive.FakeCli/Pdrive.FakeCli.csproj" />
     <Project Path="tests/Pdrive.Cli.Tests/Pdrive.Cli.Tests.csproj" />
+    <Project Path="tests/Pdrive.Sync.Tests/Pdrive.Sync.Tests.csproj" />
   </Folder>
 </Solution>
