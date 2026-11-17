@@ -24,6 +24,33 @@ right in the file manager (like Dropbox's or Nextcloud's emblems), with a few ac
 - **Later:** Nemo and Caja (nemo-python and caja-python take the same Python code), Thunar
   (thunarx-python), and KDE's Dolphin (a `KOverlayIconPlugin`, C++/Qt, like Nextcloud's).
 
+## Translations (German first)
+
+Show pdrive in the user's language, starting with German; English stays the fallback for anything not
+translated yet.
+
+- **Strings out of the code:** move every user-facing text (app, tray menu, wizard, toasts, error
+  messages the app writes, `pdrivectl` output) into `.resx` resources, `Strings.resx` (English) plus
+  `Strings.de.resx`. XAML reads them through a small markup extension, e.g. `{l:T Sync.Title}`. Error
+  text that comes straight from the Proton CLI stays as the CLI prints it.
+- **Culture support:** the build sets `InvariantGlobalization=true`, which can't switch to `de-DE`
+  (neither texts nor date formats). Turn it off for the app, `pdrivectl` and the daemon (the daemon
+  writes status messages the app shows). That needs ICU at run time: add `libicu` to the .deb's
+  dependencies, and the AppImage has to bundle it or rely on the system's.
+- **Which language:** follow the system (`LANGUAGE`, `LC_MESSAGES`, `LANG`), with a language choice in
+  Settings › Appearance (Automatic · English · Deutsch) next to the theme.
+- **Formats:** dates ("Heute 14:05", "17. Nov."), sizes ("47,1 KB") and plurals ("1 Datei" / "3 Dateien")
+  go through the culture instead of fixed English patterns (`Units.Ago`, `EntryViewModel.FormatDate`,
+  the tray and sync messages).
+- **Around the app:** `Name[de]`, `Comment[de]` and `GenericName[de]` in the .desktop files, and German
+  AppStream metadata for the stores.
+- **Keeping it complete:** a test that every key in `Strings.resx` exists in each translation and that
+  placeholders (`{0}`) match, and a pseudo-locale (e.g. `[!!Synchronisieren!!]`) screenshot run that shows
+  hard-coded strings and texts too long for their space. German is often around 30% longer than English,
+  so check the sidebar, the buttons and the segmented switches.
+- **Other languages later:** with the strings in `.resx`, more languages can come from contributors,
+  e.g. through Weblate's free hosting for open-source projects once the repository is public.
+
 ## Ideas
 
 - Edit the rest of `config.json` in Settings (sync folder location, check interval, parallel listings,
