@@ -29,7 +29,9 @@ Unchosen folders stay online-only and remain browsable in the Files page.
 
 - **Changes on this computer** (file manager, editors, …) upload within seconds (inotify).
 - **Changes made elsewhere** (web, phone, other computers) arrive at the next check of Drive: every
-  `sync.remote_interval_minutes` (15), or on **Sync now**. The CLI can only list one folder at a time
+  `sync.remote_interval_minutes` (15), or on **Sync now**. While checks keep finding nothing, the wait
+  grows (15, 15, 30, 30, then 60 min, `sync.remote_interval_max_minutes`) and drops back to 15 after any
+  change, here or on Drive. The CLI can only list one folder at a time
   (about 2 s each), so a check takes a while for big folders; up to `sync.parallel_listings` (4) run at once.
 - **Deletions** go to the Trash on the other side (Drive trash, or your desktop Trash), never erased.
 - **Renames and moves** are applied as renames, so nothing is re-transferred and version history stays.
@@ -99,7 +101,7 @@ never included.
 | CLI | `pdrivectl sync status \| list \| add FOLDER \| remove FOLDER \| now \| confirm` (two-way sync) |
 | | `pdrivectl status \| list \| add LOCAL REMOTE \| remove LOCAL \| now \| pause \| resume` (backups; pause/resume cover sync too) |
 | Daemon | `systemctl --user status pdrive`, logs with `journalctl --user -u pdrive` |
-| Config | `~/.config/pdrive/config.json`: `interval_minutes` (15), `min_age_seconds` (5), `exclude` (`.*`, `*~`, `*.tmp`, `*.part`, `*.crdownload`), `folders`, `conflict_strategy` for files that already exist on Drive (`create-new-revision` default, `rename`, `replace`, `skip`), `watch` (true), and `sync`: `local` (`~/proton-drive`), `folders`, `remote_interval_minutes` (15), `parallel_listings` (4), `max_deletes_without_confirm` (50) |
+| Config | `~/.config/pdrive/config.json`: `interval_minutes` (15), `min_age_seconds` (5), `exclude` (`.*`, `*~`, `*.tmp`, `*.part`, `*.crdownload`), `folders`, `conflict_strategy` for files that already exist on Drive (`create-new-revision` default, `rename`, `replace`, `skip`), `watch` (true), and `sync`: `local` (`~/proton-drive`), `folders`, `remote_interval_minutes` (15), `remote_interval_max_minutes` (60: while checks find nothing, the wait doubles every two checks up to this), `parallel_listings` (4), `max_deletes_without_confirm` (50) |
 | State | `~/.local/state/pdrive/state.db` (SQLite: what was uploaded where, the sync baseline, pause, last sync) |
 
 A broken `config.json` shows as an error in the status; the daemon keeps running on the last good

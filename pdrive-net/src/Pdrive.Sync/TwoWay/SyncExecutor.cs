@@ -184,16 +184,17 @@ public sealed class SyncExecutor
 
     private async Task CreateRemoteFolderAsync(string rel, CancellationToken ct)
     {
+        string? uid = null;
         try
         {
-            await _client.MkdirAsync(SyncPaths.Remote(rel), ct);
+            uid = await _client.CreateFolderAsync(SyncPaths.Remote(rel), ct); // one call: the CLI returns the new ID
         }
         catch (DriveException e) when (e is not AuthException && e.Message.Contains("already exists", StringComparison.Ordinal))
         {
         }
-        var info = await _client.InfoAsync(SyncPaths.Remote(rel), ct);
+        uid ??= (await _client.InfoAsync(SyncPaths.Remote(rel), ct)).Uid;
         var st = Posix.TryStat(SyncPaths.Local(_root, rel));
-        _state.UpsertBaseline(_folder, [new BaseItem(rel, true, info.Uid, null, 0, 0, st?.Inode ?? 0)]);
+        _state.UpsertBaseline(_folder, [new BaseItem(rel, true, uid, null, 0, 0, st?.Inode ?? 0)]);
         _log?.Invoke($"Created folder on Drive: {rel}");
     }
 

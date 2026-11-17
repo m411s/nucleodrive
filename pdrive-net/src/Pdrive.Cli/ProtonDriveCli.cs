@@ -74,6 +74,23 @@ public sealed class ProtonDriveCli : IDriveClient
         RunAsync(["filesystem", "create-folder", "--", RemotePath.Parent(remotePath), RemotePath.UnescapeName(RemotePath.Name(remotePath))],
             ShortTimeout, null, ct);
 
+    public async Task<string?> CreateFolderAsync(string remotePath, CancellationToken ct = default)
+    {
+        var output = await RunAsync(["filesystem", "create-folder", "--json", "--", RemotePath.Parent(remotePath),
+            RemotePath.UnescapeName(RemotePath.Name(remotePath))], ShortTimeout, null, ct);
+        var start = output.IndexOf('{');
+        if (start < 0)
+            return null;
+        try
+        {
+            return System.Text.Json.Nodes.JsonNode.Parse(output[start..])?["uid"]?.GetValue<string>();
+        }
+        catch (Exception e) when (e is System.Text.Json.JsonException or InvalidOperationException or FormatException)
+        {
+            return null; // created; the caller looks the ID up instead
+        }
+    }
+
     // Bare names (create-folder, rename) go after "--", so a name like "--help" or "-rf" is never read
     // as an option (checked with cli-drive 0.9.0). Paths are safe anyway: they always start with '/'.
 

@@ -228,6 +228,75 @@ public sealed class TwoWayEngineTests : IDisposable
         Assert.Equal("two", _f.ReadLocal("Docs/x/2.txt"));
     }
 
+    [Fact]
+    public async Task Local_changes_are_checked_with_one_listing_per_folder_not_one_call_per_file()
+    {
+        await _f.SyncedStart();
+        for (var i = 0; i < 6; i++)
+            _f.WriteLocal($"Docs/sub/new{i}.txt", $"n{i}");
+        _f.WriteLocal("Docs/a.txt", "A-edited", TwoWayFixture.Old.AddHours(2));
+        _f.WriteLocal("Docs/fresh/deep/x.txt", "X"); // a new folder tree: not on Drive yet
+
+        var cli = new CountingClient(_f.Cli);
+        var engine = new TwoWaySyncEngine(cli, _f.State, new FreedesktopTrash(_f.Tmp["data"], mountPoints: () => ["/"]), null);
+        var r = await engine.LocalPassAsync(_f.Cfg.Sync, _f.Cfg, "Docs", false, null, TwoWayFixture.Ct);
+
+        Assert.Equal(8, r.Uploaded);
+        Assert.Empty(r.Errors);
+        Assert.Equal(0, cli.Count("info")); // folders are created with --json, files checked by listing
+        // checks: Docs, Docs/sub, Docs/fresh/deep (not found); then one re-listing per upload batch
+        Assert.Equal(["Docs", "Docs/fresh/deep", "Docs/sub"], cli.Listed.Take(3).Order(StringComparer.Ordinal));
+        Assert.Equal(2, cli.Count("mkdir"));
+        Assert.Equal("X", await _f.ReadRemote("Docs/fresh/deep/x.txt"));
+        Assert.Equal(0, (await _f.Full()).Changes);
+    }
+
+    /// <summary>Counts calls by kind and records listed paths (relative to My files).</summary>
+    private sealed class CountingClient(IDriveClient inner) : IDriveClient
+    {
+        private readonly System.Collections.Concurrent.ConcurrentBag<string> _calls = [];
+        public List<string> Listed { get; } = [];
+        public int Count(string kind) => _calls.Count(c => c == kind);
+
+        public Task<IReadOnlyList<DriveEntry>> ListAsync(string path, CancellationToken ct = default)
+        {
+            _calls.Add("list");
+            lock (Listed)
+                Listed.Add(path["/my-files/".Length..]);
+            return inner.ListAsync(path, ct);
+        }
+        public Task<bool> IsLoggedInAsync(CancellationToken ct = default) => inner.IsLoggedInAsync(ct);
+        public Task LoginAsync(CancellationToken ct = default) => inner.LoginAsync(ct);
+        public Task LogoutAsync(CancellationToken ct = default) => inner.LogoutAsync(ct);
+        public Task MkdirAsync(string remotePath, CancellationToken ct = default)
+        {
+            _calls.Add("mkdir");
+            return inner.MkdirAsync(remotePath, ct);
+        }
+        public Task<string?> CreateFolderAsync(string remotePath, CancellationToken ct = default)
+        {
+            _calls.Add("mkdir");
+            return inner.CreateFolderAsync(remotePath, ct);
+        }
+        public Task UploadAsync(IReadOnlyList<string> localPaths, string remoteDir, IProgress<string>? output = null, CancellationToken ct = default)
+        {
+            _calls.Add("upload");
+            return inner.UploadAsync(localPaths, remoteDir, output, ct);
+        }
+        public Task DownloadAsync(string remotePath, string localDir, long? size = null, IProgress<string>? output = null, CancellationToken ct = default) =>
+            inner.DownloadAsync(remotePath, localDir, size, output, ct);
+        public Task DownloadManyAsync(IReadOnlyList<string> remotePaths, string localDir, long? totalSize = null,
+            IProgress<string>? output = null, CancellationToken ct = default) => inner.DownloadManyAsync(remotePaths, localDir, totalSize, output, ct);
+        public Task<DriveEntry> InfoAsync(string remotePath, CancellationToken ct = default)
+        {
+            _calls.Add("info");
+            return inner.InfoAsync(remotePath, ct);
+        }
+        public Task TrashAsync(IReadOnlyList<string> remotePaths, CancellationToken ct = default) => inner.TrashAsync(remotePaths, ct);
+        public Task RenameAsync(string remotePath, string newName, CancellationToken ct = default) => inner.RenameAsync(remotePath, newName, ct);
+        public Task MoveAsync(IReadOnlyList<string> remotePaths, string targetParent, CancellationToken ct = default) => inner.MoveAsync(remotePaths, targetParent, ct);
+    }
+
     /// <summary>Downloads everything except one path, then fails like the CLI does for a missing node.</summary>
     private sealed class VanishingClient(IDriveClient inner, string vanished) : IDriveClient
     {

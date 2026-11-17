@@ -60,7 +60,12 @@ internal static class TreeDrive
         // '-' is an unknown option.
         var dashes = a.IndexOf("--");
         if (dashes >= 0)
+        {
             a.RemoveAt(dashes);
+            for (var i = dashes - 1; i >= 2; i--)
+                if (a[i] is "--json" or "-j")
+                    a.RemoveAt(i); // output is JSON anyway
+        }
         else if (a.Skip(2).FirstOrDefault(x => x.StartsWith('-') && x is not ("-f" or "-d" or "--file-conflict-strategy"
                      or "--folder-conflict-strategy" or "--json" or "-j")) is { } bad
                  && a.Count >= 2 && a[1] is "create-folder" or "rename")

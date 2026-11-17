@@ -33,6 +33,7 @@ public sealed class TwoWaySyncWorker : BackgroundService
     private ChangeWatcher? _watcher;
     private string? _watcherKey;
     private DateTimeOffset _nextFull = DateTimeOffset.MinValue;
+    private int _quietChecks; // checks of Drive in a row that found nothing: the next one waits longer
     private DateTimeOffset? _lastFull;
     private readonly HashSet<string> _held = new(StringComparer.Ordinal);
 
@@ -259,7 +260,18 @@ public sealed class TwoWaySyncWorker : BackgroundService
             lock (_gate)
                 _runCts = null;
             if (full)
-                _nextFull = DateTimeOffset.UtcNow + sync.RemoteInterval;
+            {
+                _quietChecks = changes == 0 && errors.Count == 0 && heldTotal == 0 ? _quietChecks + 1 : 0;
+                _nextFull = DateTimeOffset.UtcNow + sync.NextCheckAfter(_quietChecks);
+            }
+            else if (changes > 0)
+            {
+                // You're working in the sync folder: check Drive at the normal pace again.
+                _quietChecks = 0;
+                var soon = DateTimeOffset.UtcNow + sync.RemoteInterval;
+                if (soon < _nextFull)
+                    _nextFull = soon;
+            }
         }
     }
 

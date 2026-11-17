@@ -22,11 +22,25 @@ public sealed record TwoWaySettings
     public IReadOnlyList<string> Folders { get; init; } = [];
 
     public double RemoteIntervalMinutes { get; init; } = 15;
+
+    /// <summary>While checks of Drive keep finding nothing, the wait grows up to this (back to
+    /// <see cref="RemoteIntervalMinutes"/> after any change). Set it equal to turn the back-off off.</summary>
+    public double RemoteIntervalMaxMinutes { get; init; } = 60;
     public int ParallelListings { get; init; } = 4;
     public int MaxDeletesWithoutConfirm { get; init; } = 50;
 
     [JsonIgnore] public string LocalPath => Path.TrimEndingDirectorySeparator(Path.GetFullPath(PdrivePaths.ExpandHome(Local)));
     [JsonIgnore] public TimeSpan RemoteInterval => TimeSpan.FromMinutes(Math.Max(1, RemoteIntervalMinutes));
+
+    /// <summary>The wait before the next check of Drive after <paramref name="quietChecks"/> checks in a row
+    /// found nothing: the interval, doubled after every two quiet checks, at most remote_interval_max_minutes
+    /// (default 15, 15, 30, 30, 60 … minutes).</summary>
+    public TimeSpan NextCheckAfter(int quietChecks)
+    {
+        var max = TimeSpan.FromMinutes(Math.Max(RemoteIntervalMaxMinutes, Math.Max(1, RemoteIntervalMinutes)));
+        var wait = RemoteInterval * Math.Pow(2, Math.Min(quietChecks, 20) / 2);
+        return wait > max ? max : wait;
+    }
 }
 
 /// <summary>config.json. Same shape as the Python prototype, plus <c>conflict_strategy</c>, <c>watch</c>
@@ -158,6 +172,7 @@ public sealed class ConfigStore(PdrivePaths paths)
         if (cfg.Sync.ParallelListings is < 1 or > 16) throw Bad("'sync.parallel_listings' must be between 1 and 16");
         if (cfg.Sync.MaxDeletesWithoutConfirm < 0) throw Bad("'sync.max_deletes_without_confirm' must be >= 0");
         if (!(cfg.Sync.RemoteIntervalMinutes > 0)) throw Bad("'sync.remote_interval_minutes' must be a positive number");
+        if (!(cfg.Sync.RemoteIntervalMaxMinutes > 0)) throw Bad("'sync.remote_interval_max_minutes' must be a positive number");
         var syncRoot = cfg.Sync.LocalPath;
         foreach (var f in cfg.Folders)
         {

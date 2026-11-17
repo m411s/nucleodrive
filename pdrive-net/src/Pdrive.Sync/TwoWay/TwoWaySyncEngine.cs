@@ -18,7 +18,8 @@ public sealed class SyncFolderException(string message) : Exception(message);
 public sealed class TwoWaySyncEngine(IDriveClient client, StateStore state, FreedesktopTrash trash, Action<string>? log = null)
 {
     /// <summary>Local passes with more changed paths than this do a full pass instead.</summary>
-    public const int MaxLocalPassChecks = 200;
+    /// <summary>Above this many changed Drive folders, a local pass does a full check instead.</summary>
+    public const int MaxLocalPassChecks = 50;
 
     public async Task<PassResult> FullPassAsync(TwoWaySettings sync, SyncConfig cfg, string folder, bool confirmDeletes,
         IProgress<string>? progress, CancellationToken ct)
@@ -68,30 +69,32 @@ public sealed class TwoWaySyncEngine(IDriveClient client, StateStore state, Free
             .ToList();
         if (changed.Count == 0)
             return PassResult.Empty;
-        if (changed.Count > MaxLocalPassChecks)
+        var deletedDirs = changed.Where(p => baseline.TryGetValue(p, out var b) && b.IsDir && !local.ContainsKey(p)).ToList();
+        var files = changed.Where(p => !deletedDirs.Contains(p) && !deletedDirs.Any(d => SyncPlanner.IsUnder(p, d))).ToList();
+        // One listing per Drive folder with changes (each CLI run costs ~1.5 s), not one check per file.
+        var parents = files.GroupBy(SyncPaths.Parent).ToList();
+        if (parents.Count > MaxLocalPassChecks)
             return await FullPassAsync(sync, cfg, folder, confirmDeletes, progress, ct);
 
-        var deletedDirs = changed.Where(p => baseline.TryGetValue(p, out var b) && b.IsDir && !local.ContainsKey(p)).ToList();
-        foreach (var p in changed)
-        {
-            if (deletedDirs.Any(d => SyncPlanner.IsUnder(p, d)))
-                continue; // covered by that folder's crawl
-            if (deletedDirs.Contains(p))
+        var listed = new System.Collections.Concurrent.ConcurrentDictionary<string, IReadOnlyList<DriveEntry>?>(StringComparer.Ordinal);
+        await Parallel.ForEachAsync(parents, new ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, sync.ParallelListings), CancellationToken = ct },
+            async (group, token) =>
             {
-                // A deleted folder: see what's really inside it on Drive before trashing anything.
-                foreach (var key in remote.Keys.Where(k => SyncPlanner.IsUnder(k, p)).ToList())
-                    remote.Remove(key);
                 try
                 {
-                    foreach (var (k, v) in await RemoteSnapshot.TakeAsync(client, p, cfg.Exclude, sync.ParallelListings, ct))
-                        remote[k] = v;
+                    listed[group.Key] = await client.ListAsync(SyncPaths.Remote(group.Key), token);
                 }
-                catch (IncompleteSnapshotException e) when (e.InnerException is DriveException d && d.Message.Contains("Node not found", StringComparison.Ordinal))
+                catch (DriveException e) when (e is not AuthException && e.Message.Contains("Node not found", StringComparison.Ordinal))
                 {
-                    remote.Remove(p);
+                    listed[group.Key] = null; // the folder isn't on Drive (yet): nothing in it is
                 }
-                continue;
-            }
+                catch (DriveException e) when (e is not AuthException)
+                {
+                    // e.g. it's a file on Drive: check its files one by one, as below
+                }
+            });
+        foreach (var p in parents.Where(g => !listed.ContainsKey(g.Key)).SelectMany(g => g))
+        {
             try
             {
                 var e = await client.InfoAsync(SyncPaths.Remote(p), ct);
@@ -99,6 +102,38 @@ public sealed class TwoWaySyncEngine(IDriveClient client, StateStore state, Free
                     remote[p] = new RemoteItem(p, e.IsDir, e.Uid, e.RevisionUid, e.Size ?? 0, e.ModifiedAt, e.Sha1, e.IsProtonDocument);
             }
             catch (DriveException e) when (e is not AuthException && e.Message.Contains("Node not found", StringComparison.Ordinal))
+            {
+                remote.Remove(p);
+            }
+        }
+        foreach (var group in parents)
+        {
+            if (!listed.ContainsKey(group.Key))
+                continue; // see below
+            var byName = listed[group.Key]?.Where(e => !e.NameUnavailable && e.Uid is not null)
+                .GroupBy(e => e.Name, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
+            foreach (var p in group)
+            {
+                if (byName is not null && byName.TryGetValue(SyncPaths.Name(p), out var e))
+                    remote[p] = new RemoteItem(p, e.IsDir, e.Uid!, e.RevisionUid, e.Size ?? 0, e.ModifiedAt, e.Sha1, e.IsProtonDocument);
+                else
+                    remote.Remove(p);
+            }
+        }
+
+        foreach (var p in deletedDirs)
+        {
+            if (deletedDirs.Any(d => d != p && SyncPlanner.IsUnder(p, d)))
+                continue; // covered by the outer folder's crawl
+            // A deleted folder: see what's really inside it on Drive before trashing anything.
+            foreach (var key in remote.Keys.Where(k => SyncPlanner.IsUnder(k, p)).ToList())
+                remote.Remove(key);
+            try
+            {
+                foreach (var (k, v) in await RemoteSnapshot.TakeAsync(client, p, cfg.Exclude, sync.ParallelListings, ct))
+                    remote[k] = v;
+            }
+            catch (IncompleteSnapshotException e) when (e.InnerException is DriveException d && d.Message.Contains("Node not found", StringComparison.Ordinal))
             {
                 remote.Remove(p);
             }

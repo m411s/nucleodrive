@@ -152,3 +152,17 @@ public sealed class ChangeWatcherTests
         Assert.Contains(tmp["nope"], w.Unwatched.Keys);
     }
 }
+
+public sealed class CheckIntervalTests
+{
+    [Fact]
+    public void Quiet_checks_back_off_up_to_the_maximum()
+    {
+        var s = new TwoWaySettings();
+        Assert.Equal([15.0, 15, 30, 30, 60, 60, 60], Enumerable.Range(0, 7).Select(q => s.NextCheckAfter(q).TotalMinutes));
+        var off = s with { RemoteIntervalMaxMinutes = 15 };
+        Assert.Equal(15, off.NextCheckAfter(10).TotalMinutes);
+        var fast = s with { RemoteIntervalMinutes = 5, RemoteIntervalMaxMinutes = 12 };
+        Assert.Equal([5.0, 5, 10, 10, 12], Enumerable.Range(0, 5).Select(q => fast.NextCheckAfter(q).TotalMinutes));
+    }
+}

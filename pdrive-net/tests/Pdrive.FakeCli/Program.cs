@@ -110,8 +110,11 @@ if (Cmd("filesystem", "upload"))
     return Fail($"{failed.Count} item(s) failed to upload");
 }
 
-if (Cmd("filesystem", "create-folder") && a.Count > 2 && a[2] == "--")
-    a.RemoveAt(2); // end of options, as pdrive passes it
+if (Cmd("filesystem", "create-folder"))
+{
+    while (a.Count > 2 && a[2] is "--json" or "-j" or "--")
+        a.RemoveAt(2); // pdrive passes "--json --" before parent and name
+}
 
 if (Cmd("filesystem", "create-folder"))
 {

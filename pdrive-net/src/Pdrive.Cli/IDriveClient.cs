@@ -24,6 +24,14 @@ public interface IDriveClient
     /// <param name="size">Expected bytes, if known; sets the timeout. Without it (e.g. folders) there is none.</param>
     Task DownloadAsync(string remotePath, string localDir, long? size = null, IProgress<string>? output = null, CancellationToken ct = default);
 
+    /// <summary>Creates a folder and returns its node ID, or null if that isn't known (then ask
+    /// <see cref="InfoAsync"/>). The CLI prints the new node with --json, saving that second call.</summary>
+    async Task<string?> CreateFolderAsync(string remotePath, CancellationToken ct = default)
+    {
+        await MkdirAsync(remotePath, ct);
+        return null;
+    }
+
     /// <summary>Several files or folders into one local folder, in one CLI run where possible
     /// (each run costs ~1.5 s). If it fails, some of them may have been downloaded.</summary>
     /// <param name="totalSize">Expected bytes of all of them, if known; sets the timeout.</param>
