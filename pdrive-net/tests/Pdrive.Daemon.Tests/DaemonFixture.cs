@@ -48,7 +48,7 @@ public sealed class DaemonFixture : IAsyncDisposable
         _lock = DaemonLock.TryAcquire(Paths.DaemonLock) ?? throw new InvalidOperationException("lock held");
         Host = DaemonHost.Build([], Paths, new DaemonOptions
         {
-            ClientFactory = cfg => Fake.Client(cfg.ConflictStrategy),
+            ClientFactory = cfg => Fake.Client(cfg.FileConflictStrategy),
             WatchQuiet = TimeSpan.FromMilliseconds(300),
             ProgressThrottle = TimeSpan.Zero,
             MinLogLevel = LogLevel.Warning,

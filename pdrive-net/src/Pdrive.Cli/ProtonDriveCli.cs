@@ -7,9 +7,13 @@ namespace Pdrive.Cli;
 
 public sealed record DriveCliOptions
 {
-    /// <summary>Value for `filesystem upload --conflict-strategy`, or null to use the CLI default.
-    /// Which values exist must be checked against the real CLI (docs/cli-notes.md).</summary>
-    public string? ConflictStrategy { get; init; }
+    /// <summary>What upload does when a file of the same name exists (`-f`). Always passed: without a
+    /// strategy the CLI prompts, which would stall a non-interactive call until its timeout.
+    /// create-new-revision keeps the old content in the file's version history.</summary>
+    public string FileConflictStrategy { get; init; } = UploadFileStrategies.Default;
+
+    /// <summary>What upload does when a folder of the same name exists (`-d`); merge adds to it.</summary>
+    public string FolderConflictStrategy { get; init; } = "merge";
 
     /// <summary>Extra environment variables for the CLI process (used by tests).</summary>
     public IReadOnlyDictionary<string, string?>? Environment { get; init; }
@@ -18,7 +22,15 @@ public sealed record DriveCliOptions
     public TimeSpan KillAfter { get; init; } = TimeSpan.FromSeconds(10);
 }
 
-/// <summary>Thin wrapper around Proton's official `proton-drive` CLI.</summary>
+/// <summary>Values of `filesystem upload -f` (checked against cli-drive 0.9.0).</summary>
+public static class UploadFileStrategies
+{
+    public const string Default = "create-new-revision";
+    public static readonly IReadOnlyList<string> All = ["create-new-revision", "rename", "replace", "skip"];
+}
+
+/// <summary>Thin wrapper around Proton's official `proton-drive` CLI (checked against cli-drive 0.9.0,
+/// see docs/cli-notes.md).</summary>
 public sealed class ProtonDriveCli : IDriveClient
 {
     private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(600);
@@ -55,20 +67,27 @@ public sealed class ProtonDriveCli : IDriveClient
 
     public Task LoginAsync(CancellationToken ct = default) => RunAsync(["auth", "login"], LoginTimeout, null, ct);
 
-    // The command name is a best guess until checked; callers treat failure as "may already exist".
+    /// <summary>`filesystem create-folder parentPath name`. Callers treat failure as "may already exist".</summary>
     public Task MkdirAsync(string remotePath, CancellationToken ct = default) =>
-        RunAsync(["filesystem", "mkdir", remotePath], ShortTimeout, null, ct);
+        RunAsync(["filesystem", "create-folder", RemotePath.Parent(remotePath), RemotePath.UnescapeName(RemotePath.Name(remotePath))],
+            ShortTimeout, null, ct);
 
     public Task UploadAsync(IReadOnlyList<string> localPaths, string remoteDir, IProgress<string>? output = null, CancellationToken ct = default)
     {
-        List<string> args = ["filesystem", "upload", .. localPaths, remoteDir];
-        if (_options.ConflictStrategy is { } strategy)
-            args.AddRange(["--conflict-strategy", strategy]);
+        List<string> args =
+        [
+            "filesystem", "upload",
+            "-f", _options.FileConflictStrategy,
+            "-d", _options.FolderConflictStrategy,
+            .. localPaths, remoteDir,
+        ];
         return RunAsync(args, TransferTimeout.For(TransferTimeout.LocalSize(localPaths)), output, ct);
     }
 
+    /// <summary>Never deletes anything locally: name clashes get a unique suffix, folders are merged.</summary>
     public Task DownloadAsync(string remotePath, string localDir, long? size = null, IProgress<string>? output = null, CancellationToken ct = default) =>
-        RunAsync(["filesystem", "download", remotePath, localDir], size is { } s ? TransferTimeout.For(s) : null, output, ct);
+        RunAsync(["filesystem", "download", "-f", "rename", "-d", "merge", remotePath, localDir],
+            size is { } s ? TransferTimeout.For(s) : null, output, ct);
 
     private async Task<string> RunAsync(IEnumerable<string> args, TimeSpan? timeout, IProgress<string>? output, CancellationToken ct)
     {

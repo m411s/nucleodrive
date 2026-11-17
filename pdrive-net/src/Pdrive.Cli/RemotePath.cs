@@ -20,15 +20,31 @@ public static class RemotePath
         return result;
     }
 
-    /// <summary>Parent folder, or "" at "/". Like posixpath.dirname.</summary>
+    /// <summary>Parent folder, or "" at "/". Like posixpath.dirname, but skips escaped "\/" in names.</summary>
     public static string Parent(string path)
     {
-        var i = path.LastIndexOf('/');
+        var i = LastSeparator(path);
         if (i < 0)
             return "";
         var head = path[..(i + 1)];
         return head.Trim('/').Length == 0 ? head : head.TrimEnd('/');
     }
 
-    public static string Name(string path) => path[(path.LastIndexOf('/') + 1)..];
+    /// <summary>Last segment (still escaped). Ignores an escaped "\/" inside the name.</summary>
+    public static string Name(string path) => path[(LastSeparator(path) + 1)..];
+
+    /// <summary>The CLI escapes '/' inside node names as "\/" in paths.</summary>
+    public static string EscapeName(string name) => name.Replace("/", "\\/", StringComparison.Ordinal);
+
+    public static string UnescapeName(string name) => name.Replace("\\/", "/", StringComparison.Ordinal);
+
+    private static int LastSeparator(string path)
+    {
+        for (var i = path.Length - 1; i >= 0; i--)
+        {
+            if (path[i] == '/' && (i == 0 || path[i - 1] != '\\'))
+                return i;
+        }
+        return -1;
+    }
 }

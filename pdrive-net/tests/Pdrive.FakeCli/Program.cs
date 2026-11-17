@@ -1,13 +1,14 @@
-// Stand-in for the proton-drive CLI in tests (C# port of proton-drive-gui/fake-proton-drive).
+// Stand-in for the proton-drive CLI in tests. Mirrors the interface and messages of the real
+// cli-drive 0.9.0 (see docs/cli-notes.md); only the behaviour tests need is simulated.
 // Env switches:
-//   FAKE_LOG=path        append each upload/mkdir call as a JSON array line
+//   FAKE_LOG=path        append each upload/create-folder/download call as a JSON array line
 //   FAKE_FAIL=text       uploads fail when any argument contains text
-//   FAKE_SIGNED_OUT=1    every filesystem command fails with a sign-in error
+//   FAKE_SIGNED_OUT=1    every filesystem command fails like the real CLI when signed out
 //   FAKE_OFFLINE=1       every filesystem command fails with a network error
 //   FAKE_SLOW=seconds    uploads sleep this long first (for cancellation/timeout tests)
 using System.Text.Json;
 
-var a = args;
+var a = args.ToList();
 var log = Environment.GetEnvironmentVariable("FAKE_LOG");
 
 void Rec(params string[] x)
@@ -22,12 +23,26 @@ int Fail(string msg, int code = 1)
     return code;
 }
 
-bool Cmd(string a0, string a1) => a.Length >= 2 && a[0] == a0 && a[1] == a1;
+bool Cmd(string a0, string a1) => a.Count >= 2 && a[0] == a0 && a[1] == a1;
 
-if (a.Length >= 1 && a[0] == "filesystem")
+// Pulls "-x VALUE" / "--long VALUE" out of the argument list.
+string? TakeOption(string shortName, string longName)
+{
+    var i = a.FindIndex(x => x == shortName || x == longName);
+    if (i < 0 || i + 1 >= a.Count)
+        return null;
+    var value = a[i + 1];
+    a.RemoveRange(i, 2);
+    return value;
+}
+
+a.Remove("--json");
+a.Remove("-j");
+
+if (a.Count >= 1 && a[0] == "filesystem")
 {
     if (Environment.GetEnvironmentVariable("FAKE_SIGNED_OUT") == "1")
-        return Fail("not logged in: run auth login");
+        return Fail("You need to login first");
     if (Environment.GetEnvironmentVariable("FAKE_OFFLINE") == "1")
         return Fail("network error: connection refused");
 }
@@ -40,7 +55,7 @@ if (Cmd("filesystem", "list"))
             Console.WriteLine("""[{"name": "b.txt", "type": "file", "size": 2048}, {"name": "Documents", "type": "folder"}]""");
             return 0;
         case "/nope":
-            return Fail("not logged in: run auth login");
+            return Fail("You need to login first");
         case "/offline":
             return Fail("network error: connection refused");
         default:
@@ -51,35 +66,40 @@ if (Cmd("filesystem", "list"))
 
 if (Cmd("filesystem", "upload"))
 {
-    var rest = a[2..].ToList();
-    var i = rest.IndexOf("--conflict-strategy");
-    string? strategy = null;
-    if (i >= 0)
-    {
-        strategy = rest[i + 1];
-        rest.RemoveRange(i, 2);
-    }
+    var fileStrategy = TakeOption("-f", "--file-conflict-strategy");
+    var folderStrategy = TakeOption("-d", "--folder-conflict-strategy");
+    var rest = a[2..];
+    // The real CLI prompts on conflicts without a strategy; a non-interactive caller would stall.
+    if (fileStrategy is null || folderStrategy is null)
+        return Fail("fake: upload without -f/-d would prompt for conflict resolution");
     if (double.TryParse(Environment.GetEnvironmentVariable("FAKE_SLOW"), out var slow))
         Thread.Sleep(TimeSpan.FromSeconds(slow));
     var failOn = Environment.GetEnvironmentVariable("FAKE_FAIL");
     if (!string.IsNullOrEmpty(failOn) && rest.Any(x => x.Contains(failOn)))
         return Fail("boom");
     Rec(["upload", .. rest]);
-    if (strategy is not null)
-        Rec("conflict-strategy", strategy);
+    Rec("strategy", fileStrategy, folderStrategy);
     Console.WriteLine($"uploaded {string.Join(' ', rest)}");
     return 0;
 }
 
-if (Cmd("filesystem", "mkdir"))
+if (Cmd("filesystem", "create-folder"))
 {
-    Rec("mkdir", a[2]);
+    if (a.Count != 4)
+        return Fail("Usage: filesystem create-folder parentPath name", 2);
+    var parent = a[2];
+    Rec("mkdir", parent.EndsWith('/') ? parent + a[3] : parent + "/" + a[3]);
     Console.WriteLine("ok");
     return 0;
 }
 
 if (Cmd("filesystem", "download"))
 {
+    var fileStrategy = TakeOption("-f", "--file-conflict-strategy");
+    var folderStrategy = TakeOption("-d", "--folder-conflict-strategy");
+    if (fileStrategy is null || folderStrategy is null)
+        return Fail("fake: download without -f/-d would prompt for conflict resolution");
+    Rec(["download", fileStrategy, folderStrategy, .. a[2..]]);
     Console.WriteLine($"downloaded {string.Join(' ', a[2..])}");
     return 0;
 }
@@ -90,4 +110,4 @@ if (Cmd("auth", "login"))
     return 0;
 }
 
-return Fail("unknown", 2);
+return Fail($"Command not found: {string.Join(' ', args)}", 1);

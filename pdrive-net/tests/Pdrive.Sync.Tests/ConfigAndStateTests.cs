@@ -41,6 +41,7 @@ public sealed class ConfigStoreTests : IDisposable
     [InlineData("""{"folders": [{"local": "/x", "remote": "/elsewhere"}]}""")]
     [InlineData("""{"exclude": "*.tmp"}""")]
     [InlineData("""{"folders": null}""")]
+    [InlineData("""{"conflict_strategy": "overwrite"}""")]
     public void Bad_json_and_bad_types_raise_config_error(string text)
     {
         Write(text);

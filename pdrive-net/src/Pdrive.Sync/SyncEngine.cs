@@ -41,9 +41,9 @@ public static class SyncEngine
             var known = state.GetFolder(local, folder.RemoteRoot);
             var changed = scan.Files.Where(kv => !known.TryGetValue(kv.Key, out var sig) || sig != kv.Value)
                 .Select(kv => kv.Key).Order(StringComparer.Ordinal);
-            foreach (var group in changed.GroupBy(RemotePath.Parent))
+            foreach (var group in changed.GroupBy(LocalParent))
             {
-                var remoteDir = group.Key.Length == 0 ? folder.RemoteRoot : RemotePath.Join(folder.RemoteRoot, group.Key);
+                var remoteDir = RemoteDirFor(folder.RemoteRoot, group.Key);
                 work.Add(new Work(folder, remoteDir, group.Key, group.ToList(), scan.Files));
             }
         }
@@ -90,7 +90,7 @@ public static class SyncEngine
                     {
                         if (chunk.Count == 1)
                         {
-                            errors.Add($"{w.RemoteDir}/{RemotePath.Name(chunk[0])}: {e.FirstLine}");
+                            errors.Add($"{w.RemoteDir}/{LocalName(chunk[0])}: {e.FirstLine}");
                             Done(w, [], chunk);
                             continue;
                         }
@@ -107,7 +107,7 @@ public static class SyncEngine
                         }
                         catch (DriveException e) when (e is not AuthException)
                         {
-                            errors.Add($"{w.RemoteDir}/{RemotePath.Name(r)}: {e.FirstLine}");
+                            errors.Add($"{w.RemoteDir}/{LocalName(r)}: {e.FirstLine}");
                             Done(w, [], [r]);
                         }
                     }
@@ -121,13 +121,22 @@ public static class SyncEngine
         return new SyncResult(uploaded, errors, Cancelled: false, nextMature);
     }
 
+    // Scanner keys are local relative paths: '/'-separated, and a backslash is just a character.
+    private static string LocalParent(string rel) => rel.LastIndexOf('/') is var i and >= 0 ? rel[..i] : "";
+
+    private static string LocalName(string rel) => rel[(rel.LastIndexOf('/') + 1)..];
+
+    /// <summary>Remote folder for a local relative folder, escaping each name for the CLI's path syntax.</summary>
+    internal static string RemoteDirFor(string remoteRoot, string relDir) =>
+        relDir.Length == 0 ? remoteRoot : RemotePath.Join(remoteRoot, [.. relDir.Split('/').Select(RemotePath.EscapeName)]);
+
     /// <summary>Creates the remote folder and its parents (shortest first). Failure is fine: it may exist already.</summary>
     private static async Task EnsureRemoteDirsAsync(IDriveClient client, string remoteRoot, string relDir, HashSet<string> made, CancellationToken ct)
     {
         var parts = relDir.Length == 0 ? [] : relDir.Split('/');
         for (var i = 0; i <= parts.Length; i++)
         {
-            var dir = RemotePath.Join(remoteRoot, string.Join('/', parts[..i]));
+            var dir = RemoteDirFor(remoteRoot, string.Join('/', parts[..i]));
             if (!made.Add(dir))
                 continue;
             try

@@ -40,7 +40,12 @@ public sealed class FakeCli
     }
 
     public ProtonDriveCli Client(string? conflictStrategy = null) =>
-        new(BinaryPath, new DriveCliOptions { Environment = _env, ConflictStrategy = conflictStrategy, KillAfter = TimeSpan.FromSeconds(2) });
+        new(BinaryPath, new DriveCliOptions
+        {
+            Environment = _env,
+            FileConflictStrategy = conflictStrategy ?? UploadFileStrategies.Default,
+            KillAfter = TimeSpan.FromSeconds(2),
+        });
 
     public IReadOnlyDictionary<string, string?> Environment => _env;
 

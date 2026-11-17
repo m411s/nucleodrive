@@ -12,3 +12,6 @@ obj/
 TestResults/
 artifacts/
 publish/
+
+# Locally downloaded proton-drive CLI binary (not ours to commit)
+pdrive-net/cli/

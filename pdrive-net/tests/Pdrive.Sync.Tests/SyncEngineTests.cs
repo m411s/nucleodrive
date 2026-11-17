@@ -143,7 +143,7 @@ public sealed class SyncEngineTests : IDisposable
     public async Task Conflict_strategy_from_config_reaches_the_cli()
     {
         await Run(_fake.Client(conflictStrategy: "replace"));
-        Assert.Contains(["conflict-strategy", "replace"], _fake.Log());
+        Assert.Contains(["strategy", "replace", "merge"], _fake.Log());
     }
 
     [Fact]
@@ -164,6 +164,16 @@ public sealed class SyncEngineTests : IDisposable
         Assert.Null(_state.ImportLegacy(_tmp["state.json"], _cfg)); // only once
         Assert.Equal(0, (await Run()).Uploaded);
     }
+}
+
+public sealed class RemoteDirTests
+{
+    [Theory]
+    [InlineData("", "/my-files/B")]
+    [InlineData("a/b", "/my-files/B/a/b")]
+    [InlineData("we\\ird", "/my-files/B/we\\ird")] // a backslash in a local name is kept as is
+    public void Maps_local_folders_to_remote_paths(string relDir, string expected) =>
+        Assert.Equal(expected, SyncEngine.RemoteDirFor("/my-files/B", relDir));
 }
 
 public sealed class ChunkerTests

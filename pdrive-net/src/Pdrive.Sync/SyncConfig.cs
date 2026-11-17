@@ -21,7 +21,11 @@ public sealed record SyncConfig
     public double MinAgeSeconds { get; init; } = 5; // skip files still being written
     public IReadOnlyList<string> Exclude { get; init; } = DefaultExclude;
     public IReadOnlyList<FolderPair> Folders { get; init; } = [];
+    /// <summary>Upload `-f` strategy for files that already exist on Drive; null means create-new-revision
+    /// (keeps the old content in the file's version history).</summary>
     public string? ConflictStrategy { get; init; }
+
+    [JsonIgnore] public string FileConflictStrategy => ConflictStrategy ?? Pdrive.Cli.UploadFileStrategies.Default;
     public bool Watch { get; init; } = true; // live change detection (inotify); the interval scan always runs too
 
     [JsonIgnore] public TimeSpan Interval => TimeSpan.FromMinutes(Math.Max(1, IntervalMinutes));
@@ -121,6 +125,8 @@ public sealed class ConfigStore(PdrivePaths paths)
         if (!(cfg.MinAgeSeconds >= 0)) throw Bad("'min_age_seconds' must be a number >= 0");
         if (cfg.Exclude is null || cfg.Exclude.Any(p => p is null)) throw Bad("'exclude' must be a list of patterns");
         if (cfg.Folders is null) throw Bad("'folders' must be a list");
+        if (cfg.ConflictStrategy is { } cs && !Pdrive.Cli.UploadFileStrategies.All.Contains(cs))
+            throw Bad($"'conflict_strategy' must be one of: {string.Join(", ", Pdrive.Cli.UploadFileStrategies.All)}");
         foreach (var f in cfg.Folders)
         {
             if (f?.Local is null || f.Remote is null)

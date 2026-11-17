@@ -55,7 +55,7 @@ public static class ListingParser
         if (item.ValueKind == JsonValueKind.String)
         {
             var bare = item.GetString();
-            return string.IsNullOrEmpty(bare) ? null : new DriveEntry(bare, false, null, RemotePath.Join(parent, bare));
+            return string.IsNullOrEmpty(bare) ? null : new DriveEntry(bare, false, null, RemotePath.Join(parent, RemotePath.EscapeName(bare)));
         }
         if (item.ValueKind != JsonValueKind.Object)
             return null;
@@ -73,7 +73,7 @@ public static class ListingParser
 
         var path = First(item, "path", "fullPath") is { ValueKind: JsonValueKind.String } p && p.GetString() is { Length: > 0 } ps
             ? ps
-            : RemotePath.Join(parent, name);
+            : RemotePath.Join(parent, RemotePath.EscapeName(name));
 
         return new DriveEntry(name, isDir, size, path);
     }

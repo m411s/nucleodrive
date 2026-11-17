@@ -8,7 +8,7 @@ public sealed record DaemonOptions
 {
     /// <summary>Creates the Drive client for each cycle (so conflict_strategy changes apply without restart).</summary>
     public Func<SyncConfig, IDriveClient> ClientFactory { get; init; } =
-        cfg => new ProtonDriveCli(null, new DriveCliOptions { ConflictStrategy = cfg.ConflictStrategy });
+        cfg => new ProtonDriveCli(null, new DriveCliOptions { FileConflictStrategy = cfg.FileConflictStrategy });
 
     /// <summary>Quiet period before a watched change triggers a scan; default max(min_age, 5 s).</summary>
     public TimeSpan? WatchQuiet { get; init; }

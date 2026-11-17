@@ -53,6 +53,7 @@ public sealed class ListingParserTests
 public sealed class AuthHeuristicsTests
 {
     [Theory]
+    [InlineData("You need to login first", true)] // cli-drive 0.9.0, signed out
     [InlineData("not logged in: run auth login", true)]
     [InlineData("Error: session expired, please sign in again", true)]
     [InlineData("401 Unauthorized", true)]
@@ -118,4 +119,15 @@ public sealed class RemotePathTests
     [InlineData("a/b", "a")]
     [InlineData("a", "")]
     public void Parent(string path, string expected) => Assert.Equal(expected, RemotePath.Parent(path));
+
+    [Fact]
+    public void Names_with_slashes_are_escaped_the_way_the_cli_expects()
+    {
+        Assert.Equal("foo\\/bar", RemotePath.EscapeName("foo/bar"));
+        Assert.Equal("foo/bar", RemotePath.UnescapeName("foo\\/bar"));
+        Assert.Equal("/my-files", RemotePath.Parent("/my-files/foo\\/bar"));
+        Assert.Equal("foo\\/bar", RemotePath.Name("/my-files/foo\\/bar"));
+        var e = ListingParser.Parse("""[{"name": "a/b", "type": "file"}]""", "/my-files").Single();
+        Assert.Equal("/my-files/a\\/b", e.Path);
+    }
 }

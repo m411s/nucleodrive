@@ -36,7 +36,7 @@ public sealed class ProtonDriveCliTests : IDisposable
     public async Task Error_text_surfaces()
     {
         var e = await Assert.ThrowsAnyAsync<DriveException>(() => _cli.ListAsync("/nope", Ct));
-        Assert.Contains("not logged in", e.Message);
+        Assert.Contains("You need to login first", e.Message);
     }
 
     [Fact]
@@ -69,8 +69,26 @@ public sealed class ProtonDriveCliTests : IDisposable
     public async Task Conflict_strategy_is_passed_to_upload()
     {
         await _fake.Client(conflictStrategy: "replace").UploadAsync(["/tmp/x"], "/my-files", ct: Ct);
-        Assert.Contains(["conflict-strategy", "replace"], _fake.Log());
+        Assert.Contains(["strategy", "replace", "merge"], _fake.Log());
         Assert.Equal(["upload", "/tmp/x", "/my-files"], _fake.Uploads().Single());
+    }
+
+    [Fact]
+    public async Task Upload_and_download_always_pass_strategies_so_the_cli_never_prompts()
+    {
+        await _cli.UploadAsync(["/tmp/x"], "/my-files", ct: Ct);
+        Assert.Contains(["strategy", "create-new-revision", "merge"], _fake.Log());
+        await _cli.DownloadAsync("/my-files/b.txt", "/tmp", ct: Ct);
+        Assert.Contains(["download", "rename", "merge", "/my-files/b.txt", "/tmp"], _fake.Log());
+    }
+
+    [Fact]
+    public async Task Mkdir_uses_create_folder_with_parent_and_unescaped_name()
+    {
+        await _cli.MkdirAsync("/my-files/Backup/sub", Ct);
+        await _cli.MkdirAsync("/my-files/a\\/b", Ct); // a name containing '/'
+        Assert.Contains(["mkdir", "/my-files/Backup/sub"], _fake.Log());
+        Assert.Contains(["mkdir", "/my-files/a/b"], _fake.Log());
     }
 
     [Fact]
