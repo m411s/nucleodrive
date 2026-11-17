@@ -110,6 +110,9 @@ if (Cmd("filesystem", "upload"))
     return Fail($"{failed.Count} item(s) failed to upload");
 }
 
+if (Cmd("filesystem", "create-folder") && a.Count > 2 && a[2] == "--")
+    a.RemoveAt(2); // end of options, as pdrive passes it
+
 if (Cmd("filesystem", "create-folder"))
 {
     if (a.Count != 4)

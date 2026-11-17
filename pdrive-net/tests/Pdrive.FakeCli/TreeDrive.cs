@@ -56,6 +56,15 @@ internal static class TreeDrive
 
     private static int Dispatch(List<string> a, Store s, Action<string[]> rec)
     {
+        // Like cli-drive 0.9.0: "--" ends the options; without it, a positional argument starting with
+        // '-' is an unknown option.
+        var dashes = a.IndexOf("--");
+        if (dashes >= 0)
+            a.RemoveAt(dashes);
+        else if (a.Skip(2).FirstOrDefault(x => x.StartsWith('-') && x is not ("-f" or "-d" or "--file-conflict-strategy"
+                     or "--folder-conflict-strategy" or "--json" or "-j")) is { } bad
+                 && a.Count >= 2 && a[1] is "create-folder" or "rename")
+            throw new CliError($"Unknown option '{bad}'. To specify a positional argument starting with a '-', place it at the end of the command after '--'", 2);
         string Arg(int i) => i < a.Count ? a[i] : throw new CliError("missing argument", 2);
         switch (a.Count >= 2 ? a[1] : "")
         {

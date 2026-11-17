@@ -50,8 +50,8 @@ Out of scope, please report these elsewhere:
 - Your Proton password never passes through pdrive. You sign in in your browser, and the CLI keeps the
   session in your system keyring.
 - Files are encrypted by Proton's CLI on your computer before upload.
-- The CLI is run with an argument list, never through a shell, and file names that could be read as
-  options are refused.
+- The CLI is run with an argument list, never through a shell, and file names are passed after `--`, so
+  a name like `--help` can never be read as an option.
 - Sync never follows or writes through symbolic links, and never writes outside the sync folder.
 - Deletions go to the Drive trash or your desktop Trash, and large deletions wait for your confirmation.
 - Settings and state are readable only by you, and the control socket refuses other users.

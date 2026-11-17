@@ -105,13 +105,16 @@ public sealed class OptionInjectionTests
     [Theory]
     [InlineData("--help")]
     [InlineData("-rf")]
-    public async Task Names_that_look_like_options_are_refused_before_reaching_the_cli(string name)
+    public async Task Names_that_look_like_options_are_passed_after_the_end_of_options(string name)
     {
         using var tmp = new TempDir();
         var cli = new FakeCli(tmp["log"]).UseTree(tmp["tree.json"]).Client();
         var ct = TestContext.Current.CancellationToken;
-        await Assert.ThrowsAsync<DriveException>(() => cli.MkdirAsync("/my-files/" + name, ct));
-        await Assert.ThrowsAsync<DriveException>(() => cli.RenameAsync("/my-files/x", name, ct));
-        Assert.False(File.Exists(tmp["log"])); // the CLI was never run
+        await cli.MkdirAsync("/my-files/" + name, ct);
+        await cli.MkdirAsync("/my-files/x", ct);
+        await cli.RenameAsync("/my-files/x", name + "2", ct);
+        var names = (await cli.ListAsync("/my-files", ct)).Select(e => e.Name).ToList();
+        Assert.Contains(name, names);
+        Assert.Contains(name + "2", names);
     }
 }

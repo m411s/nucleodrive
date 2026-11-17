@@ -23,7 +23,7 @@ Dependency scan (`dotnet list package --vulnerable --include-transitive`): **no 
 | Severity | Issue | Fix |
 |---|---|---|
 | **High** | **Writing through a local symlink.** If you had a symlink inside the sync folder pointing elsewhere (e.g. `Docs/keys → ~/.ssh`), a Drive folder with the same name could have its files downloaded *through* the link, e.g. into `~/.ssh/authorized_keys`. Reproduced in a test before the fix. | The planner leaves everything under any ignored item alone (symlinks are ignored). The executor refuses any local write, move, folder creation or trashing whose path passes through a symlink below the sync folder, checked again right before a download is moved into place. `SecurityTests` |
-| Medium | **CLI option injection.** A file or folder named like `--help` or `-rf` was passed as a bare argument to `rename` / `create-folder`, so the CLI could read it as an option. | Such names are refused with a clear error; paths are always safe because they start with `/`. `OptionInjectionTests` |
+| Medium | **CLI option injection.** A file or folder named like `--help` or `-rf` was passed as a bare argument to `rename` / `create-folder`, so the CLI could read it as an option. | Names are passed after `--` (end of options), which cli-drive 0.9.0 supports for `create-folder` and `rename`, so such files sync normally; paths are always safe because they start with `/`. `OptionInjectionTests` |
 | Medium | **AppImage login service from a shared location.** Started from `/tmp` or another world-writable folder, the AppImage registered itself as a systemd service and autostart entry. Anyone able to replace that file would run code as you at every login. | Integration is skipped, with an explanation, if the AppImage or its folder is writable by others or not owned by you. Paths with `"`, `%`, `\` or line breaks (which change the meaning of unit and desktop files) are refused, also in `install.sh`. |
 | Medium | **Readable config and state.** `~/.config/pdrive` and `~/.local/state/pdrive` were 0775/0664 under the default umask; they list your folders and what is synced where. | Folders 0700, files 0600 (config, state database), existing ones tightened at daemon start. |
 | Low | **Control socket peers.** The daemon trusted anyone who could connect. | It checks `SO_PEERCRED` and refuses other users, as defence in depth behind the 0700 runtime folder and 0600 socket. |
@@ -48,7 +48,6 @@ Dependency scan (`dotnet list package --vulnerable --include-transitive`): **no 
 
 | Priority | Proposal | Why |
 |---|---|---|
-| 1 | Check whether the CLI accepts `--` (end of options). If it does, pass names after `--` instead of refusing names that start with `-`. | Such files can't sync today. |
 | 1 | **Sign releases.** Add GitHub build-provenance attestations (`actions/attest-build-provenance`) and a minisign/GPG signature on `SHA256SUMS`. | Users can verify downloads came from this repo's CI. |
 | 2 | Pin the expected SHA-256 of Proton's badge in `install.sh`, falling back to pdrive's own icon if it changes. | Removes trust in the CDN for an image rendered by librsvg. |
 | 2 | Name collisions: two Drive files whose names differ only in Unicode normalisation (NFC/NFD, e.g. from macOS) map to different local files. Detect them and keep them online-only with a warning. | Avoids confusing duplicates and re-upload loops. |
