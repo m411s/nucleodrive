@@ -1,6 +1,30 @@
 # Planned
 
-Ideas:
+## Priority 1: sync status in the file manager (Ubuntu first)
+
+Show on every file and folder in `~/proton-drive` whether it's synced, syncing, waiting or has a problem,
+right in the file manager (like Dropbox's or Nextcloud's emblems), with a few actions in its context menu.
+
+- **Ubuntu's Files (Nautilus) first:** an extension using nautilus-python (`python3-nautilus`).
+  - An `InfoProvider` adds an emblem per item: synced, syncing, waiting (still being written, or waiting
+    for the next pass), problem, not synced (excluded, a link, a name Drive can't take).
+  - A `MenuProvider` adds actions: "Sync now", "Open in pdrive", later "Copy share link".
+  - First check which Nautilus versions still draw emblems in grid and list view (Ubuntu 24.04 LTS and
+    current releases) and which emblem icon names the Yaru theme has. If emblems aren't shown, fall back
+    to a status column and the context menu.
+- **The service answers per-path status** over the existing control socket (your user only, 0600 +
+  `SO_PEERCRED`). It needs a new call, `GetPathStatus(paths)`, answered from memory and the state
+  database with no CLI calls, so browsing stays fast. A push notification of changed paths lets the
+  extension refresh just those items (`invalidate_extension_info`). The sync engine reports items in
+  flight and their errors.
+- **Packaging:** the .deb recommends `python3-nautilus` and installs the extension to
+  `/usr/share/nautilus-python/extensions`; `install.sh` and the AppImage to
+  `~/.local/share/nautilus-python/extensions`. Nautilus needs a restart (`nautilus -q`). A Flatpak or Snap
+  can't install a file manager extension from inside its sandbox, so it would be a separate small package.
+- **Later:** Nemo and Caja (nemo-python and caja-python take the same Python code), Thunar
+  (thunarx-python), and KDE's Dolphin (a `KOverlayIconPlugin`, C++/Qt, like Nextcloud's).
+
+## Ideas
 
 - Edit the rest of `config.json` in Settings (sync folder location, check interval, parallel listings,
   deletion threshold, exclude patterns), so the file never needs editing by hand.

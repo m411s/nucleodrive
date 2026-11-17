@@ -151,7 +151,10 @@ your Drive or settings.
 
 ## Known gaps
 
-Planned work is in `docs/ROADMAP.md` (next up: a Settings page to download the CLI and sign in).
+What the Proton Drive CLI can't do, for users: see
+[Limits of the Proton Drive CLI](../README.md#limits-of-the-proton-drive-cli). For developers:
+
+Planned work is in `docs/ROADMAP.md` (next up: sync status in the file manager).
 
 - Built and checked against cli-drive 0.9.0 (`docs/cli-notes.md`). The CLI's JSON and messages are
   undocumented, so a newer CLI may need small adjustments there. Changed files become new revisions
@@ -166,6 +169,5 @@ Planned work is in `docs/ROADMAP.md` (next up: a Settings page to download the C
 ## Licence
 
 MIT, see [LICENSE](../LICENSE). This covers pdrive's own code and its own icon. It does not cover
-Proton's proton-drive CLI, which pdrive downloads from proton.me and doesn't redistribute, or Proton's
-logo, which `install.sh` may download for your own machine. "Proton" and "Proton Drive" are trademarks
+Proton's proton-drive CLI, which pdrive downloads from proton.me and doesn't redistribute. "Proton" and "Proton Drive" are trademarks
 of Proton AG; pdrive isn't affiliated with or endorsed by Proton.

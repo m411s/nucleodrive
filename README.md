@@ -33,6 +33,25 @@ instead, run `./package.sh`. Then choose folders on the app's **Sync** page, or 
 Everything else (how sync behaves, safety rules, configuration, development) is in
 **[pdrive-net/README.md](pdrive-net/README.md)**.
 
+## Limits of the Proton Drive CLI
+
+pdrive does everything through Proton's official `proton-drive` command-line tool. That keeps your
+password and encryption in Proton's hands, but the CLI has limits pdrive can't work around:
+
+- **Changes made elsewhere aren't instant.** The CLI can't report what changed on Drive, so pdrive checks
+  every hour (backing off to every 4 hours while nothing changes). **Sync now** checks straight away.
+  Changes on this computer upload within seconds.
+- **Checking Drive takes a while.** Each CLI run takes about 1.5 s and lists one folder, so a check of
+  hundreds of folders takes a minute or more (4 run at once).
+- **No online-only files.** Synced folders are fully downloaded; there are no placeholders that download
+  when opened. Folders you don't sync stay browsable on the Files page.
+- **Proton Docs and Sheets can't be downloaded.** They stay online-only; open them on the web.
+- **Only My files.** "Shared with me", Photos and Devices aren't synced.
+- **No progress within a single file.** Big uploads and downloads show progress per file, not per byte.
+- **Names Drive can't decrypt** stay online-only.
+- **Signing in needs a browser and a system keyring** (GNOME Keyring, KWallet, …), where the CLI keeps the
+  session.
+
 ## Privacy and security
 
 pdrive collects nothing: no telemetry, analytics or crash reports. Your files go only to Proton, encrypted

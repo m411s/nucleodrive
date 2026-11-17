@@ -79,6 +79,17 @@ public sealed class Screenshots
                 await Task.Delay(250, TestContext.Current.CancellationToken); // let the cross-fade finish
                 Save(w, $"main-{i}-{suffix}");
             }
+            vm.PageIndex = 3;
+            await Task.Delay(250, TestContext.Current.CancellationToken);
+            if (w.FindDescendantOfType<Expander>() is { } limits)
+            {
+                limits.IsExpanded = true;
+                await Task.Delay(300, TestContext.Current.CancellationToken);
+                limits.BringIntoView();
+                await Task.Delay(100, TestContext.Current.CancellationToken);
+                Save(w, $"settings-limits-{suffix}");
+                limits.IsExpanded = false;
+            }
             vm.PageIndex = 1;
             daemon.Publish(FakeDaemon.WithSync(SyncState.NeedsConfirmation, "62 files were deleted in Photos. Move them to the Trash on Drive too?", 62, "Documents", "Photos"));
             await Task.Delay(250, TestContext.Current.CancellationToken);

@@ -5,6 +5,8 @@ minor versions may change behaviour.
 
 ## Unreleased
 
+- **What the Proton Drive CLI can't do**, explained in Settings and the README (changes elsewhere aren't
+  instant, no online-only files, Docs/Sheets stay online, only My files, …).
 - **Use-at-your-own-risk notice** in the README, About, the setup wizard and release notes: unofficial,
   for personal non-commercial use, no responsibility for data loss.
 - **New app icon** (a white cloud with a sync loop on a violet tile) and a violet accent (#7C3AED) of its

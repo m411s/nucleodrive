@@ -48,6 +48,36 @@
         </Grid>
       </Border>
 
+      <!-- what the CLI can't do -->
+      <Expander Classes="limits" HorizontalAlignment="Stretch">
+        <Expander.Header>
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <Path Classes="icon small tint" Data="{StaticResource Icon.Info}" />
+            <TextBlock Text="What the Proton Drive CLI can't do" FontWeight="SemiBold" VerticalAlignment="Center" />
+          </StackPanel>
+        </Expander.Header>
+        <StackPanel Spacing="8" Margin="4,2,4,4">
+              <TextBlock TextWrapping="Wrap" Classes="small">
+                <Run FontWeight="SemiBold" Text="Changes made elsewhere aren't instant." /> <Run Text="The CLI can't report what changed on Drive, so pdrive checks every hour (up to every 4 hours while nothing changes). Sync now checks straight away; changes on this computer upload within seconds." />
+              </TextBlock>
+              <TextBlock TextWrapping="Wrap" Classes="small">
+                <Run FontWeight="SemiBold" Text="Checking Drive takes a while." /> <Run Text="Each CLI run takes about 1.5 s and lists one folder, so hundreds of folders take a minute or more." />
+              </TextBlock>
+              <TextBlock TextWrapping="Wrap" Classes="small">
+                <Run FontWeight="SemiBold" Text="No online-only files." /> <Run Text="Synced folders are fully downloaded. Folders you don't sync stay browsable on the Files page." />
+              </TextBlock>
+              <TextBlock TextWrapping="Wrap" Classes="small">
+                <Run FontWeight="SemiBold" Text="Proton Docs and Sheets can't be downloaded." /> <Run Text="They stay online-only; open them on the web." />
+              </TextBlock>
+              <TextBlock TextWrapping="Wrap" Classes="small">
+                <Run FontWeight="SemiBold" Text="Only My files." /> <Run Text="Shared with me, Photos and Devices aren't synced." />
+              </TextBlock>
+              <TextBlock TextWrapping="Wrap" Classes="small">
+                <Run FontWeight="SemiBold" Text="No progress within a single file." /> <Run Text="Progress is shown per file." />
+              </TextBlock>
+          </StackPanel>
+      </Expander>
+
       <!-- appearance -->
       <Border Classes="card" IsVisible="{Binding HasAppearance}">
         <Grid ColumnDefinitions="Auto,*,Auto">

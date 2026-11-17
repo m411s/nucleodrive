@@ -161,6 +161,17 @@
     <Setter Property="Foreground" Value="{DynamicResource Pd.FolderTint}" />
   </Style>
 
+  <!-- Collapsible card (Settings › what the CLI can't do) -->
+  <Style Selector="Expander.limits">
+    <Setter Property="Background" Value="{DynamicResource Pd.Card}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Pd.CardBorder}" />
+    <Setter Property="CornerRadius" Value="12" />
+  </Style>
+  <Style Selector="Expander.limits /template/ ToggleButton#ExpanderHeader">
+    <Setter Property="Background" Value="{DynamicResource Pd.Card}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Pd.CardBorder}" />
+  </Style>
+
   <!-- Wizard step dots -->
   <Style Selector="Border.stepDot">
     <Setter Property="Width" Value="8" />
