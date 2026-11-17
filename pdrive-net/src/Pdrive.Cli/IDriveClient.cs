@@ -24,6 +24,16 @@ public interface IDriveClient
     /// <param name="size">Expected bytes, if known; sets the timeout. Without it (e.g. folders) there is none.</param>
     Task DownloadAsync(string remotePath, string localDir, long? size = null, IProgress<string>? output = null, CancellationToken ct = default);
 
+    /// <summary>Several files or folders into one local folder, in one CLI run where possible
+    /// (each run costs ~1.5 s). If it fails, some of them may have been downloaded.</summary>
+    /// <param name="totalSize">Expected bytes of all of them, if known; sets the timeout.</param>
+    async Task DownloadManyAsync(IReadOnlyList<string> remotePaths, string localDir, long? totalSize = null,
+        IProgress<string>? output = null, CancellationToken ct = default)
+    {
+        foreach (var path in remotePaths)
+            await DownloadAsync(path, localDir, null, output, ct);
+    }
+
     /// <summary>Metadata of one node (`filesystem info`).</summary>
     Task<DriveEntry> InfoAsync(string remotePath, CancellationToken ct = default);
 

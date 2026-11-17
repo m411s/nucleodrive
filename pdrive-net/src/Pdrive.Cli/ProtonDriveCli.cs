@@ -98,6 +98,12 @@ public sealed class ProtonDriveCli : IDriveClient
         RunAsync(["filesystem", "download", "-f", "rename", "-d", "merge", remotePath, localDir],
             size is { } s ? TransferTimeout.For(s) : null, output, ct);
 
+    public Task DownloadManyAsync(IReadOnlyList<string> remotePaths, string localDir, long? totalSize = null,
+        IProgress<string>? output = null, CancellationToken ct = default) =>
+        remotePaths.Count == 0 ? Task.CompletedTask
+        : RunAsync(["filesystem", "download", "-f", "rename", "-d", "merge", .. remotePaths, localDir],
+            totalSize is { } s ? TransferTimeout.For(s) : null, output, ct);
+
     public async Task<DriveEntry> InfoAsync(string remotePath, CancellationToken ct = default) =>
         ListingParser.ParseInfo(await RunAsync(["filesystem", "info", remotePath, "--json"], ShortTimeout, null, ct), remotePath);
 

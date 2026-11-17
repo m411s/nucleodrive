@@ -59,6 +59,27 @@ public sealed class SyncExecutor
                 await Guard(op.Path, () => UploadBatchAsync(batch, ct));
                 continue;
             }
+            if (op is DownloadOp)
+            {
+                var run = new List<DownloadOp>();
+                while (i < ops.Count && ops[i] is DownloadOp d)
+                {
+                    run.Add(d);
+                    i++;
+                }
+                i--;
+                // one CLI run per Drive folder (each run costs ~1.5 s), at most MaxBatch files
+                foreach (var folder in run.GroupBy(d => SyncPaths.Parent(d.Path)))
+                {
+                    foreach (var batch in folder.Chunk(MaxDownloadBatch))
+                    {
+                        progress?.Report(batch.Length == 1 ? Describe(batch[0])
+                            : $"Downloading {batch.Length} files{(folder.Key.Length > 0 ? " in " + folder.Key : "")}");
+                        await DownloadBatchAsync(batch, ct);
+                    }
+                }
+                continue;
+            }
             if (op is TrashRemoteOp)
             {
                 var batch = new List<TrashRemoteOp>();
@@ -101,7 +122,7 @@ public sealed class SyncExecutor
         MoveRemoteOp m => MoveRemoteAsync(m, ct),
         CreateRemoteFolderOp c => CreateRemoteFolderAsync(c.Path, ct),
         CreateLocalFolderOp c => CreateLocalFolder(c.Path),
-        DownloadOp d => DownloadAsync(d, ct),
+        DownloadOp d => DownloadBatchAsync([d], ct),
         TrashLocalOp t => TrashLocal(t),
         RecordOp r => Record(r.Path),
         ForgetOp f => Forget(f.Path),
@@ -241,52 +262,91 @@ public sealed class SyncExecutor
             _log?.Invoke($"Uploaded: {r.Path}");
     }
 
-    private async Task DownloadAsync(DownloadOp d, CancellationToken ct)
+    /// <summary>Files per CLI run: keeps the argument list and a failed run's retry small.</summary>
+    internal const int MaxDownloadBatch = 50;
+
+    /// <summary>Downloads files of one Drive folder in one CLI run into a staging folder, then moves
+    /// each into place after re-checking the local side. A failed run still places what arrived.</summary>
+    private async Task DownloadBatchAsync(IReadOnlyList<DownloadOp> batch, CancellationToken ct)
     {
-        var target = Safe(d.Path);
+        var ok = new List<DownloadOp>();
+        foreach (var d in batch)
+            await Guard(d.Path, () =>
+            {
+                Safe(d.Path); // never through a symlink
+                ok.Add(d);
+                return Task.CompletedTask;
+            });
+        if (ok.Count == 0)
+            return;
+
         var staging = Path.Combine(_root, SyncPaths.StagingDir, Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(staging);
         try
         {
-            await _client.DownloadAsync(SyncPaths.Remote(d.Path), staging, d.Remote.Size, null, ct);
-            var staged = Path.Combine(staging, SyncPaths.Name(d.Path));
-            if (!File.Exists(staged))
-                throw new IOException("the CLI didn't produce the file");
-            if (d.Remote.ModifiedAt is { } mtime)
-                File.SetLastWriteTimeUtc(staged, mtime.UtcDateTime);
-
-            // Re-check the local side right before replacing anything.
-            var current = Posix.TryStat(target);
-            var known = _local.GetValueOrDefault(d.Path);
-            if (current is not null)
+            DriveException? failure = null;
+            try
             {
-                if (known is null || current.Value.IsDir || !Matches(known, current.Value))
-                {
-                    _errors.Add($"{d.Path}: changed locally during sync; will retry");
-                    return;
-                }
-                if (d.TrashLocalFirst)
-                {
-                    var trashed = _trash.Trash(target);
-                    _log?.Invoke($"Conflict: Drive's newer version of {d.Path} wins; the local copy was moved to {trashed}");
-                }
+                await _client.DownloadManyAsync(ok.Select(d => SyncPaths.Remote(d.Path)).ToList(), staging,
+                    ok.Sum(d => d.Remote.Size), null, ct);
             }
-            else if (known is not null)
+            catch (DriveException e) when (e is not AuthException)
             {
-                return; // deleted locally meanwhile; the next pass decides
+                failure = e; // some files may still have arrived
             }
-            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-            Safe(d.Path); // again: a folder on the way may have been swapped for a link meanwhile
-            File.Move(staged, target, overwrite: true);
-            var st = Posix.TryStat(target)!.Value;
-            _state.UpsertBaseline(_folder, [new BaseItem(d.Path, false, d.Remote.Uid, d.Remote.RevisionUid, st.Size, st.Mtime100ns, st.Inode)]);
-            _downloaded++;
-            _log?.Invoke($"Downloaded: {d.Path}");
+            foreach (var d in ok)
+                await Guard(d.Path, () =>
+                {
+                    Place(d, staging, failure);
+                    return Task.CompletedTask;
+                });
         }
         finally
         {
             try { Directory.Delete(staging, recursive: true); } catch (IOException) { }
         }
+    }
+
+    private void Place(DownloadOp d, string staging, DriveException? failure)
+    {
+        var target = Safe(d.Path);
+        var staged = Path.Combine(staging, SyncPaths.Name(d.Path));
+        if (!File.Exists(staged))
+        {
+            if (failure is not null)
+                throw failure;
+            throw new IOException("the CLI didn't produce the file");
+        }
+        if (d.Remote.ModifiedAt is { } mtime)
+            File.SetLastWriteTimeUtc(staged, mtime.UtcDateTime);
+
+        // Re-check the local side right before replacing anything.
+        var current = Posix.TryStat(target);
+        var known = _local.GetValueOrDefault(d.Path);
+        if (current is not null)
+        {
+            if (known is null || current.Value.IsDir || !Matches(known, current.Value))
+            {
+                _errors.Add($"{d.Path}: changed locally during sync; will retry");
+                return;
+            }
+            if (d.TrashLocalFirst)
+            {
+                var trashed = _trash.Trash(target);
+                _log?.Invoke($"Conflict: Drive's newer version of {d.Path} wins; the local copy was moved to {trashed}");
+            }
+        }
+        else if (known is not null)
+        {
+            return; // deleted locally meanwhile; the next pass decides
+        }
+        Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+        Safe(d.Path); // again: a folder on the way may have been swapped for a link meanwhile
+        File.Move(staged, target, overwrite: true);
+        var st = Posix.TryStat(target)!.Value;
+        _state.UpsertBaseline(_folder, [new BaseItem(d.Path, false, d.Remote.Uid, d.Remote.RevisionUid, st.Size, st.Mtime100ns, st.Inode)]);
+        _downloaded++;
+        _log?.Invoke($"Downloaded: {d.Path}");
     }
 
     // ---- deletions ----------------------------------------------------------------------------

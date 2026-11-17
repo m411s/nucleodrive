@@ -189,6 +189,71 @@ public sealed class TwoWayEngineTests : IDisposable
     }
 
     [Fact]
+    public async Task New_drive_files_in_one_folder_download_in_one_cli_run()
+    {
+        await _f.SyncedStart();
+        for (var i = 0; i < 5; i++)
+            await _f.WriteRemote($"Docs/photos/p{i}.jpg", $"photo {i}", TwoWayFixture.Old.AddMinutes(i));
+        await _f.WriteRemote("Docs/sub/c.txt", "C");
+        _f.Fake.ClearLog();
+
+        var r = await _f.Full();
+        Assert.Equal(6, r.Downloaded);
+        var downloads = _f.Fake.Log().Where(l => l[0] == "download").ToList();
+        // the fake logs one line per path; group them by the staging folder (one per CLI run)
+        Assert.Equal(2, downloads.Select(l => l[^1]).Distinct().Count());
+        for (var i = 0; i < 5; i++)
+            Assert.Equal($"photo {i}", _f.ReadLocal($"Docs/photos/p{i}.jpg"));
+        Assert.Equal(TwoWayFixture.Old.AddMinutes(3), File.GetLastWriteTimeUtc(_f.LocalPath("Docs/photos/p3.jpg")));
+        Assert.False(Directory.Exists(_f.LocalPath(".pdrive-staging")));
+        Assert.Equal(0, (await _f.Full()).Changes);
+    }
+
+    [Fact]
+    public async Task A_failed_batch_still_places_what_arrived_and_retries_the_rest()
+    {
+        await _f.SyncedStart();
+        await _f.WriteRemote("Docs/x/1.txt", "one");
+        await _f.WriteRemote("Docs/x/2.txt", "two");
+        // Drive loses 2.txt between the listing and the download: the run fails part-way
+        var cli = new VanishingClient(_f.Cli, "/my-files/Docs/x/2.txt");
+        var engine = new TwoWaySyncEngine(cli, _f.State, new FreedesktopTrash(_f.Tmp["data"], mountPoints: () => ["/"]), null);
+
+        var r = await engine.FullPassAsync(_f.Cfg.Sync, _f.Cfg, "Docs", false, null, TwoWayFixture.Ct);
+        Assert.Equal("one", _f.ReadLocal("Docs/x/1.txt"));
+        Assert.Null(_f.ReadLocal("Docs/x/2.txt"));
+        Assert.True(r.Errors.Any(e => e.Contains("x/2.txt: ", StringComparison.Ordinal) && e.Contains("Node not found")), string.Join(" | ", r.Errors));
+
+        Assert.Equal(1, (await _f.Full()).Downloaded); // next pass picks it up
+        Assert.Equal("two", _f.ReadLocal("Docs/x/2.txt"));
+    }
+
+    /// <summary>Downloads everything except one path, then fails like the CLI does for a missing node.</summary>
+    private sealed class VanishingClient(IDriveClient inner, string vanished) : IDriveClient
+    {
+        public Task<IReadOnlyList<DriveEntry>> ListAsync(string path, CancellationToken ct = default) => inner.ListAsync(path, ct);
+        public Task<bool> IsLoggedInAsync(CancellationToken ct = default) => inner.IsLoggedInAsync(ct);
+        public Task LoginAsync(CancellationToken ct = default) => inner.LoginAsync(ct);
+        public Task LogoutAsync(CancellationToken ct = default) => inner.LogoutAsync(ct);
+        public Task MkdirAsync(string remotePath, CancellationToken ct = default) => inner.MkdirAsync(remotePath, ct);
+        public Task UploadAsync(IReadOnlyList<string> localPaths, string remoteDir, IProgress<string>? output = null, CancellationToken ct = default) =>
+            inner.UploadAsync(localPaths, remoteDir, output, ct);
+        public Task DownloadAsync(string remotePath, string localDir, long? size = null, IProgress<string>? output = null, CancellationToken ct = default) =>
+            inner.DownloadAsync(remotePath, localDir, size, output, ct);
+        public async Task DownloadManyAsync(IReadOnlyList<string> remotePaths, string localDir, long? totalSize = null,
+            IProgress<string>? output = null, CancellationToken ct = default)
+        {
+            await inner.DownloadManyAsync(remotePaths.Where(p => p != vanished).ToList(), localDir, totalSize, output, ct);
+            if (remotePaths.Contains(vanished))
+                throw new DriveException($"Node not found: {vanished}");
+        }
+        public Task<DriveEntry> InfoAsync(string remotePath, CancellationToken ct = default) => inner.InfoAsync(remotePath, ct);
+        public Task TrashAsync(IReadOnlyList<string> remotePaths, CancellationToken ct = default) => inner.TrashAsync(remotePaths, ct);
+        public Task RenameAsync(string remotePath, string newName, CancellationToken ct = default) => inner.RenameAsync(remotePath, newName, ct);
+        public Task MoveAsync(IReadOnlyList<string> remotePaths, string targetParent, CancellationToken ct = default) => inner.MoveAsync(remotePaths, targetParent, ct);
+    }
+
+    [Fact]
     public async Task Deletions_go_to_the_trash_on_the_other_side()
     {
         await _f.SyncedStart();
