@@ -129,7 +129,7 @@ public sealed class SetupViewModelTests : IDisposable
         Assert.Equal("Step 1 of 3", vm.StepText);
         await vm.SkipSignInCommand.ExecuteAsync(null);
         Assert.Equal(SetupStep.Folder, vm.Step);
-        Assert.Empty(vm.DriveFolders); // not signed in: chosen later in the Sync tab
+        Assert.Empty(vm.DriveFolders); // not signed in: chosen later in the Sync page
         await vm.BackCommand.ExecuteAsync(null);
         Assert.Equal(SetupStep.SignIn, vm.Step);
     }

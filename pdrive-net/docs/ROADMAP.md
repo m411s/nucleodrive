@@ -4,7 +4,7 @@ Ideas:
 
 - Edit the rest of `config.json` in Settings (sync folder location, check interval, parallel listings,
   deletion threshold, exclude patterns), so the file never needs editing by hand.
-- Rename, delete, new folder and sharing in the Files tab (the CLI has `rename`, `trash`,
+- Rename, delete, new folder and sharing in the Files page (the CLI has `rename`, `trash`,
   `create-folder` and `sharing` commands).
 
 ## Distribution: Flatpak, Snap, APT repository, stores
@@ -31,7 +31,7 @@ needs the groundwork below first, then one item per channel.
 - **CI** (GitHub Actions). Run `test.sh` on every push. On a tag, build the .deb and AppImage for
   amd64 and arm64 and attach them to a GitHub Release. Add zsync update info to the AppImage, so
   AppImageUpdate and Gear Lever can update it.
-- **Screenshots** of the Files, Sync, Backup and Settings tabs, for every store page.
+- **Screenshots** of the Files, Sync, Backup and Settings pages, for every store page.
 
 ### Flatpak / Flathub
 
@@ -91,7 +91,8 @@ needs the groundwork below first, then one item per channel.
 
 - 2026-11-17: **Packages**: `package.sh` builds a .deb (system-wide; user service enabled for everyone)
   and an AppImage (sets up its own service and login entry on first launch).
-- 2026-11-17: **Settings tab**: Proton account (sign in/out), the proton-drive CLI (install/update
+- 2026-11-17: **Redesign**: sidebar navigation with a live status, breadcrumbs, cached folder listings, folder toggles that apply immediately, cards with line icons, light/dark themes, cross-fades; the window is released when closed to the tray. **Security review** (see docs/SECURITY.md).
+- 2026-11-17: **Settings page**: Proton account (sign in/out), the proton-drive CLI (install/update
   from Proton's release index with SHA-512 verification, into `~/.local/share/pdrive/cli`, linked as
   `~/.local/bin/proton-drive`), start the tray at login, keep the background service running.
 - 2026-11-17: **Tray state icons** (synced, syncing, paused, error, needs you, not running) in Proton

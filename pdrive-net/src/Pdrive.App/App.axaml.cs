@@ -50,37 +50,28 @@ public sealed class App : Application
         var setupState = new SetupState(paths.ConfigDir);
         var syncSetup = new SyncSetup(daemon, new ConfigStore(paths));
 
-        _window = new MainWindow();
-        var settings = new SettingsViewModel(cli, drive, startup, daemon, _window, _window);
-        var vm = new MainWindowViewModel(
-            new BrowserViewModel(drive, _window, _window),
-            new BackupViewModel(daemon, _window, _window, a => Dispatcher.UIThread.Post(a)),
-            new SyncViewModel(daemon, drive, _window, a => Dispatcher.UIThread.Post(a), OpenInFileManager),
+        // The window is built when first shown and released when closed to the tray (it holds
+        // ~150 MB of rendering resources); the view models and their state stay.
+        var ui = new WindowServices(() => ShowWindow(), () => _window);
+        var settings = new SettingsViewModel(cli, drive, startup, daemon, ui, ui);
+        _vm = new MainWindowViewModel(
+            new BrowserViewModel(drive, ui, ui),
+            new BackupViewModel(daemon, ui, ui, a => Dispatcher.UIThread.Post(a)),
+            new SyncViewModel(daemon, drive, ui, a => Dispatcher.UIThread.Post(a), OpenInFileManager, TimeSpan.FromSeconds(1.5)),
             settings);
-        _window.DataContext = vm;
-        _showSetup = () => ShowSetup(new SetupViewModel(cli, drive, syncSetup, startup, setupState, daemon, _window), vm);
+        _desktop = desktop;
+        _showSetup = () => ShowSetup(new SetupViewModel(cli, drive, syncSetup, startup, setupState, daemon, ui), _vm);
         settings.ShowSetup = _showSetup;
         settings.ShowAbout = ShowAbout;
-        _window.Closing += (_, e) =>
-        {
-            if (_trayMode && !_quitting)
-            {
-                e.Cancel = true;
-                _window.Hide();
-            }
-            else
-            {
-                Quit(desktop);
-            }
-        };
 
-        _tray = new TrayController(this, daemon, ShowWindow, () => Quit(desktop), OpenInFileManager, ShowAbout);
+        _tray = new TrayController(this, daemon, () => ShowWindow(), () => Quit(desktop), OpenInFileManager, ShowAbout);
         _monitor.Start();
-        _singleInstance = SingleInstance.Listen(paths.AppSocket, () => Dispatcher.UIThread.Post(ShowWindow));
+        _singleInstance = SingleInstance.Listen(paths.AppSocket, () => Dispatcher.UIThread.Post(() => ShowWindow()));
         desktop.Exit += (_, _) => Cleanup();
 
         if (!_trayMode)
             ShowWindow();
+
 
         // First run: the setup wizard (also from the login autostart, so a fresh install greets you).
         _ = Dispatcher.UIThread.InvokeAsync(async () =>
@@ -109,7 +100,7 @@ public sealed class App : Application
             _ = main.Sync.LoadChoicesAsync();
             if (main.Settings is { } s)
                 _ = s.LoadAsync();
-            ((IToaster?)_window)?.Show("Setup finished. Syncing starts now.");
+            _window?.Show("Setup finished. Syncing starts now.", false);
         };
         _setupWindow.Show();
         _setupWindow.Activate();
@@ -134,18 +125,41 @@ public sealed class App : Application
 
     private bool _quitting;
     private bool _browserLoaded;
+    private MainWindowViewModel? _vm;
+    private IClassicDesktopStyleApplicationLifetime? _desktop;
 
-    private void ShowWindow()
+    private MainWindow ShowWindow()
     {
         if (_window is null)
-            return;
+        {
+            var window = new MainWindow { DataContext = _vm };
+            window.Closing += (_, _) =>
+            {
+                if (!_trayMode && !_quitting && _desktop is not null)
+                    Quit(_desktop);
+            };
+            window.Closed += (_, _) =>
+            {
+                window.DataContext = null;
+                if (ReferenceEquals(_window, window))
+                    _window = null;
+                // Give the rendering memory back while only the tray runs.
+                Dispatcher.UIThread.Post(() =>
+                {
+                    System.Runtime.GCSettings.LargeObjectHeapCompactionMode = System.Runtime.GCLargeObjectHeapCompactionMode.CompactOnce;
+                    GC.Collect(2, GCCollectionMode.Aggressive, blocking: true, compacting: true);
+                }, DispatcherPriority.Background);
+            };
+            _window = window;
+        }
         _window.Show();
         _window.Activate();
-        if (!_browserLoaded && _window.DataContext is MainWindowViewModel vm)
+        if (!_browserLoaded && _vm is not null)
         {
             _browserLoaded = true; // first CLI call only once the window is actually shown
-            _ = vm.Browser.RefreshAsync();
+            _ = _vm.Browser.RefreshAsync();
         }
+        return _window;
     }
 
     private static void OpenInFileManager(string folder)

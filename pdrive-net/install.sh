@@ -213,5 +213,5 @@ if [ "${NO_TRAY:-0}" != "1" ] && { [ -n "${WAYLAND_DISPLAY:-}" ] || [ -n "${DISP
 fi
 
 case ":$PATH:" in *":$BIN:"*) ;; *) echo "Note: $BIN is not on your PATH." ;; esac
-echo "Next:  pdrivectl add ~/Documents /my-files/Documents   (or use the Backup tab in the app)"
+echo "Next:  pdrivectl add ~/Documents /my-files/Documents   (or use the Backup page in the app)"
 echo "On GNOME the tray icon needs the AppIndicator extension (Ubuntu has it enabled by default)."

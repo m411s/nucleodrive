@@ -1,0 +1,285 @@
+<!-- pdrive's look: Fluent with a purple accent, cards, line icons, quiet buttons, smooth hover. -->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Light">
+          <SolidColorBrush x:Key="Pd.Window" Color="#F6F6F8" />
+          <SolidColorBrush x:Key="Pd.Sidebar" Color="#EEEDF3" />
+          <SolidColorBrush x:Key="Pd.Card" Color="#FFFFFF" />
+          <SolidColorBrush x:Key="Pd.CardBorder" Color="#E6E4EC" />
+          <SolidColorBrush x:Key="Pd.Hover" Color="#F0EEF8" />
+          <SolidColorBrush x:Key="Pd.Selected" Color="#E7E2FF" />
+          <SolidColorBrush x:Key="Pd.Muted" Color="#6B6A75" />
+          <SolidColorBrush x:Key="Pd.FolderTint" Color="#6D4AFF" />
+          <SolidColorBrush x:Key="Pd.Warning" Color="#FFF4DB" />
+          <SolidColorBrush x:Key="Pd.WarningBorder" Color="#F2C46B" />
+          <SolidColorBrush x:Key="Pd.DropFill" Color="#F2F3EFFF" />
+        </ResourceDictionary>
+        <ResourceDictionary x:Key="Dark">
+          <SolidColorBrush x:Key="Pd.Window" Color="#17161C" />
+          <SolidColorBrush x:Key="Pd.Sidebar" Color="#1E1D24" />
+          <SolidColorBrush x:Key="Pd.Card" Color="#22212A" />
+          <SolidColorBrush x:Key="Pd.CardBorder" Color="#2E2C38" />
+          <SolidColorBrush x:Key="Pd.Hover" Color="#2A2833" />
+          <SolidColorBrush x:Key="Pd.Selected" Color="#352C5E" />
+          <SolidColorBrush x:Key="Pd.Muted" Color="#A3A1AE" />
+          <SolidColorBrush x:Key="Pd.FolderTint" Color="#9C86FF" />
+          <SolidColorBrush x:Key="Pd.Warning" Color="#3A3020" />
+          <SolidColorBrush x:Key="Pd.WarningBorder" Color="#7A6230" />
+          <SolidColorBrush x:Key="Pd.DropFill" Color="#F2221A3D" />
+        </ResourceDictionary>
+      </ResourceDictionary.ThemeDictionaries>
+      <SolidColorBrush x:Key="Pd.Green" Color="#1FB58E" />
+      <SolidColorBrush x:Key="Pd.Blue" Color="#4C8DFF" />
+      <SolidColorBrush x:Key="Pd.Grey" Color="#9AA0A6" />
+      <SolidColorBrush x:Key="Pd.Red" Color="#FF5C5C" />
+      <SolidColorBrush x:Key="Pd.Amber" Color="#FFB020" />
+    </ResourceDictionary>
+  </Styles.Resources>
+
+  <!-- Line icons: <Path Classes="icon" Data="{StaticResource Icon.Folder}" /> -->
+  <Style Selector="Path.icon">
+    <Setter Property="Width" Value="18" />
+    <Setter Property="Height" Value="18" />
+    <Setter Property="Stretch" Value="Uniform" />
+    <Setter Property="Stroke" Value="{Binding $parent[TemplatedControl].Foreground}" />
+    <Setter Property="StrokeThickness" Value="1.8" />
+    <Setter Property="StrokeLineCap" Value="Round" />
+    <Setter Property="StrokeJoin" Value="Round" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Path.icon.small">
+    <Setter Property="Width" Value="16" />
+    <Setter Property="Height" Value="16" />
+  </Style>
+  <Style Selector="Path.icon.large">
+    <Setter Property="Width" Value="28" />
+    <Setter Property="Height" Value="28" />
+    <Setter Property="StrokeThickness" Value="1.6" />
+  </Style>
+
+  <Style Selector="Path.icon.tint"><Setter Property="Stroke" Value="{DynamicResource Pd.FolderTint}" /></Style>
+  <Style Selector="Path.icon.dim"><Setter Property="Stroke" Value="{DynamicResource Pd.Muted}" /></Style>
+  <Style Selector="Path.icon.amber"><Setter Property="Stroke" Value="{StaticResource Pd.Amber}" /></Style>
+  <Style Selector="Path.icon.accentStroke"><Setter Property="Stroke" Value="{DynamicResource SystemAccentColor}" /></Style>
+
+  <!-- Typography -->
+  <Style Selector="TextBlock.h1">
+    <Setter Property="FontSize" Value="24" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="TextBlock.h2">
+    <Setter Property="FontSize" Value="15" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="TextBlock.muted, SelectableTextBlock.muted">
+    <Setter Property="Foreground" Value="{DynamicResource Pd.Muted}" />
+  </Style>
+  <Style Selector="TextBlock.small">
+    <Setter Property="FontSize" Value="12" />
+  </Style>
+
+  <!-- Cards -->
+  <Style Selector="Border.card">
+    <Setter Property="Background" Value="{DynamicResource Pd.Card}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Pd.CardBorder}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="Padding" Value="18" />
+  </Style>
+  <Style Selector="Border.warning">
+    <Setter Property="Background" Value="{DynamicResource Pd.Warning}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Pd.WarningBorder}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="Padding" Value="14,10" />
+  </Style>
+
+  <!-- Buttons: rounded; "icon" = square, borderless; "ghost" = text only -->
+  <Style Selector="Button">
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Padding" Value="12,7" />
+  </Style>
+  <!-- Secondary buttons: quiet card-coloured instead of Fluent's grey -->
+  <Style Selector="Button:not(.accent):not(.icon):not(.ghost):not(.crumb)">
+    <Setter Property="Background" Value="{DynamicResource Pd.Card}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Pd.CardBorder}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+  <Style Selector="Button:not(.accent):not(.icon):not(.ghost):not(.crumb):pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Pd.Hover}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Pd.CardBorder}" />
+  </Style>
+  <Style Selector="Button:not(.accent):not(.icon):not(.ghost):not(.crumb):disabled /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Pd.Card}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Pd.CardBorder}" />
+  </Style>
+  <Style Selector="Button:disabled">
+    <Setter Property="Opacity" Value="0.55" />
+  </Style>
+
+  <!-- Wizard step dots -->
+  <Style Selector="Border.stepDot">
+    <Setter Property="Width" Value="8" />
+    <Setter Property="Height" Value="8" />
+    <Setter Property="CornerRadius" Value="4" />
+    <Setter Property="Background" Value="{DynamicResource Pd.CardBorder}" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <DoubleTransition Property="Width" Duration="0:0:0.2" Easing="CubicEaseOut" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Border.stepDot.done">
+    <Setter Property="Background" Value="{DynamicResource Pd.FolderTint}" />
+    <Setter Property="Opacity" Value="0.5" />
+  </Style>
+  <Style Selector="Border.stepDot.current">
+    <Setter Property="Width" Value="22" />
+    <Setter Property="Background" Value="{DynamicResource Pd.FolderTint}" />
+  </Style>
+
+  <Style Selector="Button.icon">
+    <Setter Property="Padding" Value="7" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+  <Style Selector="Button.ghost">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+  <Style Selector="Button.icon:disabled /template/ ContentPresenter, Button.ghost:disabled /template/ ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="Button.icon:disabled, Button.ghost:disabled">
+    <Setter Property="Opacity" Value="0.35" />
+  </Style>
+  <Style Selector="Button.icon:pointerover /template/ ContentPresenter, Button.ghost:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Pd.Hover}" />
+  </Style>
+
+  <!-- Sidebar navigation -->
+  <Style Selector="ListBox.nav">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="ListBox.nav ListBoxItem">
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Padding" Value="12,9" />
+    <Setter Property="Margin" Value="0,1" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.12" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="ListBox.nav ListBoxItem:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Pd.Hover}" />
+  </Style>
+  <Style Selector="ListBox.nav ListBoxItem:selected /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Pd.Selected}" />
+  </Style>
+
+  <!-- File list rows -->
+  <Style Selector="ListBox.files">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="ListBox.files ListBoxItem">
+    <Setter Property="Padding" Value="10,6" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.1" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="ListBox.files ListBoxItem:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Pd.Hover}" />
+  </Style>
+  <Style Selector="ListBox.files ListBoxItem:selected /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Pd.Selected}" />
+  </Style>
+  <!-- the row's download button only shows on hover/selection -->
+  <Style Selector="ListBox.files ListBoxItem Button.reveal">
+    <Setter Property="Opacity" Value="0" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <DoubleTransition Property="Opacity" Duration="0:0:0.12" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="ListBox.files ListBoxItem:pointerover Button.reveal, ListBox.files ListBoxItem:selected Button.reveal">
+    <Setter Property="Opacity" Value="1" />
+  </Style>
+
+  <!-- Status dot: green ok, blue (breathing) busy, amber needs you, red problem, grey off -->
+  <Style Selector="Ellipse.dot">
+    <Setter Property="Width" Value="9" />
+    <Setter Property="Height" Value="9" />
+    <Setter Property="Fill" Value="{StaticResource Pd.Grey}" />
+  </Style>
+  <Style Selector="Ellipse.dot.ok"><Setter Property="Fill" Value="{StaticResource Pd.Green}" /></Style>
+  <Style Selector="Ellipse.dot.warn"><Setter Property="Fill" Value="{StaticResource Pd.Amber}" /></Style>
+  <Style Selector="Ellipse.dot.error"><Setter Property="Fill" Value="{StaticResource Pd.Red}" /></Style>
+  <Style Selector="Ellipse.dot.busy">
+    <Setter Property="Fill" Value="{StaticResource Pd.Blue}" />
+    <Style.Animations>
+      <Animation Duration="0:0:1.6" IterationCount="Infinite" Easing="SineEaseInOut" PlaybackDirection="Alternate">
+        <KeyFrame Cue="0%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+        <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0.35" /></KeyFrame>
+      </Animation>
+    </Style.Animations>
+  </Style>
+
+  <!-- Sidebar status pill -->
+  <Style Selector="Border.status">
+    <Setter Property="Background" Value="{DynamicResource Pd.Card}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Pd.CardBorder}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="Padding" Value="12,10" />
+  </Style>
+
+  <!-- Rounded square behind a card's icon -->
+  <Style Selector="Border.iconTile">
+    <Setter Property="Width" Value="40" />
+    <Setter Property="Height" Value="40" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="Background" Value="{DynamicResource Pd.Selected}" />
+  </Style>
+  <Style Selector="Border.iconTile > Path.icon">
+    <Setter Property="HorizontalAlignment" Value="Center" />
+  </Style>
+
+  <!-- A row inside a card (folder lists, settings) -->
+  <Style Selector="Border.row">
+    <Setter Property="Padding" Value="10,8" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.1" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Border.row:pointerover">
+    <Setter Property="Background" Value="{DynamicResource Pd.Hover}" />
+  </Style>
+
+  <!-- Breadcrumbs -->
+  <Style Selector="Button.crumb">
+    <Setter Property="Foreground" Value="{DynamicResource Pd.Muted}" />
+    <Setter Property="FontSize" Value="15" />
+  </Style>
+  <Style Selector="Button.crumb.current">
+    <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+
+  <!-- Drop overlay on the Files page -->
+  <Style Selector="Border.drop">
+    <Setter Property="Background" Value="{DynamicResource Pd.DropFill}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource SystemAccentColor}" />
+  </Style>
+</Styles>

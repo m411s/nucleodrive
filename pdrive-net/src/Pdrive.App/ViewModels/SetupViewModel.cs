@@ -41,7 +41,7 @@ public sealed partial class SetupViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsCliStep), nameof(IsSignInStep), nameof(IsFolderStep), nameof(IsStartupStep),
-        nameof(StepTitle), nameof(StepText), nameof(IsLastStep), nameof(NextLabel))]
+        nameof(StepTitle), nameof(StepText), nameof(IsLastStep), nameof(NextLabel), nameof(StepDots))]
     [NotifyCanExecuteChangedFor(nameof(NextCommand), nameof(BackCommand))]
     private SetupStep _step;
 
@@ -78,6 +78,9 @@ public sealed partial class SetupViewModel : ObservableObject
     public bool IsStartupStep => Step == SetupStep.Startup;
     public bool IsLastStep => _steps.Count > 0 && Step == _steps[^1];
     public string NextLabel => IsLastStep ? "Finish" : "Next";
+    /// <summary>One dot per step: done, current or still to come.</summary>
+    public IReadOnlyList<StepDot> StepDots => _steps.Select((s, i) => new StepDot(i < _steps.IndexOf(Step), s == Step)).ToList();
+
     public string StepText => _steps.Count == 0 ? "" : $"Step {_steps.IndexOf(Step) + 1} of {_steps.Count}";
 
     public string StepTitle => Step switch
@@ -98,7 +101,7 @@ public sealed partial class SetupViewModel : ObservableObject
         var current = await _sync.CurrentAsync();
         LocalPath = current.Local;
         FolderLocked = current.Folders.Length > 0;
-        FolderNote = FolderLocked ? "Folders are already being synced here, so the location can't change. Stop syncing them in the Sync tab first." : null;
+        FolderNote = FolderLocked ? "Folders are already being synced here, so the location can't change. Stop syncing them in the Sync page first." : null;
         _preselected = current.Folders;
 
         TrayAtLogin = true;
@@ -142,7 +145,7 @@ public sealed partial class SetupViewModel : ObservableObject
         await EnterStepAsync();
     }
 
-    /// <summary>Continue without signing in (e.g. offline); Settings and the Files tab offer it later.</summary>
+    /// <summary>Continue without signing in (e.g. offline); Settings and the Files page offer it later.</summary>
     [RelayCommand]
     private async Task SkipSignInAsync()
     {
@@ -298,3 +301,5 @@ public sealed partial class SetupViewModel : ObservableObject
         }
     }
 }
+
+public sealed record StepDot(bool IsDone, bool IsCurrent);

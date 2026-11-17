@@ -12,14 +12,28 @@ public sealed class EntryViewModel(DriveEntry entry)
     public DriveEntry Entry { get; } = entry;
     public string Name => Entry.Name;
     public bool IsDir => Entry.IsDir;
-    public string SizeText => Entry.IsProtonDocument ? "Proton Docs/Sheets (open on the web)" : Units.Bytes(Entry.Size);
+    public bool IsFile => !Entry.IsDir;
+    public string SizeText => Entry.IsDir ? "" : Entry.IsProtonDocument ? "Proton Doc" : Units.Bytes(Entry.Size);
+
+    /// <summary>"Today 14:05", "Yesterday", "3 Nov", "3 Nov 2024".</summary>
+    public string ModifiedText => Entry.ModifiedAt is not { } m ? "" : FormatDate(m.ToLocalTime(), DateTimeOffset.Now);
+
+    internal static string FormatDate(DateTimeOffset t, DateTimeOffset now)
+    {
+        var c = System.Globalization.CultureInfo.CurrentCulture;
+        if (t.Date == now.Date)
+            return "Today " + t.ToString("HH:mm", c);
+        if (t.Date == now.Date.AddDays(-1))
+            return "Yesterday";
+        return t.Year == now.Year ? t.ToString("d MMM", c) : t.ToString("d MMM yyyy", c);
+    }
 
     /// <summary>The CLI skips Proton Docs/Sheets on download, so don't offer it.</summary>
     public bool CanDownload => !Entry.IsProtonDocument;
     public string Path => Entry.Path;
 }
 
-/// <summary>The Files tab: browse, upload (button or drop), download, sign in. Port of app.py's Window.</summary>
+/// <summary>The Files page: browse, upload (button or drop), download, sign in. Port of app.py's Window.</summary>
 public sealed partial class BrowserViewModel : ObservableObject
 {
     private readonly DriveClientProvider _provider;
@@ -33,6 +47,43 @@ public sealed partial class BrowserViewModel : ObservableObject
 
     [ObservableProperty] private bool _showSignIn;
     [ObservableProperty] private string? _placeholder;
+    [ObservableProperty] private bool _isDragOver;
+
+    /// <summary>Last listing of each folder visited: shown instantly when you go back, then refreshed.</summary>
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, IReadOnlyList<DriveEntry>> _cache = new(StringComparer.Ordinal);
+
+    /// <summary>My files › Documents › Work, each clickable.</summary>
+    public ObservableCollection<Crumb> Breadcrumbs { get; } = [new Crumb("My files", RemotePath.Root, true)];
+
+    public string FolderTitle => Breadcrumbs[^1].Name;
+
+    partial void OnCurrentPathChanged(string value)
+    {
+        Breadcrumbs.Clear();
+        Breadcrumbs.Add(new Crumb("My files", RemotePath.Root, value == RemotePath.Root));
+        var path = RemotePath.Root;
+        var rest = value.Length > RemotePath.Root.Length ? value[(RemotePath.Root.Length + 1)..] : "";
+        // split on unescaped '/', keep escapes in paths, show unescaped names
+        var segments = System.Text.RegularExpressions.Regex.Split(rest, @"(?<!\\)/").Where(s => s.Length > 0).ToList();
+        for (var i = 0; i < segments.Count; i++)
+        {
+            path += "/" + segments[i];
+            Breadcrumbs.Add(new Crumb(RemotePath.UnescapeName(segments[i]), path, i == segments.Count - 1));
+        }
+        OnPropertyChanged(nameof(FolderTitle));
+    }
+
+    [RelayCommand]
+    private Task GoToAsync(Crumb? crumb) => crumb is null || crumb.Path == CurrentPath ? Task.CompletedTask : NavigateAsync(crumb.Path);
+
+    private void Show(IReadOnlyList<DriveEntry> entries)
+    {
+        ShowSignIn = false;
+        Entries.Clear();
+        foreach (var e in entries)
+            Entries.Add(new EntryViewModel(e));
+        Placeholder = entries.Count == 0 ? "This folder is empty" : null;
+    }
 
     private int _busyCount;
 
@@ -80,13 +131,10 @@ public sealed partial class BrowserViewModel : ObservableObject
         try
         {
             var entries = await Busy(() => _client.ListAsync(path));
+            _cache[path] = entries;
             if (path != CurrentPath)
                 return; // stale: the user navigated away meanwhile
-            ShowSignIn = false;
-            Entries.Clear();
-            foreach (var e in entries)
-                Entries.Add(new EntryViewModel(e));
-            Placeholder = entries.Count == 0 ? "This folder is empty" : null;
+            Show(entries);
         }
         catch (AuthException)
         {
@@ -121,6 +169,8 @@ public sealed partial class BrowserViewModel : ObservableObject
             _history.Push(CurrentPath);
         CurrentPath = path;
         BackCommand.NotifyCanExecuteChanged();
+        if (_cache.TryGetValue(path, out var cached))
+            Show(cached); // instant; the refresh below brings it up to date
         return RefreshAsync();
     }
 
@@ -221,4 +271,10 @@ public sealed partial class BrowserViewModel : ObservableObject
             OnPropertyChanged(nameof(IsBusy));
         }
     }
+}
+
+/// <summary>One step of the breadcrumb path.</summary>
+public sealed record Crumb(string Name, string Path, bool IsLast)
+{
+    public bool IsNotLast => !IsLast;
 }

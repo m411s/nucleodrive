@@ -15,7 +15,7 @@ public sealed partial class SyncFolderChoice(string path, bool isChecked) : Obse
     [ObservableProperty] private bool _isChecked = isChecked;
 }
 
-/// <summary>The Sync tab: two-way sync of chosen Drive folders into the local sync folder.</summary>
+/// <summary>The Sync page: two-way sync of chosen Drive folders into the local sync folder.</summary>
 public sealed partial class SyncViewModel : ObservableObject
 {
     private readonly IDaemonControl _daemon;
@@ -24,7 +24,7 @@ public sealed partial class SyncViewModel : ObservableObject
     private readonly Action<string> _openFolder;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(StateText), nameof(Message), nameof(LastScanText), nameof(LocalRoot), nameof(Errors),
+    [NotifyPropertyChangedFor(nameof(StateText), nameof(Message), nameof(Detail), nameof(LastScanText), nameof(LocalRoot), nameof(Errors),
         nameof(NeedsConfirmation), nameof(IsRunning), nameof(HasFolders))]
     [NotifyCanExecuteChangedFor(nameof(SyncNowCommand), nameof(ConfirmDeletionsCommand), nameof(ApplyCommand),
         nameof(LoadChoicesCommand), nameof(AddPathCommand), nameof(OpenFolderCommand))]
@@ -33,15 +33,26 @@ public sealed partial class SyncViewModel : ObservableObject
     [ObservableProperty] private string _newPath = "";
     [ObservableProperty] private bool _choicesDirty;
 
+    private readonly TimeSpan? _autoApply;
+    private CancellationTokenSource? _pendingApply;
+
+    /// <summary>Toggling a folder takes effect by itself after a short pause (no Apply button).</summary>
+    public bool AutoApply => _autoApply is not null;
+    public bool ShowApply => !AutoApply;
+
     /// <param name="onUi">Runs an action on the UI thread.</param>
     /// <param name="openFolder">Opens a local folder in the file manager.</param>
-    public SyncViewModel(IDaemonControl daemon, IDriveClient? drive, IToaster toast, Action<Action> onUi, Action<string> openFolder)
-        : this(daemon, new DriveClientProvider(() => drive ?? throw new DriveException("proton-drive CLI not found.")), toast, onUi, openFolder)
+    public SyncViewModel(IDaemonControl daemon, IDriveClient? drive, IToaster toast, Action<Action> onUi, Action<string> openFolder,
+        TimeSpan? autoApply = null)
+        : this(daemon, new DriveClientProvider(() => drive ?? throw new DriveException("proton-drive CLI not found.")), toast, onUi, openFolder, autoApply)
     {
     }
 
-    public SyncViewModel(IDaemonControl daemon, DriveClientProvider provider, IToaster toast, Action<Action> onUi, Action<string> openFolder)
+    /// <param name="autoApply">If set, folder choices are applied this long after the last change.</param>
+    public SyncViewModel(IDaemonControl daemon, DriveClientProvider provider, IToaster toast, Action<Action> onUi, Action<string> openFolder,
+        TimeSpan? autoApply = null)
     {
+        _autoApply = autoApply;
         _daemon = daemon;
         _provider = provider;
         _toast = toast;
@@ -70,6 +81,9 @@ public sealed partial class SyncViewModel : ObservableObject
     };
 
     public string Message => IsRunning ? Info!.Message : "Start the daemon with: systemctl --user start pdrive";
+
+    /// <summary>The message, unless it only repeats the state ("Up to date").</summary>
+    public string? Detail => string.Equals(Message.TrimEnd('.'), StateText, StringComparison.OrdinalIgnoreCase) ? null : Message;
     public string LastScanText => "Last check of Drive: " + Units.Ago(Info?.LastFullScan);
     public string LocalRoot => Info?.LocalRoot ?? "";
     public IReadOnlyList<string> Errors => Info?.Errors ?? [];
@@ -105,7 +119,7 @@ public sealed partial class SyncViewModel : ObservableObject
             foreach (var n in names.Concat(synced).Distinct(StringComparer.Ordinal).Order(StringComparer.OrdinalIgnoreCase))
             {
                 var choice = new SyncFolderChoice(n, synced.Contains(n));
-                choice.PropertyChanged += (_, _) => ChoicesDirty = true;
+                choice.PropertyChanged += (_, _) => Changed();
                 Choices.Add(choice);
             }
             ChoicesDirty = false;
@@ -130,12 +144,33 @@ public sealed partial class SyncViewModel : ObservableObject
         else
         {
             var choice = new SyncFolderChoice(path, true);
-            choice.PropertyChanged += (_, _) => ChoicesDirty = true;
+            choice.PropertyChanged += (_, _) => Changed();
             Choices.Add(choice);
         }
-        ChoicesDirty = true;
+        Changed();
         NewPath = "";
     }
+
+    private async void Changed()
+    {
+        ChoicesDirty = true;
+        if (_autoApply is not { } delay)
+            return;
+        _pendingApply?.Cancel();
+        var cts = _pendingApply = new CancellationTokenSource();
+        try
+        {
+            await Task.Delay(delay, cts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            return; // another toggle came in; that one applies
+        }
+        if (ApplyCommand.CanExecute(null))
+            await ApplyCommand.ExecuteAsync(null);
+    }
+
+    public int SyncedCount => Choices.Count(c => c.IsChecked);
 
     [RelayCommand(CanExecute = nameof(IsRunning))]
     private async Task ApplyAsync()
@@ -145,6 +180,7 @@ public sealed partial class SyncViewModel : ObservableObject
         {
             await _daemon.SetSyncFoldersAsync(folders);
             ChoicesDirty = false;
+            OnPropertyChanged(nameof(SyncedCount));
             _toast.Show(folders.Length == 0 ? "Sync turned off (files are kept)" : $"Syncing {folders.Length} folder(s) into {LocalRoot}");
         }
         catch (DaemonException e)

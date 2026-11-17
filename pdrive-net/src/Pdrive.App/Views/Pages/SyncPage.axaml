@@ -1,0 +1,120 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Pdrive.App.ViewModels"
+             x:Class="Pdrive.App.Views.Pages.SyncPage"
+             x:DataType="vm:SyncViewModel">
+  <ScrollViewer>
+    <StackPanel Spacing="16" MaxWidth="760" Margin="0,0,8,0">
+
+      <!-- header -->
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+          <Button Command="{Binding OpenFolderCommand}">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Path Classes="icon small" Data="{StaticResource Icon.FolderOpen}" />
+              <TextBlock Text="Open folder" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+          <Button Command="{Binding SyncNowCommand}">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Path Classes="icon small" Data="{StaticResource Icon.Sync}" />
+              <TextBlock Text="Sync now" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+        </StackPanel>
+        <StackPanel Spacing="2">
+          <TextBlock Classes="h1" Text="Sync" />
+          <TextBlock Classes="muted" Text="Drive folders kept identical with a folder on this computer" TextWrapping="Wrap" />
+        </StackPanel>
+      </DockPanel>
+
+      <!-- deletions waiting -->
+      <Border Classes="warning" IsVisible="{Binding NeedsConfirmation}">
+        <DockPanel>
+          <Button DockPanel.Dock="Right" Classes="accent" Command="{Binding ConfirmDeletionsCommand}" VerticalAlignment="Center">
+            Move to Trash
+          </Button>
+          <Path Classes="icon amber" DockPanel.Dock="Left" Margin="0,0,12,0"
+                Data="{StaticResource Icon.Alert}" />
+          <StackPanel VerticalAlignment="Center" Spacing="2">
+            <TextBlock FontWeight="SemiBold" Text="Many files were deleted" />
+            <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Classes="muted" />
+          </StackPanel>
+        </DockPanel>
+      </Border>
+
+      <!-- status -->
+      <Border Classes="card">
+        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto">
+          <Border Grid.RowSpan="2" Classes="iconTile" Margin="0,0,14,0">
+            <Path Classes="icon tint" Data="{StaticResource Icon.Sync}" />
+          </Border>
+          <StackPanel Grid.Column="1" Spacing="2">
+            <TextBlock Classes="h2" Text="{Binding StateText}" />
+            <TextBlock Classes="muted" Text="{Binding Detail}" TextWrapping="Wrap" IsVisible="{Binding !NeedsConfirmation}" />
+          </StackPanel>
+          <WrapPanel Grid.Row="1" Grid.Column="1" Margin="0,10,0,0" IsVisible="{Binding IsRunning}">
+            <TextBlock Classes="muted small" Text="{Binding LocalRoot}" Margin="0,0,16,0" />
+            <TextBlock Classes="muted small" Text="{Binding LastScanText}" IsVisible="{Binding HasFolders}" />
+          </WrapPanel>
+        </Grid>
+      </Border>
+
+      <!-- folders -->
+      <StackPanel Spacing="8">
+        <DockPanel>
+          <Button DockPanel.Dock="Right" Classes="icon" Command="{Binding LoadChoicesCommand}" ToolTip.Tip="Reload the list from Drive">
+            <Path Classes="icon small" Data="{StaticResource Icon.Refresh}" />
+          </Button>
+          <TextBlock Classes="h2" Text="Folders" VerticalAlignment="Center" />
+        </DockPanel>
+        <Border Classes="card" Padding="6">
+          <StackPanel>
+            <ItemsControl ItemsSource="{Binding Choices}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:SyncFolderChoice">
+                  <Border Classes="row">
+                    <DockPanel>
+                      <ToggleSwitch DockPanel.Dock="Right" IsChecked="{Binding IsChecked}" OnContent="" OffContent=""
+                                    MinWidth="0" Margin="0,-4" />
+                      <Path Classes="icon tint" Margin="0,0,12,0"
+                            Data="{StaticResource Icon.Folder}" />
+                      <TextBlock Text="{Binding Path}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                    </DockPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Classes="muted" Margin="12,10" IsVisible="{Binding !Choices.Count}" TextWrapping="Wrap"
+                       Text="Your Drive folders appear here once the background service is running and you're signed in." />
+            <DockPanel Margin="8,8,8,6">
+              <Button DockPanel.Dock="Right" Classes="icon" Command="{Binding AddPathCommand}" Margin="6,0,0,0"
+                      ToolTip.Tip="Add this folder">
+                <Path Classes="icon small" Data="{StaticResource Icon.Plus}" />
+              </Button>
+              <TextBox Text="{Binding NewPath}" PlaceholderText="Add a folder inside a folder, e.g. Documents/Work" />
+            </DockPanel>
+          </StackPanel>
+        </Border>
+        <Button Classes="accent" Command="{Binding ApplyCommand}" IsEnabled="{Binding ChoicesDirty}" IsVisible="{Binding ShowApply}"
+                HorizontalAlignment="Left">Apply</Button>
+        <TextBlock Classes="muted small" TextWrapping="Wrap"
+                   Text="Changes here upload within seconds; changes made elsewhere arrive at the next check of Drive. Deleted files go to the Trash on the other side. If a file changed in both places, the newer one wins and the other is kept in the Trash or in Drive's version history." />
+      </StackPanel>
+
+      <!-- problems -->
+      <StackPanel Spacing="8" IsVisible="{Binding Errors.Count}">
+        <TextBlock Classes="h2" Text="Problems" />
+        <Border Classes="card">
+          <ItemsControl ItemsSource="{Binding Errors}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="x:String">
+                <SelectableTextBlock Text="{Binding}" TextWrapping="Wrap" Classes="muted" Margin="0,2" />
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </Border>
+      </StackPanel>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

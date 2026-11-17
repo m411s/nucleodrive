@@ -25,7 +25,7 @@ version, the licence and the project link.
 
 Choose Drive folders in the app's **Sync** tab or with `pdrivectl sync add Photos`. Each one is mirrored
 at `~/proton-drive/<folder>` (e.g. `/my-files/Documents/Work` ⇄ `~/proton-drive/Documents/Work`).
-Unchosen folders stay online-only and remain browsable in the Files tab.
+Unchosen folders stay online-only and remain browsable in the Files page.
 
 - **Changes on this computer** (file manager, editors, …) upload within seconds (inotify).
 - **Changes made elsewhere** (web, phone, other computers) arrive at the next check of Drive: every
@@ -67,7 +67,7 @@ prototype's service is running, it offers to stop it: two daemons on the same fo
 twice. `./uninstall.sh` removes everything except your settings (`--purge` removes those too).
 
 On GNOME, tray icons need the "AppIndicator and KStatusNotifierItem Support" extension. KDE, XFCE and
-Cinnamon show them out of the box. Without a tray, use the app's Backup tab.
+Cinnamon show them out of the box. Without a tray, use the app's Backup page.
 
 ## Packages (.deb, AppImage)
 
@@ -94,7 +94,7 @@ never included.
 
 | | |
 |---|---|
-| App | `pdrive`: Files, Sync, Backup and Settings tabs. `pdrive --tray` starts hidden (used at login). Launching again shows the running window. |
+| App | `pdrive`: Files, Sync, Backup and Settings pages. `pdrive --tray` starts hidden (used at login). Launching again shows the running window. |
 | CLI | `pdrivectl sync status \| list \| add FOLDER \| remove FOLDER \| now \| confirm` (two-way sync) |
 | | `pdrivectl status \| list \| add LOCAL REMOTE \| remove LOCAL \| now \| pause \| resume` (backups; pause/resume cover sync too) |
 | Daemon | `systemctl --user status pdrive`, logs with `journalctl --user -u pdrive` |

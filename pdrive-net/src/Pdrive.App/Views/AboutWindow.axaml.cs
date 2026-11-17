@@ -23,7 +23,7 @@ public sealed partial class AboutWindow : Window
             Icon = icon;
         this.FindControl<TextBlock>("VersionText")!.Text = "Version " + Version;
         this.FindControl<SelectableTextBlock>("LinkText")!.Text = ProjectUrl;
-        this.FindControl<SelectableTextBlock>("LicenseBox")!.Text = LicenseText;
+        this.FindControl<SelectableTextBlock>("LicenseBox")!.Text = System.Text.RegularExpressions.Regex.Replace(LicenseText.ReplaceLineEndings("\n"), @"(?<!\n)\n(?!\n)", " "); // reflow paragraphs
         this.FindControl<Button>("GitHubButton")!.Click += (_, _) => openUrl(ProjectUrl);
         this.FindControl<Button>("CloseButton")!.Click += (_, _) => Close();
         try

@@ -1,7 +1,5 @@
 using Avalonia.Controls;
 using Avalonia.Controls.Notifications;
-using Avalonia.Input;
-using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
@@ -18,54 +16,21 @@ public sealed partial class MainWindow : Window, IDialogs, IToaster
     {
         AvaloniaXamlLoader.Load(this);
         Icon = LoadAppIcon();
-
-        DragDrop.SetAllowDrop(this, true);
-        AddHandler(DragDrop.DragOverEvent, OnDragOver);
-        AddHandler(DragDrop.DropEvent, OnDrop);
-
-        // Load settings (CLI version, update check, sign-in state) when the tab is first opened.
-        var settingsLoaded = false;
-        this.FindControl<TabItem>("SettingsTab")!.PropertyChanged += (_, e) =>
+        try
         {
-            if (e.Property == TabItem.IsSelectedProperty && e.NewValue is true && !settingsLoaded && Vm?.Settings is { } s)
-            {
-                settingsLoaded = true;
-                _ = s.LoadAsync();
-            }
-        };
-
-        var list = this.FindControl<ListBox>("EntryList")!;
-        list.DoubleTapped += (_, _) => OpenSelected(list);
-        list.KeyDown += (_, e) =>
+            using var png = Avalonia.Platform.AssetLoader.Open(new Uri("avares://pdrive/Assets/pdrive.png"));
+            this.FindControl<Image>("Logo")!.Source = new Avalonia.Media.Imaging.Bitmap(png);
+        }
+        catch (Exception e) when (e is IOException or InvalidOperationException)
         {
-            if (e.Key == Key.Enter)
-                OpenSelected(list);
-        };
+            // no logo; the text is enough
+        }
     }
-
-    private MainWindowViewModel? Vm => DataContext as MainWindowViewModel;
 
     protected override void OnOpened(EventArgs e)
     {
         base.OnOpened(e);
         _notifications ??= new WindowNotificationManager(this) { MaxItems = 3, Position = NotificationPosition.BottomRight };
-    }
-
-    private void OpenSelected(ListBox list)
-    {
-        if (list.SelectedItem is EntryViewModel { IsDir: true } entry && Vm is { } vm)
-            _ = vm.Browser.OpenAsync(entry);
-    }
-
-    private void OnDragOver(object? sender, DragEventArgs e) =>
-        e.DragEffects = e.DataTransfer.TryGetFiles() is { Length: > 0 } ? DragDropEffects.Copy : DragDropEffects.None;
-
-    private void OnDrop(object? sender, DragEventArgs e)
-    {
-        var paths = e.DataTransfer.TryGetFiles()?.Select(f => f.TryGetLocalPath()).OfType<string>().ToList() ?? [];
-        if (paths.Count > 0 && Vm is { } vm)
-            _ = vm.Browser.UploadPathsAsync(paths);
-        e.Handled = true;
     }
 
     // ---- IDialogs ----------------------------------------------------------------

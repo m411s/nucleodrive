@@ -1,237 +1,79 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Pdrive.App.ViewModels"
-        xmlns:ipc="using:Pdrive.Ipc"
+        xmlns:pages="using:Pdrive.App.Views.Pages"
         x:Class="Pdrive.App.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="Proton Drive (unofficial)"
-        Width="860" Height="620" MinWidth="480" MinHeight="360">
-  <TabControl Margin="8,4">
+        Background="{DynamicResource Pd.Window}"
+        Width="940" Height="640" MinWidth="640" MinHeight="420">
+  <Window.DataTemplates>
+    <DataTemplate DataType="vm:BrowserViewModel"><pages:FilesPage /></DataTemplate>
+    <DataTemplate DataType="vm:SyncViewModel"><pages:SyncPage /></DataTemplate>
+    <DataTemplate DataType="vm:BackupViewModel"><pages:BackupPage /></DataTemplate>
+    <DataTemplate DataType="vm:SettingsViewModel"><pages:SettingsPage /></DataTemplate>
+  </Window.DataTemplates>
 
-    <!-- Files tab -->
-    <TabItem Header="Files">
-      <DockPanel DataContext="{Binding Browser}" x:DataType="vm:BrowserViewModel">
-        <DockPanel DockPanel.Dock="Top" Margin="0,4,0,8">
-          <StackPanel Orientation="Horizontal" Spacing="4" DockPanel.Dock="Left">
-            <Button Command="{Binding BackCommand}" ToolTip.Tip="Back">←</Button>
-            <Button Command="{Binding UpCommand}" ToolTip.Tip="Parent folder">↑</Button>
-            <Button Command="{Binding RefreshCommand}" ToolTip.Tip="Refresh">⟳</Button>
+  <Grid ColumnDefinitions="208,*">
+    <!-- sidebar -->
+    <Border Grid.Column="0" Background="{DynamicResource Pd.Sidebar}">
+      <DockPanel Margin="12,16,12,12">
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="10" Margin="8,0,0,20">
+          <Image x:Name="Logo" Width="26" Height="26" />
+          <StackPanel VerticalAlignment="Center">
+            <TextBlock Text="Proton Drive" FontWeight="SemiBold" FontSize="14" />
+            <TextBlock Text="unofficial" Classes="muted small" />
           </StackPanel>
-          <Button DockPanel.Dock="Right" Command="{Binding UploadCommand}" IsEnabled="{Binding HasClient}"
-                  Classes="accent" ToolTip.Tip="Upload files here (or drop them on the window)">Upload…</Button>
-          <ProgressBar DockPanel.Dock="Right" IsIndeterminate="True" IsVisible="{Binding IsBusy}"
-                       Width="80" Margin="8,0" VerticalAlignment="Center" />
-          <TextBlock Text="{Binding CurrentPath}" VerticalAlignment="Center" Margin="12,0"
-                     Opacity="0.7" TextTrimming="CharacterEllipsis" />
-        </DockPanel>
+        </StackPanel>
 
-        <Border DockPanel.Dock="Top" IsVisible="{Binding ShowSignIn}" Padding="12" Margin="0,0,0,8"
-                CornerRadius="6" Background="{DynamicResource SystemFillColorAttentionBackgroundBrush}">
-          <DockPanel>
-            <Button DockPanel.Dock="Right" Classes="accent" Command="{Binding SignInCommand}">Sign in</Button>
-            <StackPanel>
-              <TextBlock FontWeight="SemiBold">Not signed in</TextBlock>
-              <TextBlock Opacity="0.7">Opens your browser to sign in to Proton</TextBlock>
+        <!-- status pill -->
+        <Border DockPanel.Dock="Bottom" Classes="status">
+          <Grid ColumnDefinitions="Auto,*">
+            <Ellipse Classes="dot" Margin="2,5,10,0" VerticalAlignment="Top"
+                     Classes.ok="{Binding StatusOk}" Classes.busy="{Binding StatusBusy}" Classes.warn="{Binding StatusWarn}"
+                     Classes.error="{Binding StatusError}" Classes.off="{Binding StatusOff}" />
+            <StackPanel Grid.Column="1" Spacing="1">
+              <TextBlock Text="{Binding StatusTitle}" FontWeight="SemiBold" />
+              <TextBlock Text="{Binding StatusDetail}" Classes="muted small" TextWrapping="Wrap" MaxLines="3"
+                         TextTrimming="CharacterEllipsis" />
             </StackPanel>
-          </DockPanel>
+          </Grid>
         </Border>
 
-        <Grid>
-          <ListBox x:Name="EntryList" ItemsSource="{Binding Entries}" SelectionMode="Single">
-            <ListBox.ItemTemplate>
-              <DataTemplate x:DataType="vm:EntryViewModel">
-                <DockPanel>
-                  <Button DockPanel.Dock="Right" Classes="subtle" ToolTip.Tip="Download" IsVisible="{Binding CanDownload}"
-                          Command="{Binding $parent[ListBox].((vm:BrowserViewModel)DataContext).DownloadCommand}"
-                          CommandParameter="{Binding}">⤓</Button>
-                  <TextBlock DockPanel.Dock="Right" Text="{Binding SizeText}" Opacity="0.6"
-                             VerticalAlignment="Center" Margin="12,0" />
-                  <PathIcon DockPanel.Dock="Left" Width="18" Height="18" Margin="0,0,10,0"
-                            Data="{StaticResource FolderIcon}" IsVisible="{Binding IsDir}" />
-                  <PathIcon DockPanel.Dock="Left" Width="18" Height="18" Margin="0,0,10,0"
-                            Data="{StaticResource FileIcon}" IsVisible="{Binding !IsDir}" />
-                  <TextBlock Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                </DockPanel>
-              </DataTemplate>
-            </ListBox.ItemTemplate>
-          </ListBox>
-          <TextBlock Text="{Binding Placeholder}" IsVisible="{Binding Placeholder, Converter={x:Static ObjectConverters.IsNotNull}}"
-                     HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap"
-                     MaxWidth="520" TextAlignment="Center" Opacity="0.7" />
-        </Grid>
+        <ListBox x:Name="Nav" Classes="nav" SelectedIndex="{Binding PageIndex}">
+          <ListBoxItem>
+            <StackPanel Orientation="Horizontal" Spacing="12">
+              <Path Classes="icon" Data="{StaticResource Icon.Folder}" />
+              <TextBlock Text="Files" VerticalAlignment="Center" />
+            </StackPanel>
+          </ListBoxItem>
+          <ListBoxItem>
+            <StackPanel Orientation="Horizontal" Spacing="12">
+              <Path Classes="icon" Data="{StaticResource Icon.Sync}" />
+              <TextBlock Text="Sync" VerticalAlignment="Center" />
+            </StackPanel>
+          </ListBoxItem>
+          <ListBoxItem>
+            <StackPanel Orientation="Horizontal" Spacing="12">
+              <Path Classes="icon" Data="{StaticResource Icon.Archive}" />
+              <TextBlock Text="Backup" VerticalAlignment="Center" />
+            </StackPanel>
+          </ListBoxItem>
+          <ListBoxItem IsVisible="{Binding Settings, Converter={x:Static ObjectConverters.IsNotNull}}">
+            <StackPanel Orientation="Horizontal" Spacing="12">
+              <Path Classes="icon" Data="{StaticResource Icon.Sliders}" />
+              <TextBlock Text="Settings" VerticalAlignment="Center" />
+            </StackPanel>
+          </ListBoxItem>
+        </ListBox>
       </DockPanel>
-    </TabItem>
+    </Border>
 
-    <!-- Sync tab -->
-    <TabItem Header="Sync">
-      <ScrollViewer DataContext="{Binding Sync}" x:DataType="vm:SyncViewModel">
-        <StackPanel Spacing="12" Margin="0,8">
-          <Border Padding="16" CornerRadius="8" Background="{DynamicResource CardBackgroundFillColorDefaultBrush}">
-            <StackPanel Spacing="6">
-              <DockPanel>
-                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
-                  <Button Command="{Binding OpenFolderCommand}">Open folder</Button>
-                  <Button Command="{Binding SyncNowCommand}">Sync now</Button>
-                </StackPanel>
-                <TextBlock Text="{Binding StateText}" FontSize="20" FontWeight="SemiBold" />
-              </DockPanel>
-              <TextBlock Text="{Binding Message}" TextWrapping="Wrap" />
-              <TextBlock Text="{Binding LocalRoot, StringFormat='Local folder: {0}'}" Opacity="0.7" IsVisible="{Binding IsRunning}" />
-              <TextBlock Text="{Binding LastScanText}" Opacity="0.6" IsVisible="{Binding HasFolders}" />
-              <Button Classes="accent" Command="{Binding ConfirmDeletionsCommand}" IsVisible="{Binding NeedsConfirmation}"
-                      HorizontalAlignment="Left">Confirm the deletions</Button>
-            </StackPanel>
-          </Border>
-
-          <TextBlock Text="Drive folders to sync" FontWeight="SemiBold" />
-          <TextBlock Opacity="0.6" TextWrapping="Wrap"
-                     Text="Checked folders are kept identical in both places. Changes on this computer upload within seconds; changes made elsewhere arrive at the next check of Drive. Deleted files go to the Trash on the other side. If a file changed in both places, the newer version wins (the other is kept in the Trash or Drive's version history)." />
-          <ItemsControl ItemsSource="{Binding Choices}">
-            <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="vm:SyncFolderChoice">
-                <CheckBox IsChecked="{Binding IsChecked}" Content="{Binding Path}" />
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-          <DockPanel>
-            <Button DockPanel.Dock="Right" Command="{Binding AddPathCommand}" Margin="8,0,0,0">Add</Button>
-            <TextBox Text="{Binding NewPath}" PlaceholderText="Folder inside My files, e.g. Documents/Work" />
-          </DockPanel>
-          <StackPanel Orientation="Horizontal" Spacing="8">
-            <Button Classes="accent" Command="{Binding ApplyCommand}" IsEnabled="{Binding ChoicesDirty}">Apply</Button>
-            <Button Command="{Binding LoadChoicesCommand}">Reload list</Button>
-          </StackPanel>
-
-          <StackPanel Spacing="4" IsVisible="{Binding Errors.Count}">
-            <TextBlock Text="Problems" FontWeight="SemiBold" />
-            <ItemsControl ItemsSource="{Binding Errors}">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="x:String">
-                  <SelectableTextBlock Text="{Binding}" TextWrapping="Wrap" Opacity="0.8" />
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-          </StackPanel>
-        </StackPanel>
-      </ScrollViewer>
-    </TabItem>
-
-    <!-- Backup tab -->
-    <TabItem Header="Backup">
-      <ScrollViewer DataContext="{Binding Backup}" x:DataType="vm:BackupViewModel">
-        <StackPanel Spacing="12" Margin="0,8">
-          <Border Padding="16" CornerRadius="8" Background="{DynamicResource CardBackgroundFillColorDefaultBrush}">
-            <StackPanel Spacing="6">
-              <DockPanel>
-                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
-                  <Button Command="{Binding SyncNowCommand}">Sync now</Button>
-                  <Button Command="{Binding TogglePauseCommand}" Content="{Binding PauseLabel}" />
-                </StackPanel>
-                <TextBlock Text="{Binding StateText}" FontSize="20" FontWeight="SemiBold" />
-              </DockPanel>
-              <TextBlock Text="{Binding Message}" TextWrapping="Wrap" />
-              <ProgressBar Value="{Binding ProgressPercent}" Maximum="100" IsVisible="{Binding ShowProgress}" />
-              <TextBlock Text="{Binding LastSyncText}" Opacity="0.6" />
-              <TextBlock Text="{Binding NotRunningHint}" IsVisible="{Binding !IsRunning}" Opacity="0.8" TextWrapping="Wrap" />
-            </StackPanel>
-          </Border>
-
-          <DockPanel>
-            <Button DockPanel.Dock="Right" Command="{Binding AddFolderCommand}">Add folder…</Button>
-            <TextBlock Text="Backed-up folders" FontWeight="SemiBold" VerticalAlignment="Center" />
-          </DockPanel>
-          <TextBlock Opacity="0.6" TextWrapping="Wrap"
-                     Text="New and changed files are uploaded. Nothing is ever deleted on Drive or on this computer." />
-          <ItemsControl ItemsSource="{Binding Folders}">
-            <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="ipc:FolderInfo">
-                <DockPanel Margin="0,4">
-                  <Button DockPanel.Dock="Right" Classes="subtle"
-                          Command="{Binding $parent[ItemsControl].((vm:BackupViewModel)DataContext).RemoveFolderCommand}"
-                          CommandParameter="{Binding}">Remove</Button>
-                  <StackPanel>
-                    <TextBlock Text="{Binding Local}" />
-                    <TextBlock Text="{Binding Remote, StringFormat='→ {0}'}" Opacity="0.6" />
-                  </StackPanel>
-                </DockPanel>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-
-          <StackPanel Spacing="4" IsVisible="{Binding Errors.Count}">
-            <TextBlock Text="Recent errors" FontWeight="SemiBold" />
-            <ItemsControl ItemsSource="{Binding Errors}">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="x:String">
-                  <SelectableTextBlock Text="{Binding}" TextWrapping="Wrap" Opacity="0.8" />
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-          </StackPanel>
-
-          <StackPanel Spacing="4" IsVisible="{Binding Unwatched.Count}">
-            <TextBlock Text="Not watched live (checked every interval instead)" FontWeight="SemiBold" />
-            <ItemsControl ItemsSource="{Binding Unwatched}">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="x:String">
-                  <TextBlock Text="{Binding}" TextWrapping="Wrap" Opacity="0.8" />
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-          </StackPanel>
-        </StackPanel>
-      </ScrollViewer>
-    </TabItem>
-
-    <!-- Settings tab -->
-    <TabItem Header="Settings" x:Name="SettingsTab">
-      <ScrollViewer DataContext="{Binding Settings}" x:DataType="vm:SettingsViewModel">
-        <StackPanel Spacing="12" Margin="0,8">
-
-          <Border Padding="16" CornerRadius="8" Background="{DynamicResource CardBackgroundFillColorDefaultBrush}">
-            <StackPanel Spacing="6">
-              <TextBlock Text="Proton account" FontSize="16" FontWeight="SemiBold" />
-              <TextBlock Text="{Binding AccountStatus}" TextWrapping="Wrap" />
-              <StackPanel Orientation="Horizontal" Spacing="8">
-                <Button Classes="accent" Command="{Binding SignInCommand}" IsVisible="{Binding !IsSignedIn}">Sign in…</Button>
-                <Button Command="{Binding SignOutCommand}" IsVisible="{Binding IsSignedIn}">Sign out</Button>
-              </StackPanel>
-              <TextBlock Opacity="0.6" TextWrapping="Wrap"
-                         Text="Signing in opens your browser. Your password never passes through pdrive; the session is kept in your system keyring." />
-            </StackPanel>
-          </Border>
-
-          <Border Padding="16" CornerRadius="8" Background="{DynamicResource CardBackgroundFillColorDefaultBrush}">
-            <StackPanel Spacing="6">
-              <TextBlock Text="Proton Drive CLI" FontSize="16" FontWeight="SemiBold" />
-              <TextBlock Text="{Binding CliStatus}" TextWrapping="Wrap" />
-              <SelectableTextBlock Text="{Binding CliPath}" Opacity="0.6" IsVisible="{Binding HasCli}" />
-              <StackPanel Orientation="Horizontal" Spacing="8">
-                <Button Command="{Binding InstallCliCommand}" Content="{Binding InstallLabel}" />
-                <ProgressBar IsIndeterminate="True" IsVisible="{Binding CliBusy}" Width="80" VerticalAlignment="Center" />
-              </StackPanel>
-              <TextBlock Opacity="0.6" TextWrapping="Wrap"
-                         Text="Downloads Proton's official build for this computer from proton.me, checks it against the SHA-512 checksum Proton publishes, and installs it to ~/.local/share/pdrive/cli (linked as ~/.local/bin/proton-drive)." />
-            </StackPanel>
-          </Border>
-
-          <Border Padding="16" CornerRadius="8" Background="{DynamicResource CardBackgroundFillColorDefaultBrush}">
-            <StackPanel Spacing="8">
-              <TextBlock Text="Startup" FontSize="16" FontWeight="SemiBold" />
-              <CheckBox IsChecked="{Binding TrayAtLogin}">Start Proton Drive (tray icon) when I log in</CheckBox>
-              <CheckBox IsChecked="{Binding ServiceEnabled}" IsEnabled="{Binding ServiceInstalled}">Keep syncing and backing up in the background</CheckBox>
-              <TextBlock Opacity="0.6" TextWrapping="Wrap"
-                         Text="The background service does the syncing, with or without the tray icon. It starts when you log in while this is on." />
-            </StackPanel>
-          </Border>
-
-          <StackPanel Orientation="Horizontal" Spacing="8">
-            <Button Command="{Binding LoadCommand}">Refresh</Button>
-            <Button Command="{Binding RunSetupCommand}">Run setup again…</Button>
-            <Button Command="{Binding AboutCommand}">About pdrive</Button>
-          </StackPanel>
-        </StackPanel>
-      </ScrollViewer>
-    </TabItem>
-  </TabControl>
+    <!-- page -->
+    <TransitioningContentControl Grid.Column="1" Margin="28,22,20,20" Content="{Binding CurrentPage}">
+      <TransitioningContentControl.PageTransition>
+        <CrossFade Duration="0:0:0.15" />
+      </TransitioningContentControl.PageTransition>
+    </TransitioningContentControl>
+  </Grid>
 </Window>

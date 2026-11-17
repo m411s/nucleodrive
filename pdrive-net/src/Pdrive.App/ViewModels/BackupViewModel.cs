@@ -6,7 +6,7 @@ using Pdrive.Ipc;
 
 namespace Pdrive.App.ViewModels;
 
-/// <summary>The Backup tab: daemon status, backed-up folders, pause/resume, sync now.</summary>
+/// <summary>The Backup page: daemon status, backed-up folders, pause/resume, sync now.</summary>
 public sealed partial class BackupViewModel : ObservableObject
 {
     private readonly IDaemonControl _daemon;
@@ -127,12 +127,4 @@ public sealed partial class BackupViewModel : ObservableObject
             return false;
         }
     }
-}
-
-public sealed class MainWindowViewModel(BrowserViewModel browser, BackupViewModel backup, SyncViewModel sync, SettingsViewModel? settings = null)
-{
-    public BrowserViewModel Browser { get; } = browser;
-    public BackupViewModel Backup { get; } = backup;
-    public SyncViewModel Sync { get; } = sync;
-    public SettingsViewModel? Settings { get; } = settings;
 }

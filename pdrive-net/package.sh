@@ -136,7 +136,7 @@ Homepage: https://proton.me/drive
 Description: Unofficial Proton Drive client: two-way sync, backup, browser, tray
  Keeps chosen Proton Drive folders in sync with ~/proton-drive, backs up other
  folders one way, and lets you browse Drive. Built on Proton's official
- proton-drive CLI, which can be installed from the app's Settings tab.
+ proton-drive CLI, which can be installed from the app's Settings page.
  Not affiliated with Proton AG.
 CTRL
 

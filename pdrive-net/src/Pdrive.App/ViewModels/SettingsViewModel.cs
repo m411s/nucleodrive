@@ -6,7 +6,7 @@ using Pdrive.Ipc;
 
 namespace Pdrive.App.ViewModels;
 
-/// <summary>The Settings tab: the proton-drive CLI (install/update), the Proton account (sign in/out)
+/// <summary>The Settings page: the proton-drive CLI (install/update), the Proton account (sign in/out)
 /// and what starts at login (the tray, and the background service that syncs).</summary>
 public sealed partial class SettingsViewModel : ObservableObject
 {

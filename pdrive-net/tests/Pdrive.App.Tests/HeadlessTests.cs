@@ -14,8 +14,10 @@ namespace Pdrive.App.Tests;
 
 public static class TestAppBuilder
 {
+    // Real Skia rendering (not the headless stub), so screenshots look like the app.
     public static AppBuilder BuildAvaloniaApp() =>
-        AppBuilder.Configure<App>().UseHeadless(new AvaloniaHeadlessPlatformOptions());
+        AppBuilder.Configure<App>().UseSkia().WithInterFont()
+            .UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false });
 }
 
 public sealed class HeadlessTests
@@ -58,40 +60,52 @@ public sealed class HeadlessTests
         Assert.Equal([0x89, (byte)'P', (byte)'N', (byte)'G'], magic.ToArray());
     }
 
+    private static List<string?> Texts(Window w)
+    {
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        return w.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToList();
+    }
+
     [AvaloniaFact]
-    public async Task Main_window_shows_entries_and_backup_status()
+    public async Task Main_window_navigates_between_pages_and_shows_status()
     {
         var window = new MainWindow();
         var daemon = new FakeDaemon();
-        var browser = new BrowserViewModel(new FakeDrive(), null, window, window);
-        var backup = new BackupViewModel(daemon, window, window, a => a());
-        var sync = new SyncViewModel(daemon, new FakeDrive(), window, a => a(), _ => { });
-        window.DataContext = new MainWindowViewModel(browser, backup, sync);
+        var toast = new FakeToaster();
+        var dialogs = new FakeDialogs();
+        var browser = new BrowserViewModel(new FakeDrive(), null, dialogs, toast);
+        var backup = new BackupViewModel(daemon, dialogs, toast, a => a());
+        var sync = new SyncViewModel(daemon, new FakeDrive(), toast, a => a(), _ => { });
+        var vm = new MainWindowViewModel(browser, backup, sync);
+        window.DataContext = vm;
         window.Show();
 
         await browser.RefreshAsync();
         Avalonia.Threading.Dispatcher.UIThread.RunJobs();
-        var list = window.FindControl<ListBox>("EntryList")!;
+        var list = window.GetVisualDescendants().OfType<ListBox>().Single(l => l.Name == "EntryList");
         Assert.Equal(2, list.ItemCount);
-        var texts = window.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToList();
+        var texts = Texts(window);
         Assert.Contains("Docs", texts);
-        Assert.Contains("/my-files", texts);
+        Assert.Contains("My files", texts); // breadcrumb
+        Assert.Contains("Service stopped", texts);
 
         daemon.Publish(FakeDaemon.With(DaemonState.Idle, "Up to date (3 uploaded)"));
-        var tabs = window.GetLogicalDescendants().OfType<TabControl>().Single();
-        tabs.SelectedIndex = 2;
-        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
-        texts = window.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToList();
+        vm.PageIndex = 2;
+        texts = Texts(window);
         Assert.Contains("Up to date (3 uploaded)", texts);
         Assert.Contains("/home/me/Docs", texts);
+        Assert.Contains("Up to date", texts); // sidebar status
 
         daemon.Publish(FakeDaemon.WithSync(SyncState.Syncing, "Downloading Docs/a.txt"));
-        tabs.SelectedIndex = 1;
-        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
-        texts = window.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToList();
+        vm.PageIndex = 1;
+        texts = Texts(window);
         Assert.Contains("Syncing", texts);
         Assert.Contains("Downloading Docs/a.txt", texts);
-        Assert.Contains("Local folder: /home/me/proton-drive", texts);
+        Assert.Contains("/home/me/proton-drive", texts);
+
+        // the sidebar list drives the page too
+        window.GetVisualDescendants().OfType<ListBox>().Single(l => l.Name == "Nav").SelectedIndex = 0;
+        Assert.Same(browser, vm.CurrentPage);
         window.Close();
     }
 }

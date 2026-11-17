@@ -1,0 +1,101 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Pdrive.App.ViewModels"
+             x:Class="Pdrive.App.Views.Pages.SettingsPage"
+             x:DataType="vm:SettingsViewModel">
+  <ScrollViewer>
+    <StackPanel Spacing="16" MaxWidth="760" Margin="0,0,8,0">
+      <StackPanel Spacing="2">
+        <TextBlock Classes="h1" Text="Settings" />
+        <TextBlock Classes="muted" Text="Account, the Proton Drive CLI and startup" />
+      </StackPanel>
+
+      <!-- account -->
+      <Border Classes="card">
+        <Grid ColumnDefinitions="Auto,*,Auto">
+          <Border Classes="iconTile" Margin="0,0,14,0" VerticalAlignment="Top">
+            <Path Classes="icon tint" Data="{StaticResource Icon.User}" />
+          </Border>
+          <StackPanel Grid.Column="1" Spacing="3">
+            <TextBlock Classes="h2" Text="Proton account" />
+            <TextBlock Text="{Binding AccountStatus}" TextWrapping="Wrap" />
+            <TextBlock Classes="muted small" TextWrapping="Wrap"
+                       Text="Signing in opens your browser. Your password never passes through pdrive; the session is kept in your system keyring." />
+          </StackPanel>
+          <StackPanel Grid.Column="2" Margin="12,0,0,0" VerticalAlignment="Top">
+            <Button Classes="accent" Command="{Binding SignInCommand}" IsVisible="{Binding !IsSignedIn}">Sign in</Button>
+            <Button Command="{Binding SignOutCommand}" IsVisible="{Binding IsSignedIn}">Sign out</Button>
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <!-- CLI -->
+      <Border Classes="card">
+        <Grid ColumnDefinitions="Auto,*,Auto">
+          <Border Classes="iconTile" Margin="0,0,14,0" VerticalAlignment="Top">
+            <Path Classes="icon tint" Data="{StaticResource Icon.Terminal}" />
+          </Border>
+          <StackPanel Grid.Column="1" Spacing="3">
+            <TextBlock Classes="h2" Text="Proton Drive CLI" />
+            <TextBlock Text="{Binding CliStatus}" TextWrapping="Wrap" />
+            <SelectableTextBlock Classes="muted small" Text="{Binding CliPath}" IsVisible="{Binding HasCli}" />
+            <TextBlock Classes="muted small" TextWrapping="Wrap"
+                       Text="Proton's official build, downloaded from proton.me and checked against the SHA-512 checksum Proton publishes." />
+            <ProgressBar IsIndeterminate="True" IsVisible="{Binding CliBusy}" Margin="0,6,0,0" />
+          </StackPanel>
+          <Button Grid.Column="2" Margin="12,0,0,0" VerticalAlignment="Top" Command="{Binding InstallCliCommand}"
+                  Content="{Binding InstallLabel}" />
+        </Grid>
+      </Border>
+
+      <!-- startup -->
+      <Border Classes="card" Padding="6">
+        <StackPanel>
+          <Border Classes="row">
+            <DockPanel>
+              <ToggleSwitch DockPanel.Dock="Right" IsChecked="{Binding TrayAtLogin}" OnContent="" OffContent="" MinWidth="0" />
+              <Path Classes="icon tint" Margin="0,0,12,0" Data="{StaticResource Icon.Power}" />
+              <StackPanel VerticalAlignment="Center" Spacing="1">
+                <TextBlock Text="Open at login" />
+                <TextBlock Classes="muted small" Text="Starts pdrive in the tray when you log in" TextWrapping="Wrap" />
+              </StackPanel>
+            </DockPanel>
+          </Border>
+          <Border Classes="row">
+            <DockPanel>
+              <ToggleSwitch DockPanel.Dock="Right" IsChecked="{Binding ServiceEnabled}" IsEnabled="{Binding ServiceInstalled}"
+                            OnContent="" OffContent="" MinWidth="0" />
+              <Path Classes="icon tint" Margin="0,0,12,0" Data="{StaticResource Icon.Cloud}" />
+              <StackPanel VerticalAlignment="Center" Spacing="1">
+                <TextBlock Text="Sync in the background" />
+                <TextBlock Classes="muted small" TextWrapping="Wrap"
+                           Text="The background service syncs and backs up, with or without the window or tray icon" />
+              </StackPanel>
+            </DockPanel>
+          </Border>
+        </StackPanel>
+      </Border>
+
+      <WrapPanel>
+        <Button Classes="ghost" Command="{Binding RunSetupCommand}" Margin="0,0,6,6">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Path Classes="icon small" Data="{StaticResource Icon.Sliders}" />
+            <TextBlock Text="Run setup again" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+        <Button Classes="ghost" Command="{Binding AboutCommand}" Margin="0,0,6,6">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Path Classes="icon small" Data="{StaticResource Icon.Info}" />
+            <TextBlock Text="About pdrive" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+        <Button Classes="ghost" Command="{Binding LoadCommand}" Margin="0,0,6,6">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Path Classes="icon small" Data="{StaticResource Icon.Refresh}" />
+            <TextBlock Text="Refresh" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+      </WrapPanel>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

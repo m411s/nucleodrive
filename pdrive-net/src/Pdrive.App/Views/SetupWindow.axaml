@@ -4,77 +4,121 @@
         x:Class="Pdrive.App.Views.SetupWindow"
         x:DataType="vm:SetupViewModel"
         Title="Set up Proton Drive (unofficial)"
-        Width="620" Height="520" MinWidth="480" MinHeight="420"
+        Background="{DynamicResource Pd.Window}"
+        Width="620" Height="540" MinWidth="480" MinHeight="440"
         WindowStartupLocation="CenterScreen">
-  <DockPanel Margin="24">
-    <!-- header -->
-    <StackPanel DockPanel.Dock="Top" Spacing="4" Margin="0,0,0,16">
-      <TextBlock Text="{Binding StepText}" Opacity="0.6" />
-      <TextBlock Text="{Binding StepTitle}" FontSize="22" FontWeight="SemiBold" />
+  <DockPanel Margin="28,24">
+    <!-- header: step dots and title -->
+    <StackPanel DockPanel.Dock="Top" Spacing="14" Margin="0,0,0,18">
+      <ItemsControl ItemsSource="{Binding StepDots}" ToolTip.Tip="{Binding StepText}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="6" /></ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:StepDot">
+            <Border Classes="stepDot" Classes.done="{Binding IsDone}" Classes.current="{Binding IsCurrent}" />
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+      <TextBlock Classes="h1" Text="{Binding StepTitle}" />
     </StackPanel>
 
     <!-- buttons -->
-    <DockPanel DockPanel.Dock="Bottom" Margin="0,16,0,0">
+    <DockPanel DockPanel.Dock="Bottom" Margin="0,18,0,0">
       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
         <Button Command="{Binding BackCommand}">Back</Button>
-        <Button Classes="accent" Command="{Binding NextCommand}" Content="{Binding NextLabel}" />
+        <Button Classes="accent" Command="{Binding NextCommand}" Content="{Binding NextLabel}" MinWidth="88"
+                HorizontalContentAlignment="Center" />
       </StackPanel>
       <ProgressBar IsIndeterminate="True" IsVisible="{Binding Busy}" Width="100" HorizontalAlignment="Left" VerticalAlignment="Center" />
     </DockPanel>
-    <TextBlock DockPanel.Dock="Bottom" Text="{Binding Error}" IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}"
-               Foreground="{DynamicResource SystemFillColorCriticalBrush}" TextWrapping="Wrap" Margin="0,8,0,0" />
+    <Border DockPanel.Dock="Bottom" Classes="warning" Margin="0,12,0,0"
+            IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}">
+      <TextBlock Text="{Binding Error}" TextWrapping="Wrap" />
+    </Border>
 
-    <ScrollViewer>
-      <Panel>
-        <!-- CLI -->
-        <StackPanel Spacing="12" IsVisible="{Binding IsCliStep}">
-          <TextBlock Text="{Binding CliStatus}" TextWrapping="Wrap" />
-          <TextBlock Opacity="0.7" TextWrapping="Wrap"
-                     Text="pdrive downloads Proton's official build for this computer from proton.me and checks it against the checksum Proton publishes before installing it." />
-          <Button Classes="accent" Command="{Binding InstallCliCommand}" HorizontalAlignment="Left">Install the CLI</Button>
-        </StackPanel>
-
-        <!-- sign in -->
-        <StackPanel Spacing="12" IsVisible="{Binding IsSignInStep}">
-          <TextBlock Text="{Binding SignInStatus}" TextWrapping="Wrap" />
-          <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding !SignedIn}">
-            <Button Classes="accent" Command="{Binding SignInCommand}">Sign in…</Button>
-            <Button Classes="subtle" Command="{Binding SkipSignInCommand}">Skip for now</Button>
+    <Border Classes="card" Padding="22">
+      <ScrollViewer>
+        <Panel>
+          <!-- CLI -->
+          <StackPanel Spacing="12" IsVisible="{Binding IsCliStep}">
+            <TextBlock Text="{Binding CliStatus}" TextWrapping="Wrap" />
+            <TextBlock Classes="muted" TextWrapping="Wrap"
+                       Text="pdrive downloads Proton's official build for this computer from proton.me and checks it against the checksum Proton publishes before installing it." />
+            <Button Classes="accent" Command="{Binding InstallCliCommand}" HorizontalAlignment="Left" Margin="0,6,0,0">Install the CLI</Button>
           </StackPanel>
-          <TextBlock Text="✓ Signed in" FontWeight="SemiBold" IsVisible="{Binding SignedIn}" />
-        </StackPanel>
 
-        <!-- folder -->
-        <StackPanel Spacing="12" IsVisible="{Binding IsFolderStep}">
-          <TextBlock TextWrapping="Wrap"
-                     Text="Drive folders you choose are kept identical with a folder on this computer. Changes on either side sync automatically; deleted files go to the Trash." />
-          <DockPanel>
-            <Button DockPanel.Dock="Right" Command="{Binding ChooseFolderCommand}" IsEnabled="{Binding !FolderLocked}" Margin="8,0,0,0">Choose…</Button>
-            <TextBox Text="{Binding LocalPath}" IsReadOnly="{Binding FolderLocked}" />
-          </DockPanel>
-          <TextBlock Text="{Binding FolderNote}" IsVisible="{Binding FolderNote, Converter={x:Static ObjectConverters.IsNotNull}}"
-                     Opacity="0.7" TextWrapping="Wrap" />
-          <TextBlock Opacity="0.7" TextWrapping="Wrap" Text="The folder is created if it doesn't exist." />
-          <TextBlock Text="Drive folders to sync" FontWeight="SemiBold" Margin="0,8,0,0" IsVisible="{Binding DriveFolders.Count}" />
-          <ItemsControl ItemsSource="{Binding DriveFolders}">
-            <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="vm:SyncFolderChoice">
-                <CheckBox IsChecked="{Binding IsChecked}" Content="{Binding Path}" />
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-          <TextBlock Opacity="0.7" TextWrapping="Wrap" IsVisible="{Binding !SignedIn}"
-                     Text="Sign in to choose Drive folders here; you can also choose them later in the Sync tab." />
-        </StackPanel>
+          <!-- sign in -->
+          <StackPanel Spacing="12" IsVisible="{Binding IsSignInStep}">
+            <TextBlock Text="{Binding SignInStatus}" TextWrapping="Wrap" />
+            <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding !SignedIn}" Margin="0,6,0,0">
+              <Button Classes="accent" Command="{Binding SignInCommand}">Sign in</Button>
+              <Button Classes="ghost" Command="{Binding SkipSignInCommand}">Skip for now</Button>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding SignedIn}">
+              <Path Classes="icon tint" Data="{StaticResource Icon.Check}" />
+              <TextBlock Text="Signed in" FontWeight="SemiBold" VerticalAlignment="Center" />
+            </StackPanel>
+          </StackPanel>
 
-        <!-- startup -->
-        <StackPanel Spacing="12" IsVisible="{Binding IsStartupStep}">
-          <CheckBox IsChecked="{Binding TrayAtLogin}">Start Proton Drive (tray icon) when I log in</CheckBox>
-          <CheckBox IsChecked="{Binding KeepSyncing}" IsEnabled="{Binding ServiceAvailable}">Keep syncing in the background</CheckBox>
-          <TextBlock Opacity="0.7" TextWrapping="Wrap"
-                     Text="The background service does the syncing, with or without the tray icon. You can change both later in Settings." />
-        </StackPanel>
-      </Panel>
-    </ScrollViewer>
+          <!-- folder -->
+          <StackPanel Spacing="12" IsVisible="{Binding IsFolderStep}">
+            <TextBlock TextWrapping="Wrap"
+                       Text="Drive folders you choose are kept identical with a folder on this computer. Changes on either side sync automatically; deleted files go to the Trash." />
+            <DockPanel>
+              <Button DockPanel.Dock="Right" Command="{Binding ChooseFolderCommand}" IsEnabled="{Binding !FolderLocked}" Margin="8,0,0,0">Choose…</Button>
+              <TextBox Text="{Binding LocalPath}" IsReadOnly="{Binding FolderLocked}" />
+            </DockPanel>
+            <TextBlock Text="{Binding FolderNote}" IsVisible="{Binding FolderNote, Converter={x:Static ObjectConverters.IsNotNull}}"
+                       Classes="muted" TextWrapping="Wrap" />
+            <TextBlock Classes="muted small" TextWrapping="Wrap" Text="The folder is created if it doesn't exist." />
+            <TextBlock Classes="h2" Text="Drive folders to sync" Margin="0,8,0,0" IsVisible="{Binding DriveFolders.Count}" />
+            <ItemsControl ItemsSource="{Binding DriveFolders}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:SyncFolderChoice">
+                  <Border Classes="row" Margin="-10,0">
+                    <DockPanel>
+                      <ToggleSwitch DockPanel.Dock="Right" IsChecked="{Binding IsChecked}" OnContent="" OffContent=""
+                                    MinWidth="0" Margin="0,-4" />
+                      <Path Classes="icon tint" Margin="0,0,12,0" Data="{StaticResource Icon.Folder}" />
+                      <TextBlock Text="{Binding Path}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                    </DockPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Classes="muted" TextWrapping="Wrap" IsVisible="{Binding !SignedIn}"
+                       Text="Sign in to choose Drive folders here; you can also choose them later on the Sync page." />
+          </StackPanel>
+
+          <!-- startup -->
+          <StackPanel Spacing="4" IsVisible="{Binding IsStartupStep}">
+            <Border Classes="row" Margin="-10,0">
+              <DockPanel>
+                <ToggleSwitch DockPanel.Dock="Right" IsChecked="{Binding TrayAtLogin}" OnContent="" OffContent="" MinWidth="0" />
+                <Path Classes="icon tint" Margin="0,0,12,0" Data="{StaticResource Icon.Power}" />
+                <StackPanel VerticalAlignment="Center" Spacing="1">
+                  <TextBlock Text="Open at login" />
+                  <TextBlock Classes="muted small" Text="Starts pdrive in the tray when you log in" TextWrapping="Wrap" />
+                </StackPanel>
+              </DockPanel>
+            </Border>
+            <Border Classes="row" Margin="-10,0">
+              <DockPanel>
+                <ToggleSwitch DockPanel.Dock="Right" IsChecked="{Binding KeepSyncing}" IsEnabled="{Binding ServiceAvailable}"
+                              OnContent="" OffContent="" MinWidth="0" />
+                <Path Classes="icon tint" Margin="0,0,12,0" Data="{StaticResource Icon.Cloud}" />
+                <StackPanel VerticalAlignment="Center" Spacing="1">
+                  <TextBlock Text="Sync in the background" />
+                  <TextBlock Classes="muted small" TextWrapping="Wrap"
+                             Text="The background service syncs with or without the tray icon" />
+                </StackPanel>
+              </DockPanel>
+            </Border>
+            <TextBlock Classes="muted small" Margin="0,8,0,0" TextWrapping="Wrap" Text="You can change both later in Settings." />
+          </StackPanel>
+        </Panel>
+      </ScrollViewer>
+    </Border>
   </DockPanel>
 </Window>

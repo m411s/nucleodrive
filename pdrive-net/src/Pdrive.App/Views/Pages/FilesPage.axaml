@@ -1,0 +1,124 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Pdrive.App.ViewModels"
+             x:Class="Pdrive.App.Views.Pages.FilesPage"
+             x:DataType="vm:BrowserViewModel"
+             DragDrop.AllowDrop="True">
+  <Grid RowDefinitions="Auto,Auto,Auto,*">
+
+    <!-- toolbar: back/up, breadcrumbs, refresh, upload -->
+    <DockPanel Grid.Row="0" Margin="0,0,0,14">
+      <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Spacing="2" Margin="0,0,8,0">
+        <Button Classes="icon" Command="{Binding BackCommand}" ToolTip.Tip="Back">
+          <Path Classes="icon" Data="{StaticResource Icon.ArrowLeft}" />
+        </Button>
+        <Button Classes="icon" Command="{Binding UpCommand}" ToolTip.Tip="Parent folder">
+          <Path Classes="icon" Data="{StaticResource Icon.ArrowUp}" />
+        </Button>
+      </StackPanel>
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6">
+        <Button Classes="icon" Command="{Binding RefreshCommand}" ToolTip.Tip="Refresh">
+          <Path Classes="icon" Data="{StaticResource Icon.Refresh}" />
+        </Button>
+        <Button Classes="accent" Command="{Binding UploadCommand}" IsEnabled="{Binding HasClient}"
+                ToolTip.Tip="Upload files here (or drop them on this page)">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Path Classes="icon small" Data="{StaticResource Icon.Upload}" />
+            <TextBlock Text="Upload" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+      </StackPanel>
+      <ItemsControl ItemsSource="{Binding Breadcrumbs}" VerticalAlignment="Center" ClipToBounds="True">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <StackPanel Orientation="Horizontal" />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:Crumb">
+            <StackPanel Orientation="Horizontal">
+              <Button Classes="ghost crumb" Classes.current="{Binding IsLast}" Padding="6,4"
+                      Command="{Binding $parent[UserControl].((vm:BrowserViewModel)DataContext).GoToCommand}"
+                      CommandParameter="{Binding}">
+                <TextBlock Text="{Binding Name}" MaxWidth="220" TextTrimming="CharacterEllipsis" />
+              </Button>
+              <Path Classes="icon small dim" Width="14" Height="14" Opacity="0.45" IsVisible="{Binding IsNotLast}"
+                    Data="{StaticResource Icon.ChevronRight}" />
+            </StackPanel>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </DockPanel>
+
+    <!-- not signed in -->
+    <Border Grid.Row="1" Classes="card" IsVisible="{Binding ShowSignIn}" Margin="0,0,0,12">
+      <DockPanel>
+        <Button DockPanel.Dock="Right" Classes="accent" Command="{Binding SignInCommand}" VerticalAlignment="Center">Sign in</Button>
+        <Path Classes="icon large tint" DockPanel.Dock="Left" Margin="0,0,14,0"
+              Data="{StaticResource Icon.User}" />
+        <StackPanel VerticalAlignment="Center" Spacing="2">
+          <TextBlock Classes="h2" Text="Sign in to Proton" />
+          <TextBlock Classes="muted" Text="Opens your browser. Your password never passes through pdrive." TextWrapping="Wrap" />
+        </StackPanel>
+      </DockPanel>
+    </Border>
+
+    <!-- column header + thin progress line -->
+    <Grid Grid.Row="2" ColumnDefinitions="*,130,96,44" Margin="14,0,14,6" IsVisible="{Binding Entries.Count}">
+      <TextBlock Grid.Column="0" Classes="muted small" Text="Name" Margin="32,0,0,0" />
+      <TextBlock Grid.Column="1" Classes="muted small" Text="Modified" />
+      <TextBlock Grid.Column="2" Classes="muted small" Text="Size" HorizontalAlignment="Right" />
+    </Grid>
+
+    <Panel Grid.Row="3">
+      <Border Classes="card" Padding="4" Background="{DynamicResource Pd.Card}">
+        <Panel>
+          <ListBox x:Name="EntryList" Classes="files" ItemsSource="{Binding Entries}" SelectionMode="Single">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:EntryViewModel">
+                <Grid ColumnDefinitions="Auto,*,130,96,44" Height="34" Background="Transparent">
+                  <Path Grid.Column="0" Classes="icon tint" Margin="0,0,14,0" IsVisible="{Binding IsDir}"
+                        Data="{StaticResource Icon.Folder}" />
+                  <Path Grid.Column="0" Classes="icon dim" Margin="0,0,14,0" IsVisible="{Binding IsFile}"
+                        Data="{StaticResource Icon.File}" />
+                  <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Grid.Column="2" Classes="muted" Text="{Binding ModifiedText}" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="3" Classes="muted" Text="{Binding SizeText}" VerticalAlignment="Center"
+                             HorizontalAlignment="Right" />
+                  <Button Grid.Column="4" Classes="icon reveal" Padding="6" HorizontalAlignment="Right" ToolTip.Tip="Download"
+                          IsVisible="{Binding CanDownload}"
+                          Command="{Binding $parent[ListBox].((vm:BrowserViewModel)DataContext).DownloadCommand}"
+                          CommandParameter="{Binding}">
+                    <Path Classes="icon small" Data="{StaticResource Icon.Download}" />
+                  </Button>
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+
+          <!-- empty / error state -->
+          <StackPanel Spacing="10" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="420"
+                      IsVisible="{Binding Placeholder, Converter={x:Static ObjectConverters.IsNotNull}}">
+            <Path Classes="icon dim" Width="40" Height="40" StrokeThickness="1.4" HorizontalAlignment="Center"
+                  Opacity="0.6" Data="{StaticResource Icon.FolderOpen}" />
+            <TextBlock Text="{Binding Placeholder}" Classes="muted" TextWrapping="Wrap" TextAlignment="Center" />
+            <TextBlock Text="Drop files here to upload them" Classes="muted small" Opacity="0.7" TextAlignment="Center" />
+          </StackPanel>
+        </Panel>
+      </Border>
+
+      <!-- loading line at the top of the list -->
+      <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}" Height="2" MinHeight="2"
+                   VerticalAlignment="Top" Margin="12,1" />
+
+      <!-- drop overlay -->
+      <Border Classes="drop" IsVisible="{Binding IsDragOver}" CornerRadius="12" BorderThickness="2">
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10">
+          <Path Classes="icon accentStroke" Width="40" Height="40" HorizontalAlignment="Center"
+                Data="{StaticResource Icon.Upload}" />
+          <TextBlock Classes="h2" Text="Drop to upload here" HorizontalAlignment="Center" />
+        </StackPanel>
+      </Border>
+    </Panel>
+  </Grid>
+</UserControl>
