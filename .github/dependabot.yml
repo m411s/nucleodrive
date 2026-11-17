@@ -1,0 +1,36 @@
+# Dependency updates, weekly. Major versions are left for manual upgrades: several packages are
+# deliberately held on a major line (Microsoft.* on .NET 10 LTS; xunit.v3 3.x, which
+# Avalonia.Headless.XUnit requires; System.CommandLine 2.x).
+version: 2
+updates:
+  - package-ecosystem: nuget
+    directory: /pdrive-net # Directory.Packages.props (central package management)
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      avalonia:
+        patterns: ["Avalonia*"]
+      microsoft:
+        patterns: ["Microsoft.*", "System.*"]
+      testing:
+        patterns: ["xunit*", "Microsoft.NET.Test.Sdk"]
+      other:
+        patterns: ["*"]
+    commit-message:
+      prefix: "deps"
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: "ci"

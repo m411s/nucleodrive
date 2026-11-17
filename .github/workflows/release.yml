@@ -1,0 +1,106 @@
+# Builds the .deb and AppImage with package.sh.
+#   - Push a tag like v0.2.0  → tests, packages, and a GitHub Release with both files + SHA256SUMS.
+#   - Run it by hand (Actions › Release › Run workflow) → tests and packages only, kept as a
+#     downloadable workflow artifact; no release is created.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-24.04 # x86_64 (package.sh pins appimagetool for x86_64)
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: pdrive-net
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: pdrive-net/global.json
+
+      - name: Tools
+        run: sudo apt-get update -q && sudo apt-get install -y -q imagemagick
+
+      - name: Version
+        id: version
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = tag ]; then
+            v="${GITHUB_REF_NAME#v}"
+            case "$v" in [0-9]*) ;; *) echo "Tag must look like v1.2.3, got ${GITHUB_REF_NAME}" >&2; exit 1 ;; esac
+          else
+            v="0.0.0~ci$(date -u +%Y%m%d).${GITHUB_SHA::7}"
+          fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "Version: $v"
+
+      - name: Test
+        run: ./test.sh
+
+      - name: Package
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          MAINTAINER: "pdrive (unofficial Proton Drive client) <noreply@github.com>"
+        run: |
+          ./package.sh
+          cd dist
+          sha256sum *.deb *.AppImage > SHA256SUMS
+          ls -l *.deb *.AppImage SHA256SUMS
+
+      - name: Check the packages
+        run: |
+          cd dist
+          dpkg-deb -I *.deb | grep -E "Package|Version|Architecture"
+          chmod +x *.AppImage
+          ./*.AppImage --appimage-extract >/dev/null
+          test -x squashfs-root/usr/lib/pdrive/pdrive-daemon
+          test -f squashfs-root/usr/share/pdrive/icons/tray-idle.png
+          ./squashfs-root/AppRun ctl --help >/dev/null
+          rm -rf squashfs-root
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pdrive-${{ steps.version.outputs.version }}
+          path: |
+            pdrive-net/dist/*.deb
+            pdrive-net/dist/*.AppImage
+            pdrive-net/dist/SHA256SUMS
+          if-no-files-found: error
+
+  release:
+    if: github.ref_type == 'tag'
+    needs: package
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Create the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          prerelease=""
+          case "$TAG" in *-*) prerelease="--prerelease" ;; esac   # v1.0.0-beta.1 etc.
+          gh release create "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --title "pdrive $TAG" \
+            --generate-notes $prerelease --notes "$(cat <<'EOF'
+          Unofficial Linux client for Proton Drive. Not affiliated with Proton AG.
+
+          - **.deb** (Debian/Ubuntu): `sudo apt install ./pdrive_*.deb`; the sync service starts at your next login (or `systemctl --user start pdrive`).
+          - **AppImage**: `chmod +x pdrive-*.AppImage` and run it; the first launch sets up the background service and login entry.
+          - Check downloads with `sha256sum -c SHA256SUMS`.
+
+          The app installs Proton's official `proton-drive` CLI for you (Settings › Install the CLI), verified against Proton's published checksum.
+          EOF
+          )"
