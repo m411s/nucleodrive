@@ -1,14 +1,37 @@
 # pdrive: Proton Drive for Linux (unofficial, .NET)
 
-A file browser, one-way folder backup and tray icon for Proton Drive, built on Proton's official
-`proton-drive` CLI. It replaces the Python prototype in `../proton-drive-gui`. Not affiliated with Proton AG.
+A file browser, two-way folder sync, one-way backup and tray icon for Proton Drive, built on Proton's
+official `proton-drive` CLI. It replaces the Python prototype in `../proton-drive-gui`. Not affiliated with Proton AG.
 
+- **Sync** chosen Drive folders with `~/proton-drive` in both directions (details below).
 - **Browse** your Drive: upload (button or drag-and-drop), download, sign in through the browser.
 - **Back up** local folders to Drive: new and changed files are uploaded within seconds (inotify),
   with a full scan every `interval_minutes` as a safety net. **Nothing is ever deleted** on either side;
   deleting or renaming a local file leaves the old copy on Drive.
 - **Tray icon** shows the backup state: green = up to date, blue = syncing, light grey = paused,
   red = problem, amber = sign in needed, dark grey = daemon not running.
+
+## Two-way sync (`~/proton-drive`)
+
+Choose Drive folders in the app's **Sync** tab or with `pdrivectl sync add Photos`. Each one is mirrored
+at `~/proton-drive/<folder>` (e.g. `/my-files/Documents/Work` ⇄ `~/proton-drive/Documents/Work`).
+Unchosen folders stay online-only and remain browsable in the Files tab.
+
+- **Changes on this computer** (file manager, editors, …) upload within seconds (inotify).
+- **Changes made elsewhere** (web, phone, other computers) arrive at the next check of Drive: every
+  `sync.remote_interval_minutes` (15), or on **Sync now**. The CLI can only list one folder at a time
+  (about 2 s each), so a check takes a while for big folders; up to `sync.parallel_listings` (4) run at once.
+- **Deletions** go to the Trash on the other side (Drive trash, or your desktop Trash), never erased.
+- **Renames and moves** are applied as renames, so nothing is re-transferred and version history stays.
+- **Edited in both places**: the newer version wins. A losing local file goes to your desktop Trash; a
+  losing Drive version stays in Drive's version history.
+- **Safety**: more than `sync.max_deletes_without_confirm` (50) deletions at once wait for you to confirm
+  (app, or `pdrivectl sync confirm`). A missing or unmounted folder, a folder gone from Drive, or a failed
+  listing stop that folder's sync with an error instead of being read as "everything deleted".
+  Files still being written are left until they settle.
+- **First sync** of an empty local folder downloads it in one go. If the local folder already has files,
+  they're merged: identical files (by SHA-1) are linked without transfer.
+- Hidden files (`.*`) and other `exclude` patterns are skipped on both sides. Proton Docs/Sheets stay online-only.
 
 ## Install
 
@@ -36,11 +59,12 @@ Cinnamon show them out of the box. Without a tray, use the app's Backup tab.
 
 | | |
 |---|---|
-| App | `pdrive`: Files and Backup tabs. `pdrive --tray` starts hidden (used at login). Launching again shows the running window. |
-| CLI | `pdrivectl status \| list \| add LOCAL REMOTE \| remove LOCAL \| now \| pause \| resume` |
+| App | `pdrive`: Files, Sync and Backup tabs. `pdrive --tray` starts hidden (used at login). Launching again shows the running window. |
+| CLI | `pdrivectl sync status \| list \| add FOLDER \| remove FOLDER \| now \| confirm` (two-way sync) |
+| | `pdrivectl status \| list \| add LOCAL REMOTE \| remove LOCAL \| now \| pause \| resume` (backups; pause/resume cover sync too) |
 | Daemon | `systemctl --user status pdrive`, logs with `journalctl --user -u pdrive` |
-| Config | `~/.config/pdrive/config.json`: `interval_minutes` (15), `min_age_seconds` (5), `exclude` (`.*`, `*~`, `*.tmp`, `*.part`, `*.crdownload`), `folders`, `conflict_strategy` for files that already exist on Drive (`create-new-revision` default, `rename`, `replace`, `skip`), `watch` (true) |
-| State | `~/.local/state/pdrive/state.db` (SQLite: what was uploaded where, pause, last sync) |
+| Config | `~/.config/pdrive/config.json`: `interval_minutes` (15), `min_age_seconds` (5), `exclude` (`.*`, `*~`, `*.tmp`, `*.part`, `*.crdownload`), `folders`, `conflict_strategy` for files that already exist on Drive (`create-new-revision` default, `rename`, `replace`, `skip`), `watch` (true), and `sync`: `local` (`~/proton-drive`), `folders`, `remote_interval_minutes` (15), `parallel_listings` (4), `max_deletes_without_confirm` (50) |
+| State | `~/.local/state/pdrive/state.db` (SQLite: what was uploaded where, the sync baseline, pause, last sync) |
 
 A broken `config.json` shows as an error in the status; the daemon keeps running on the last good
 settings. `pdrivectl add/remove/pause/resume` also work while the daemon is stopped.
@@ -56,11 +80,12 @@ The old files are left alone.
 ```
 src/Pdrive.Cli      wrapper around the proton-drive CLI (CliWrap; SIGINT-then-kill cancellation,
                     size-scaled timeouts, AuthException vs DriveException, tolerant listing parser)
-src/Pdrive.Sync     config, SQLite state, scanner, batching, SyncEngine, ChangeWatcher (inotify)
+src/Pdrive.Sync     config, SQLite state, scanner, batching, SyncEngine (backup), ChangeWatcher (inotify),
+                    TwoWay/ (sync planner, snapshots, executor, engine), FreedesktopTrash
 src/Pdrive.Ipc      JSON-RPC contract over a Unix socket, DaemonClient, auto-reconnecting DaemonMonitor
 src/Pdrive.Daemon   Worker Service (systemd notify), single-instance flock, sync loop, RPC server
 src/Pdrive.Ctl      pdrivectl
-src/Pdrive.App      Avalonia app: browser, backup page, tray, single instance
+src/Pdrive.App      Avalonia app: browser, sync and backup pages, tray, single instance
 tests/              xUnit v3; Pdrive.FakeCli stands in for proton-drive
 docs/cli-notes.md   what is (not yet) verified against the real CLI
 ```
@@ -75,10 +100,11 @@ dotnet build
 ```
 
 ```bash
-dotnet test
+./test.sh
 ```
 
-Tests use `tests/Pdrive.FakeCli` instead of the real CLI, plus temp directories, so they never touch
+`test.sh` runs the xUnit v3 test programs directly (`dotnet test` works too, but its driver crashed
+intermittently on SDK 10.0.115 before running any tests). Tests use `tests/Pdrive.FakeCli` instead of the real CLI, plus temp directories, so they never touch
 your Drive or settings.
 
 ## Known gaps
@@ -88,5 +114,7 @@ your Drive or settings.
   (`conflict_strategy`, default `create-new-revision`), so old versions stay in Drive's version history.
 - The CLI prints no progress when it isn't attached to a terminal, so progress is per file and
   per batch, not within one large file.
-- No delete, rename, mkdir or share in the browser yet. No two-way sync.
+- No delete, rename, mkdir or share in the browser yet.
+- Sync has no "online-only" placeholder files (that would need a FUSE filesystem): synced folders are
+  fully downloaded. Remote changes aren't instant (no event feed in the CLI).
 - Files that change continuously are uploaded at most once per 60 s of activity (the watcher's cap).

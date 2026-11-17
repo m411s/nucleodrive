@@ -22,7 +22,10 @@ throwaway `/my-files/pdrive-test` folder, which was moved to the Drive trash aft
 | Backslash in a local name | `back\slash.txt` uploads and is listed with that exact name. | `RemotePath.EscapeName` escapes only `/` |
 | `/` in a node name | Escaped as `\/` in paths (per help). Node UIDs work where a name can't be decrypted or clashes. | Listing paths are escaped; undecryptable names use the uid |
 | JSON | `-j/--json` is a global option. Without it, create-folder prints a JS object dump. | `filesystem list PATH --json` |
-| Other commands | `info`, `size`, `rename`, `copy`, `move`, `trash`, `restore`, `delete`, `empty-trash`, sharing, invitations, albums, photos, takeout. `trash` prints `✅ name`. | Not used yet: future browser features |
+| Rename / move / trash | `rename path newName` (in place), `move src... targetParent`, `trash path...` (recoverable; prints `✅ name`). | Two-way sync: renames, moves, deletions |
+| Info | `info path --json`: one node object, same shape as a listing item. | Sync: checking changed paths without a crawl |
+| Other commands | `size`, `copy`, `restore`, `delete`, `empty-trash`, sharing, invitations, albums, photos, takeout. | Not used |
+| Speed | `list` takes ~2 s per folder (median 1.9 s, worst 30 s over 150 folders); each call starts fresh. Folder `modificationTime` does **not** change when contents change, so remote changes need a full crawl. | Sync: parallel crawl, interval-based remote checks |
 
 ## `filesystem list --json` schema
 
