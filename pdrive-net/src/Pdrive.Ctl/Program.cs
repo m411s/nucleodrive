@@ -90,8 +90,14 @@ var syncAdd = new Command("add", "Start syncing a Drive folder into the local sy
 var syncRemove = new Command("remove", "Stop syncing a Drive folder (nothing is deleted on either side)") { syncFolderArg };
 var syncNow = new Command("now", "Check Drive for changes now");
 var syncConfirm = new Command("confirm", "Let held-back deletions go through");
+var syncIntervalArg = new Argument<string?>("when")
+{
+    Description = "30, 60, 120 or 240 (minutes), or manual (only on 'sync now'). Without it: show the current setting",
+    Arity = ArgumentArity.ZeroOrOne,
+};
+var syncInterval = new Command("interval", "How often Drive is checked for changes made elsewhere") { syncIntervalArg };
 var sync = new Command("sync", "Two-way sync of chosen Drive folders into ~/proton-drive")
-    { syncStatus, syncList, syncAdd, syncRemove, syncNow, syncConfirm };
+    { syncStatus, syncList, syncAdd, syncRemove, syncNow, syncConfirm, syncInterval };
 
 syncStatus.SetAction(async (_, ct) =>
 {
@@ -109,7 +115,10 @@ syncStatus.SetAction(async (_, ct) =>
     }
     Console.WriteLine($"{s.State.ToString().ToLowerInvariant()}: {s.Message}");
     Console.WriteLine($"local folder: {s.LocalRoot}");
-    Console.WriteLine($"last Drive check: {Units.Ago(s.LastFullScan)}");
+    Console.WriteLine($"last Drive check: {Units.Ago(s.LastFullScan)}"
+        + (s.LastCheckSeconds is { } secs ? $" (took {secs:0} s)" : ""));
+    Console.WriteLine(s.IntervalMinutes == 0 ? "next Drive check: only on 'sync now'"
+        : $"next Drive check: {(s.NextCheck is { } next ? next.ToLocalTime().ToString("HH:mm") : "after this one")} (every {IntervalText(s.IntervalMinutes)}, longer while nothing changes)");
     foreach (var e in s.Errors.Take(10))
         Console.WriteLine($"  problem: {e}");
     return 0;
@@ -152,6 +161,32 @@ syncConfirm.SetAction(async (_, ct) =>
     return 0;
 });
 
+syncInterval.SetAction(async (pr, ct) =>
+{
+    var value = pr.GetValue(syncIntervalArg);
+    await using var client = await DaemonClient.TryConnectAsync(paths.DaemonSocket, ct);
+    if (value is null)
+    {
+        var current = (client is not null ? await client.GetSyncSettingsAsync(ct) : LocalSyncSettings()).RemoteIntervalMinutes;
+        Console.WriteLine(current == 0 ? "manual: Drive is checked only on 'sync now'" : $"every {IntervalText(current)}");
+        return 0;
+    }
+    double minutes;
+    if (value.Equals("manual", StringComparison.OrdinalIgnoreCase))
+        minutes = 0;
+    else if (!double.TryParse(value, System.Globalization.CultureInfo.InvariantCulture, out minutes) || !TwoWaySettings.IntervalChoices.Contains(minutes) || minutes == 0)
+    {
+        Console.Error.WriteLine("Choose 30, 60, 120, 240 or manual.");
+        return 2;
+    }
+    if (client is not null)
+        await client.SetSyncIntervalAsync(minutes, ct);
+    else
+        new ConfigStore(paths).Update(c => c with { Sync = c.Sync with { RemoteIntervalMinutes = minutes } });
+    Console.WriteLine(minutes == 0 ? "Drive is now checked only on 'sync now'." : $"Drive is now checked every {IntervalText(minutes)}.");
+    return 0;
+});
+
 pause.SetAction((_, ct) => SetPaused(true, ct));
 resume.SetAction((_, ct) => SetPaused(false, ct));
 
@@ -166,6 +201,10 @@ catch (Exception e) when (e is DaemonException or ConfigException)
     Console.Error.WriteLine(e.Message);
     return 1;
 }
+
+static string IntervalText(double minutes) => minutes >= 60 && minutes % 60 == 0
+    ? (minutes == 60 ? "hour" : $"{minutes / 60:0} hours")
+    : $"{minutes:0} minutes";
 
 SyncSettingsInfo LocalSyncSettings()
 {

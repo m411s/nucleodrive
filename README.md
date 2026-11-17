@@ -39,7 +39,8 @@ pdrive does everything through Proton's official `proton-drive` command-line too
 password and encryption in Proton's hands, but the CLI has limits pdrive can't work around:
 
 - **Changes made elsewhere aren't instant.** The CLI can't report what changed on Drive, so pdrive checks
-  every hour (backing off to every 4 hours while nothing changes). **Sync now** checks straight away.
+  every hour by default (backing off while nothing changes); you can choose every 30 minutes to every 4
+  hours, or only on **Sync now**, on the Sync page. **Sync now** always checks straight away.
   Changes on this computer upload within seconds.
 - **Checking Drive takes a while.** Each CLI run takes about 1.5 s and lists one folder, so a check of
   hundreds of folders takes a minute or more (4 run at once).

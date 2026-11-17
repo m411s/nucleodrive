@@ -162,6 +162,11 @@ public sealed class CheckIntervalTests
         Assert.Equal([60.0, 60, 120, 120, 240, 240, 240], Enumerable.Range(0, 7).Select(q => s.NextCheckAfter(q).TotalMinutes));
         var off = s with { RemoteIntervalMinutes = 15, RemoteIntervalMaxMinutes = 15 };
         Assert.Equal(15, off.NextCheckAfter(10).TotalMinutes);
+        var half = s with { RemoteIntervalMinutes = 30 }; // back-off cap defaults to 4 × the interval
+        Assert.Equal([30.0, 30, 60, 60, 120, 120], Enumerable.Range(0, 6).Select(q => half.NextCheckAfter(q).TotalMinutes));
+        var manual = s with { RemoteIntervalMinutes = 0 };
+        Assert.True(manual.ManualChecksOnly);
+        Assert.Equal(Timeout.InfiniteTimeSpan, manual.NextCheckAfter(0));
         var fast = s with { RemoteIntervalMinutes = 5, RemoteIntervalMaxMinutes = 12 };
         Assert.Equal([5.0, 5, 10, 10, 12], Enumerable.Range(0, 5).Select(q => fast.NextCheckAfter(q).TotalMinutes));
     }

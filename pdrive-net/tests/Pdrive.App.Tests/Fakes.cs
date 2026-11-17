@@ -130,7 +130,7 @@ public sealed class FakeDaemon : IDaemonControl
     public Task RemoveFolderAsync(string local) => Record($"remove {local}");
 
     public string[] SyncFolders { get; set; } = ["Docs"];
-    public Task<SyncSettingsInfo> GetSyncSettingsAsync() => Task.FromResult(new SyncSettingsInfo("/home/me/proton-drive", SyncFolders, 15));
+    public Task<SyncSettingsInfo> GetSyncSettingsAsync() => Task.FromResult(new SyncSettingsInfo("/home/me/proton-drive", SyncFolders, Interval));
 
     public async Task SetSyncFoldersAsync(string[] folders)
     {
@@ -139,6 +139,17 @@ public sealed class FakeDaemon : IDaemonControl
     }
 
     public Task ConfirmDeletionsAsync() => Record("confirm");
+
+    public double Interval { get; set; } = 60;
+    public Exception? IntervalError { get; set; }
+
+    public Task SetSyncIntervalAsync(double minutes)
+    {
+        if (IntervalError is { } e)
+            return Task.FromException(e);
+        Interval = minutes;
+        return Record($"interval {minutes}");
+    }
 
     public bool Running { get; set; } = true;
     public string SyncLocal { get; set; } = "/home/me/proton-drive";

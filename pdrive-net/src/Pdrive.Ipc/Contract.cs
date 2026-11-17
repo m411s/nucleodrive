@@ -20,7 +20,17 @@ public sealed record SyncInfo(
     IReadOnlyList<string> Folders,
     DateTimeOffset? LastFullScan,
     int HeldDeletes,
-    IReadOnlyList<string> Errors);
+    IReadOnlyList<string> Errors)
+{
+    /// <summary>When Drive is checked next (approximately); null if only on "Sync now".</summary>
+    public DateTimeOffset? NextCheck { get; init; }
+
+    /// <summary>How long the last full check of Drive took.</summary>
+    public double? LastCheckSeconds { get; init; }
+
+    /// <summary>The chosen check interval in minutes; 0 = only on "Sync now".</summary>
+    public double IntervalMinutes { get; init; } = 60;
+}
 
 public sealed record SyncSettingsInfo(string Local, string[] Folders, double RemoteIntervalMinutes);
 
@@ -56,6 +66,7 @@ public static class Rpc
     public const string SetSyncFolders = nameof(SetSyncFolders);
     public const string ConfirmDeletions = nameof(ConfirmDeletions);
     public const string SetSyncLocal = nameof(SetSyncLocal);
+    public const string SetSyncInterval = nameof(SetSyncInterval);
     public const string StatusChanged = nameof(StatusChanged);
 
     public static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)

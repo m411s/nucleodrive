@@ -138,6 +138,22 @@ public sealed partial class SyncFolderChoice : ObservableObject
     }
 }
 
+/// <summary>One choice in "Check Drive for changes made elsewhere".</summary>
+public sealed record IntervalChoice(string Label, double Minutes)
+{
+    public override string ToString() => Label;
+
+    public static IntervalChoice For(double minutes) => minutes switch
+    {
+        0 => new("Only when I click Sync now", 0),
+        30 => new("Every 30 minutes", 30),
+        60 => new("Every hour (recommended)", 60),
+        120 => new("Every 2 hours", 120),
+        240 => new("Every 4 hours", 240),
+        _ => new($"Every {minutes:0} minutes (set in config.json)", minutes),
+    };
+}
+
 /// <summary>The Sync page: two-way sync of chosen Drive folders into the local sync folder.</summary>
 public sealed partial class SyncViewModel : ObservableObject
 {
@@ -147,7 +163,7 @@ public sealed partial class SyncViewModel : ObservableObject
     private readonly Action<string> _openFolder;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(StateText), nameof(Message), nameof(Detail), nameof(LastScanText), nameof(LocalRoot), nameof(Errors),
+    [NotifyPropertyChangedFor(nameof(ScheduleText), nameof(StateText), nameof(Message), nameof(Detail), nameof(LastScanText), nameof(LocalRoot), nameof(Errors),
         nameof(NeedsConfirmation), nameof(IsRunning), nameof(HasFolders))]
     [NotifyCanExecuteChangedFor(nameof(SyncNowCommand), nameof(ConfirmDeletionsCommand), nameof(ApplyCommand),
         nameof(LoadChoicesCommand), nameof(AddPathCommand), nameof(OpenFolderCommand))]
@@ -219,6 +235,70 @@ public sealed partial class SyncViewModel : ObservableObject
             _ = LoadChoicesAsync();
     }
 
+    // ---- how often Drive is checked ----------------------------------------------------------
+
+    public ObservableCollection<IntervalChoice> IntervalChoices { get; } =
+        [.. Pdrive.Sync.TwoWaySettings.IntervalChoices.Select(IntervalChoice.For)];
+
+    private IntervalChoice? _selectedInterval;
+    private bool _settingInterval;
+
+    /// <summary>Changing it applies straight away (the service checks at the new pace from now on).</summary>
+    public IntervalChoice? SelectedInterval
+    {
+        get => _selectedInterval;
+        set
+        {
+            if (value is null || value == _selectedInterval)
+                return;
+            var previous = _selectedInterval;
+            SetProperty(ref _selectedInterval, value);
+            if (!_settingInterval && previous is not null)
+                _ = ApplyIntervalAsync(value, previous);
+        }
+    }
+
+    private void ShowInterval(double minutes)
+    {
+        var choice = IntervalChoices.FirstOrDefault(c => c.Minutes == minutes);
+        if (choice is null)
+        {
+            choice = IntervalChoice.For(minutes); // a custom value from config.json
+            IntervalChoices.Insert(0, choice);
+        }
+        _settingInterval = true;
+        SelectedInterval = choice;
+        _settingInterval = false;
+    }
+
+    private async Task ApplyIntervalAsync(IntervalChoice choice, IntervalChoice previous)
+    {
+        try
+        {
+            await _daemon.SetSyncIntervalAsync(choice.Minutes);
+        }
+        catch (DaemonException e)
+        {
+            _toast.Show(e.Message, error: true);
+            ShowInterval(previous.Minutes);
+        }
+    }
+
+    /// <summary>"Last check took 26 s · next check around 15:40".</summary>
+    public string ScheduleText
+    {
+        get
+        {
+            if (!IsRunning || Info!.Folders.Count == 0)
+                return "";
+            var took = Info.LastCheckSeconds is { } s ? $"Last check took {Math.Max(1, Math.Round(s)):0} s" : null;
+            var next = Info.IntervalMinutes == 0 ? "Drive is checked only when you click Sync now"
+                : Info.NextCheck is { } n ? $"next check around {n.ToLocalTime():HH:mm}" : null;
+            var text = string.Join(" · ", new[] { took, next }.Where(t => t is not null));
+            return text.Length > 0 ? char.ToUpperInvariant(text[0]) + text[1..] : "";
+        }
+    }
+
     private HashSet<string> _synced = new(StringComparer.Ordinal);
 
     /// <summary>Lists the top-level Drive folders as a tree, switched on if synced. Folders synced deeper
@@ -228,7 +308,9 @@ public sealed partial class SyncViewModel : ObservableObject
     {
         try
         {
-            _synced = new HashSet<string>((await _daemon.GetSyncSettingsAsync()).Folders, StringComparer.Ordinal);
+            var settings = await _daemon.GetSyncSettingsAsync();
+            ShowInterval(settings.RemoteIntervalMinutes);
+            _synced = new HashSet<string>(settings.Folders, StringComparer.Ordinal);
             var names = new List<string>();
             if (_provider.Client is { } drive)
             {

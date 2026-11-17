@@ -114,6 +114,19 @@ public sealed class SyncDaemonTests : IAsyncLifetime
 
         await Assert.ThrowsAsync<DaemonException>(() => _d.Client.SetSyncFoldersAsync(["../etc"], Ct));
 
+        // how often Drive is checked: one of the offered choices, reported back in the status
+        await _d.Client.SetSyncIntervalAsync(120, Ct);
+        Assert.Equal(120, (await _d.Client.GetSyncSettingsAsync(Ct)).RemoteIntervalMinutes);
+        var info = (await _d.Client.GetStatusAsync(Ct)).Sync!;
+        Assert.Equal(120, info.IntervalMinutes);
+        Assert.NotNull(info.NextCheck);
+        await _d.Client.SetSyncIntervalAsync(0, Ct);
+        info = (await _d.Client.GetStatusAsync(Ct)).Sync!;
+        Assert.Equal(0, info.IntervalMinutes);
+        Assert.Null(info.NextCheck); // only on Sync now
+        await Assert.ThrowsAsync<DaemonException>(() => _d.Client.SetSyncIntervalAsync(5, Ct));
+        Assert.Equal(0, (await _d.Client.GetSyncSettingsAsync(Ct)).RemoteIntervalMinutes);
+
         // a folder inside another listed one is dropped: the outer one already syncs it
         await _d.Client.SetSyncFoldersAsync(["Docs/sub", "Docs", "Photos/2026"], Ct);
         Assert.Equal(["Docs", "Photos/2026"], (await _d.Client.GetSyncSettingsAsync(Ct)).Folders);

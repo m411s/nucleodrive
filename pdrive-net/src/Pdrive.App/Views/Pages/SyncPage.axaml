@@ -60,6 +60,25 @@
         </Grid>
       </Border>
 
+      <!-- how often Drive is checked -->
+      <Border Classes="card" IsVisible="{Binding IsRunning}">
+        <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
+          <Border Grid.RowSpan="2" Classes="iconTile" Margin="0,0,14,0" VerticalAlignment="Top">
+            <Path Classes="icon tint" Data="{StaticResource Icon.Cloud}" />
+          </Border>
+          <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+            <TextBlock Classes="h2" Text="Check Drive for changes" />
+            <TextBlock Classes="muted small" TextWrapping="Wrap"
+                       Text="Changes made on the web or other devices arrive at the next check; it waits longer while nothing changes. Changes on this computer always upload within seconds." />
+          </StackPanel>
+          <ComboBox Grid.Column="2" Margin="12,0,0,0" VerticalAlignment="Center" MinWidth="220"
+                    ItemsSource="{Binding IntervalChoices}" SelectedItem="{Binding SelectedInterval}" />
+          <TextBlock Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Classes="muted small" Margin="0,8,0,0"
+                     Text="{Binding ScheduleText}"
+                     IsVisible="{Binding ScheduleText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+        </Grid>
+      </Border>
+
       <!-- folders -->
       <StackPanel Spacing="8">
         <DockPanel>

@@ -111,6 +111,8 @@ public sealed class RpcTarget(SyncWorker worker, TwoWaySyncWorker sync)
 
     public void SetSyncLocal(string local) => Refusable(() => sync.SetLocal(local));
 
+    public void SetSyncInterval(double minutes) => Refusable(() => sync.SetInterval(minutes));
+
     private static void Refusable(Action action)
     {
         try

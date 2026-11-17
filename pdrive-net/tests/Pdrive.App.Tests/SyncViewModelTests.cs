@@ -95,6 +95,41 @@ public sealed class SyncViewModelTests
     }
 
     [Fact]
+    public async Task Check_interval_is_shown_and_changed_straight_away()
+    {
+        _daemon.Publish(FakeDaemon.WithSync(SyncState.Idle, "Up to date"));
+        await _vm.LoadChoicesAsync();
+        Assert.Equal(["Every 30 minutes", "Every hour (recommended)", "Every 2 hours", "Every 4 hours", "Only when I click Sync now"],
+            _vm.IntervalChoices.Select(c => c.Label));
+        Assert.Equal(60, _vm.SelectedInterval!.Minutes);
+        Assert.DoesNotContain(_daemon.Calls, c => c.StartsWith("interval", StringComparison.Ordinal)); // loading doesn't set it
+
+        _vm.SelectedInterval = _vm.IntervalChoices.Single(c => c.Minutes == 0);
+        Assert.Contains("interval 0", _daemon.Calls);
+
+        _daemon.IntervalError = new DaemonException("refused");
+        _vm.SelectedInterval = _vm.IntervalChoices.Single(c => c.Minutes == 120);
+        await Task.Yield();
+        Assert.Equal(0, _vm.SelectedInterval!.Minutes); // back to what the service has
+        Assert.Contains(_toast.Shown, t => t.Message == "refused");
+    }
+
+    [Fact]
+    public async Task A_custom_interval_from_config_is_listed_and_the_schedule_explained()
+    {
+        _daemon.Interval = 15;
+        var next = new DateTimeOffset(2026, 11, 17, 15, 40, 0, TimeSpan.Zero);
+        _daemon.Publish(FakeDaemon.WithSync(SyncState.Idle, "Up to date") is var s
+            ? s with { Sync = s.Sync! with { LastCheckSeconds = 26.4, NextCheck = next, IntervalMinutes = 15 } } : s);
+        await _vm.LoadChoicesAsync();
+        Assert.Equal("Every 15 minutes (set in config.json)", _vm.SelectedInterval!.Label);
+        Assert.Equal($"Last check took 26 s · next check around {next.ToLocalTime():HH:mm}", _vm.ScheduleText);
+
+        _daemon.Publish(s with { Sync = s.Sync! with { IntervalMinutes = 0, NextCheck = null, LastCheckSeconds = null } });
+        Assert.Equal("Drive is checked only when you click Sync now", _vm.ScheduleText);
+    }
+
+    [Fact]
     public void Status_and_confirmation()
     {
         Assert.Equal("Not running", _vm.StateText);

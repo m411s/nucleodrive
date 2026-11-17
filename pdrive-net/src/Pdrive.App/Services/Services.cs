@@ -34,6 +34,9 @@ public interface IDaemonControl
     Task<SyncSettingsInfo> GetSyncSettingsAsync();
     Task SetSyncFoldersAsync(string[] folders);
     Task ConfirmDeletionsAsync();
+
+    /// <summary>30, 60, 120 or 240 minutes, or 0 for only on "Sync now".</summary>
+    Task SetSyncIntervalAsync(double minutes);
     Task SetSyncLocalAsync(string local);
 }
 
@@ -59,5 +62,6 @@ public sealed class MonitorDaemonControl(DaemonMonitor monitor) : IDaemonControl
     public Task<SyncSettingsInfo> GetSyncSettingsAsync() => Client.GetSyncSettingsAsync();
     public Task SetSyncFoldersAsync(string[] folders) => Client.SetSyncFoldersAsync(folders);
     public Task ConfirmDeletionsAsync() => Client.ConfirmDeletionsAsync();
+    public Task SetSyncIntervalAsync(double minutes) => Client.SetSyncIntervalAsync(minutes);
     public Task SetSyncLocalAsync(string local) => Client.SetSyncLocalAsync(local);
 }

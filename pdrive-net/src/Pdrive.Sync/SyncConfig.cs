@@ -21,14 +21,23 @@ public sealed record TwoWaySettings
     /// <summary>Drive folders to sync, relative to /my-files with raw names ("Photos", "Documents/Work").</summary>
     public IReadOnlyList<string> Folders { get; init; } = [];
 
-    /// <summary>How often Drive is checked for changes made elsewhere. Each check lists every synced folder,
-    /// and Proton asks third-party apps not to traverse the file tree frequently, so it's hourly by default;
-    /// "Sync now" checks straight away, and local changes upload within seconds regardless.</summary>
+    /// <summary>How often Drive is checked for changes made elsewhere; 0 = only on "Sync now" (and once when
+    /// the service starts). Each check lists every synced folder, and Proton asks third-party apps not to
+    /// traverse the file tree frequently, so it's hourly by default. Local changes upload within seconds
+    /// regardless.</summary>
     public double RemoteIntervalMinutes { get; init; } = 60;
 
     /// <summary>While checks of Drive keep finding nothing, the wait grows up to this (back to
-    /// <see cref="RemoteIntervalMinutes"/> after any change). Set it equal to turn the back-off off.</summary>
-    public double RemoteIntervalMaxMinutes { get; init; } = 240;
+    /// <see cref="RemoteIntervalMinutes"/> after any change). Default: 4 × the interval. Set it equal to the
+    /// interval to turn the back-off off.</summary>
+    public double? RemoteIntervalMaxMinutes { get; init; }
+
+    /// <summary>The choices the app offers (minutes; 0 = only on "Sync now"). Shorter intervals aren't
+    /// offered: Proton asks third-party apps not to list the whole tree often.</summary>
+    public static readonly IReadOnlyList<double> IntervalChoices = [30, 60, 120, 240, 0];
+
+    /// <summary>Drive is checked only on "Sync now" (and once at start).</summary>
+    [JsonIgnore] public bool ManualChecksOnly => RemoteIntervalMinutes == 0;
     public int ParallelListings { get; init; } = 4;
     public int MaxDeletesWithoutConfirm { get; init; } = 50;
 
@@ -37,10 +46,12 @@ public sealed record TwoWaySettings
 
     /// <summary>The wait before the next check of Drive after <paramref name="quietChecks"/> checks in a row
     /// found nothing: the interval, doubled after every two quiet checks, at most remote_interval_max_minutes
-    /// (default 60, 60, 120, 120, 240 … minutes).</summary>
+    /// (default 60, 60, 120, 120, 240 … minutes). Infinite for <see cref="ManualChecksOnly"/>.</summary>
     public TimeSpan NextCheckAfter(int quietChecks)
     {
-        var max = TimeSpan.FromMinutes(Math.Max(RemoteIntervalMaxMinutes, Math.Max(1, RemoteIntervalMinutes)));
+        if (ManualChecksOnly)
+            return Timeout.InfiniteTimeSpan;
+        var max = TimeSpan.FromMinutes(Math.Max(RemoteIntervalMaxMinutes ?? 4 * RemoteIntervalMinutes, Math.Max(1, RemoteIntervalMinutes)));
         var wait = RemoteInterval * Math.Pow(2, Math.Min(quietChecks, 20) / 2);
         return wait > max ? max : wait;
     }
@@ -174,8 +185,8 @@ public sealed class ConfigStore(PdrivePaths paths)
             throw Bad("sync folders must not repeat or contain each other");
         if (cfg.Sync.ParallelListings is < 1 or > 16) throw Bad("'sync.parallel_listings' must be between 1 and 16");
         if (cfg.Sync.MaxDeletesWithoutConfirm < 0) throw Bad("'sync.max_deletes_without_confirm' must be >= 0");
-        if (!(cfg.Sync.RemoteIntervalMinutes > 0)) throw Bad("'sync.remote_interval_minutes' must be a positive number");
-        if (!(cfg.Sync.RemoteIntervalMaxMinutes > 0)) throw Bad("'sync.remote_interval_max_minutes' must be a positive number");
+        if (!(cfg.Sync.RemoteIntervalMinutes >= 0)) throw Bad("'sync.remote_interval_minutes' must be 0 (only on Sync now) or a positive number");
+        if (cfg.Sync.RemoteIntervalMaxMinutes is { } max && !(max > 0)) throw Bad("'sync.remote_interval_max_minutes' must be a positive number");
         var syncRoot = cfg.Sync.LocalPath;
         foreach (var f in cfg.Folders)
         {

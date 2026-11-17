@@ -65,9 +65,14 @@ public sealed class Screenshots
         {
             var (w, daemon, vm) = CreateMain(theme);
             await vm.Browser.RefreshAsync();
-            daemon.Publish(FakeDaemon.WithSync(SyncState.Idle, "Up to date", 0, "Documents", "Photos") with
+            var idle = FakeDaemon.WithSync(SyncState.Idle, "Up to date", 0, "Documents", "Photos");
+            daemon.Publish(idle with
             {
                 State = DaemonState.Idle, Message = "Up to date (3 uploaded)", LastSync = DateTimeOffset.Now.AddMinutes(-4),
+                Sync = idle.Sync! with
+                {
+                    LastFullScan = DateTimeOffset.Now.AddMinutes(-12), LastCheckSeconds = 26, NextCheck = DateTimeOffset.Now.AddMinutes(48),
+                },
             });
             await vm.Sync.LoadChoicesAsync();
             await vm.Sync.Choices.Single(c => c.Path == "Documents").EnsureLoadedAsync();

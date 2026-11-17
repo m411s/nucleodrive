@@ -35,6 +35,8 @@ public sealed class TwoWaySyncWorker : BackgroundService
     private DateTimeOffset _nextFull = DateTimeOffset.MinValue;
     private int _quietChecks; // checks of Drive in a row that found nothing: the next one waits longer
     private DateTimeOffset? _lastFull;
+    private double? _lastCheckSeconds;
+    private SyncInfo? _lastInfo;
     private readonly HashSet<string> _held = new(StringComparer.Ordinal);
 
     public TwoWaySyncWorker(PdrivePaths paths, DaemonOptions options, SyncWorker backup, ILogger<TwoWaySyncWorker> log)
@@ -90,6 +92,24 @@ public sealed class TwoWaySyncWorker : BackgroundService
         var cfg = _configStore.Update(c => SyncRootRules.SetLocal(c, local));
         Directory.CreateDirectory(cfg.Sync.LocalPath);
         RequestFull();
+    }
+
+    /// <summary>How often Drive is checked: one of <see cref="TwoWaySettings.IntervalChoices"/> (0 = only on
+    /// "Sync now"). Takes effect for the next check.</summary>
+    /// <exception cref="ConfigException">Not one of the choices, or config.json is broken.</exception>
+    public void SetInterval(double minutes)
+    {
+        if (!TwoWaySettings.IntervalChoices.Contains(minutes))
+            throw new ConfigException($"Choose one of: {string.Join(", ", TwoWaySettings.IntervalChoices.Select(m => m == 0 ? "only on Sync now" : $"{m} min"))}");
+        var cfg = _configStore.Update(c => c with { Sync = c.Sync with { RemoteIntervalMinutes = minutes } });
+        lock (_gate)
+        {
+            _quietChecks = 0;
+            _nextFull = cfg.Sync.ManualChecksOnly ? DateTimeOffset.MaxValue
+                : (_lastFull ?? DateTimeOffset.UtcNow) + cfg.Sync.RemoteInterval;
+        }
+        Republish(cfg.Sync);
+        Wake(); // if the new interval is already over, check now
     }
 
     /// <summary>Lets the held-back deletions go through on the next pass.</summary>
@@ -157,7 +177,7 @@ public sealed class TwoWaySyncWorker : BackgroundService
         if (_state.Paused)
         {
             Publish(SyncState.Paused, "Paused", sync, []);
-            _nextFull = DateTimeOffset.UtcNow + sync.RemoteInterval;
+            _nextFull = sync.ManualChecksOnly ? DateTimeOffset.MaxValue : DateTimeOffset.UtcNow + sync.RemoteInterval;
             return;
         }
 
@@ -177,6 +197,7 @@ public sealed class TwoWaySyncWorker : BackgroundService
             _runCts = runCts;
 
         var errors = new List<string>();
+        var cycleTimer = System.Diagnostics.Stopwatch.StartNew();
         int changes = 0, heldTotal = 0;
         var anyFullOk = false;
         try
@@ -261,16 +282,19 @@ public sealed class TwoWaySyncWorker : BackgroundService
                 _runCts = null;
             if (full)
             {
+                _lastCheckSeconds = cycleTimer.Elapsed.TotalSeconds;
                 _quietChecks = changes == 0 && errors.Count == 0 && heldTotal == 0 ? _quietChecks + 1 : 0;
-                _nextFull = DateTimeOffset.UtcNow + sync.NextCheckAfter(_quietChecks);
+                _nextFull = sync.ManualChecksOnly ? DateTimeOffset.MaxValue : DateTimeOffset.UtcNow + sync.NextCheckAfter(_quietChecks);
+                Republish(sync);
             }
-            else if (changes > 0)
+            else if (changes > 0 && !sync.ManualChecksOnly)
             {
                 // You're working in the sync folder: check Drive at the normal pace again.
                 _quietChecks = 0;
                 var soon = DateTimeOffset.UtcNow + sync.RemoteInterval;
                 if (soon < _nextFull)
                     _nextFull = soon;
+                Republish(sync);
             }
         }
     }
@@ -308,8 +332,28 @@ public sealed class TwoWaySyncWorker : BackgroundService
             _log.LogWarning("Not watching {Folder} ({Reason}); local changes are picked up by the periodic scan", folder, reason);
     }
 
-    private void Publish(SyncState state, string message, TwoWaySettings sync, IReadOnlyList<string> errors, int held = 0, bool throttle = false) =>
-        _backup.PublishSync(new SyncInfo(state, message, sync.LocalPath, [.. sync.Folders], _lastFull, held, [.. errors.Take(20)]), throttle);
+    private void Publish(SyncState state, string message, TwoWaySettings sync, IReadOnlyList<string> errors, int held = 0, bool throttle = false)
+    {
+        var info = new SyncInfo(state, message, sync.LocalPath, [.. sync.Folders], _lastFull, held, [.. errors.Take(20)])
+        {
+            NextCheck = NextCheckFor(sync),
+            LastCheckSeconds = _lastCheckSeconds,
+            IntervalMinutes = sync.RemoteIntervalMinutes,
+        };
+        _lastInfo = info;
+        _backup.PublishSync(info, throttle);
+    }
+
+    /// <summary>The last status again, with the schedule brought up to date.</summary>
+    private void Republish(TwoWaySettings sync)
+    {
+        if (_lastInfo is { } last)
+            _backup.PublishSync(last with { NextCheck = NextCheckFor(sync), LastCheckSeconds = _lastCheckSeconds, IntervalMinutes = sync.RemoteIntervalMinutes });
+    }
+
+    private DateTimeOffset? NextCheckFor(TwoWaySettings sync) =>
+        sync.ManualChecksOnly || sync.Folders.Count == 0 || _nextFull == DateTimeOffset.MaxValue ? null
+        : _nextFull < DateTimeOffset.UtcNow ? DateTimeOffset.UtcNow : _nextFull;
 
     private SyncConfig LoadConfigOrDefault()
     {

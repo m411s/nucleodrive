@@ -5,6 +5,8 @@ minor versions may change behaviour.
 
 ## Unreleased
 
+- **Choose how often Drive is checked** on the Sync page: every 30 minutes, hour (default), 2 or 4 hours,
+  or only on Sync now; with "Last check took 26 s · next check around 15:40". Also `pdrivectl sync interval`.
 - **What the Proton Drive CLI can't do**, explained in Settings and the README (changes elsewhere aren't
   instant, no online-only files, Docs/Sheets stay online, only My files, …).
 - **Use-at-your-own-risk notice** in the README, About, the setup wizard and release notes: unofficial,
