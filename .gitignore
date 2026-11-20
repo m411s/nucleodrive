@@ -1,4 +1,4 @@
-# --- .NET (pdrive-net) -----------------------------------------------------------
+# --- .NET (nucleodrive-net) -----------------------------------------------------------
 bin/
 obj/
 artifacts/
@@ -14,13 +14,13 @@ coverage*.json
 *.userprefs
 
 # Packaging output and downloaded build tools (package.sh)
-pdrive-net/dist/
-pdrive-net/.tools/
+nucleodrive-net/dist/
+nucleodrive-net/.tools/
 *.AppImage
 *.deb
 
 # Proton's proton-drive CLI binary, downloaded locally (not ours to commit)
-pdrive-net/cli/
+nucleodrive-net/cli/
 proton-drive
 proton-drive.exe
 

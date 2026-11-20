@@ -1,0 +1,17 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/NucleoDrive.Cli/NucleoDrive.Cli.csproj" />
+    <Project Path="src/NucleoDrive.Sync/NucleoDrive.Sync.csproj" />
+    <Project Path="src/NucleoDrive.Ipc/NucleoDrive.Ipc.csproj" />
+    <Project Path="src/NucleoDrive.Daemon/NucleoDrive.Daemon.csproj" />
+    <Project Path="src/NucleoDrive.Ctl/NucleoDrive.Ctl.csproj" />
+    <Project Path="src/NucleoDrive.App/NucleoDrive.App.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/NucleoDrive.FakeCli/NucleoDrive.FakeCli.csproj" />
+    <Project Path="tests/NucleoDrive.Cli.Tests/NucleoDrive.Cli.Tests.csproj" />
+    <Project Path="tests/NucleoDrive.Sync.Tests/NucleoDrive.Sync.Tests.csproj" />
+    <Project Path="tests/NucleoDrive.Daemon.Tests/NucleoDrive.Daemon.Tests.csproj" />
+    <Project Path="tests/NucleoDrive.App.Tests/NucleoDrive.App.Tests.csproj" />
+  </Folder>
+</Solution>

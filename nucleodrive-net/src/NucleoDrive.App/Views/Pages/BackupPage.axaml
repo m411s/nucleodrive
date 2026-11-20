@@ -1,0 +1,115 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NucleoDrive.App.ViewModels"
+             xmlns:ipc="using:NucleoDrive.Ipc"
+             x:Class="NucleoDrive.App.Views.Pages.BackupPage"
+             x:DataType="vm:BackupViewModel">
+  <ScrollViewer>
+    <StackPanel Spacing="16" MaxWidth="760" Margin="0,0,8,0">
+
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+          <Button Command="{Binding TogglePauseCommand}">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Path Classes="icon small" Data="{StaticResource Icon.Pause}" IsVisible="{Binding !IsPaused}" />
+              <Path Classes="icon small" Data="{StaticResource Icon.Play}" IsVisible="{Binding IsPaused}" />
+              <TextBlock Text="{Binding PauseLabel}" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+          <Button Command="{Binding SyncNowCommand}">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Path Classes="icon small" Data="{StaticResource Icon.Upload}" />
+              <TextBlock Text="Back up now" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+        </StackPanel>
+        <StackPanel Spacing="2">
+          <TextBlock Classes="h1" Text="Backup" />
+          <TextBlock Classes="muted" Text="Folders on this computer copied to Drive, one way" TextWrapping="Wrap" />
+        </StackPanel>
+      </DockPanel>
+
+      <Border Classes="card">
+        <Grid ColumnDefinitions="Auto,*">
+          <Border Classes="iconTile" Margin="0,0,14,0" VerticalAlignment="Top">
+            <Path Classes="icon tint" Data="{StaticResource Icon.Archive}" />
+          </Border>
+          <StackPanel Grid.Column="1" Spacing="4">
+            <TextBlock Classes="h2" Text="{Binding StateText}" />
+            <TextBlock Classes="muted" Text="{Binding Message}" TextWrapping="Wrap" />
+            <ProgressBar Value="{Binding ProgressPercent}" Maximum="100" IsVisible="{Binding ShowProgress}" Margin="0,6,0,2" />
+            <TextBlock Classes="muted small" Text="{Binding LastSyncText}" IsVisible="{Binding IsRunning}" />
+            <TextBlock Classes="muted small" Text="{Binding NotRunningHint}" IsVisible="{Binding !IsRunning}" TextWrapping="Wrap" />
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <StackPanel Spacing="8">
+        <DockPanel>
+          <Button DockPanel.Dock="Right" Command="{Binding AddFolderCommand}">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Path Classes="icon small" Data="{StaticResource Icon.Plus}" />
+              <TextBlock Text="Add folder" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+          <TextBlock Classes="h2" Text="Folders" VerticalAlignment="Center" />
+        </DockPanel>
+        <Border Classes="card" Padding="6">
+          <StackPanel>
+            <ItemsControl ItemsSource="{Binding Folders}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="ipc:FolderInfo">
+                  <Border Classes="row">
+                    <DockPanel>
+                      <Button DockPanel.Dock="Right" Classes="icon" ToolTip.Tip="Stop backing up (files on Drive are kept)"
+                              Command="{Binding $parent[UserControl].((vm:BackupViewModel)DataContext).RemoveFolderCommand}"
+                              CommandParameter="{Binding}">
+                        <Path Classes="icon small dim" Width="14" Height="14" Data="{StaticResource Icon.Close}" />
+                      </Button>
+                      <Path Classes="icon tint" Margin="0,0,12,0"
+                            Data="{StaticResource Icon.Folder}" />
+                      <StackPanel VerticalAlignment="Center" Spacing="1">
+                        <TextBlock Text="{Binding Local}" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Classes="muted small" Text="{Binding Remote, StringFormat='to {0}'}" TextTrimming="CharacterEllipsis" />
+                      </StackPanel>
+                    </DockPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Classes="muted" Margin="12,10" IsVisible="{Binding !Folders.Count}" TextWrapping="Wrap"
+                       Text="No folders yet. Add one to copy it to Drive and keep it backed up." />
+          </StackPanel>
+        </Border>
+        <TextBlock Classes="muted small" TextWrapping="Wrap"
+                   Text="New and changed files are uploaded. Nothing is ever deleted, on Drive or on this computer." />
+      </StackPanel>
+
+      <StackPanel Spacing="8" IsVisible="{Binding Errors.Count}">
+        <TextBlock Classes="h2" Text="Recent problems" />
+        <Border Classes="card">
+          <ItemsControl ItemsSource="{Binding Errors}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="x:String">
+                <SelectableTextBlock Text="{Binding}" TextWrapping="Wrap" Classes="muted" Margin="0,2" />
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </Border>
+      </StackPanel>
+
+      <StackPanel Spacing="8" IsVisible="{Binding Unwatched.Count}">
+        <TextBlock Classes="h2" Text="Checked on a timer instead of live" />
+        <Border Classes="card">
+          <ItemsControl ItemsSource="{Binding Unwatched}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="x:String">
+                <TextBlock Text="{Binding}" TextWrapping="Wrap" Classes="muted" Margin="0,2" />
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </Border>
+      </StackPanel>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

@@ -1,0 +1,141 @@
+#!/bin/sh
+# NucleoDrive AppImage entry point.
+#   NucleoDrive.AppImage [--tray]        the app (and the tray)
+#   NucleoDrive.AppImage daemon          the sync/backup service (what the systemd unit runs)
+#   NucleoDrive.AppImage ctl ARGS…       nucleodrivectl
+#   NucleoDrive.AppImage integrate       set up the background service and login entry, then exit
+#
+# When the app starts it sets up, once, a systemd user service and a login (autostart) entry that
+# point at this AppImage file, so sync keeps running in the background. Files written by an earlier
+# run are updated if the AppImage moved. Anything NucleoDrive installed another way (install.sh, the
+# .deb) is left alone. NUCLEODRIVE_NO_INTEGRATION=1 skips all of it.
+HERE="$(dirname "$(readlink -f "$0")")"
+LIB="$HERE/usr/lib/nucleodrive"
+export XDG_DATA_DIRS="$HERE/usr/share:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+MARK="# Written by the NucleoDrive AppImage"
+
+integrate() {
+  [ -n "${APPIMAGE:-}" ] || return 0
+  [ "${NUCLEODRIVE_NO_INTEGRATION:-0}" = 1 ] && return 0
+  # The service would run this file at every login: refuse if someone else could replace it
+  # (e.g. it lives in /tmp or Downloads is shared), or if its path would break the unit file.
+  case "$APPIMAGE" in
+    *[\"%\\]*|*"
+"*) echo "nucleodrive: not setting up the background service: unsupported characters in $APPIMAGE" >&2; return 0 ;;
+  esac
+  if [ -n "$(find "$APPIMAGE" "$(dirname "$APPIMAGE")" -maxdepth 0 \( -perm -0002 -o -perm -0020 \) 2>/dev/null)" ] \
+     || [ "$(stat -c %u "$APPIMAGE" 2>/dev/null)" != "$(id -u)" ]; then
+    echo "nucleodrive: not setting up the background service: $APPIMAGE (or its folder) can be changed by other users, or isn't yours. Move it somewhere private, e.g. ~/Applications, and start it again." >&2
+    return 0
+  fi
+  conf="${XDG_CONFIG_HOME:-$HOME/.config}"
+  unit="$conf/systemd/user/nucleodrive.service"
+  autostart="$conf/autostart/nucleodrive-tray.desktop"
+  apps="${XDG_DATA_HOME:-$HOME/.local/share}/applications/nucleodrive.desktop"
+
+  # NucleoDrive was called pdrive up to 0.2.1: remove what a pdrive AppImage set up (only files it
+  # wrote), keeping "start at login" off if it was switched off. Settings move over when the app starts.
+  old_mark="# Written by the pdrive AppImage"
+  old_unit="$conf/systemd/user/pdrive.service"
+  if grep -qx "$old_mark" "$old_unit" 2>/dev/null; then
+    if [ "${NUCLEODRIVE_NO_SYSTEMD:-0}" != 1 ] && command -v systemctl >/dev/null 2>&1; then
+      systemctl --user disable --now pdrive.service >/dev/null 2>&1 || true
+    fi
+    rm -f "$old_unit"
+  fi
+  old_autostart="$conf/autostart/pdrive-tray.desktop"
+  if grep -qx "$old_mark" "$old_autostart" 2>/dev/null; then
+    [ -e "$autostart" ] || { grep -qx "Hidden=true" "$old_autostart" && mkdir -p "$(dirname "$autostart")" \
+      && printf '[Desktop Entry]\n%s\nHidden=true\n' "$MARK" > "$autostart"; }
+    rm -f "$old_autostart"
+  fi
+  old_apps="${XDG_DATA_HOME:-$HOME/.local/share}/applications/pdrive.desktop"
+  grep -qx "$old_mark" "$old_apps" 2>/dev/null && rm -f "$old_apps"
+
+  # ours = missing, or written by an AppImage run (safe to (re)write)
+  ours() { [ ! -e "$1" ] || grep -qx "$MARK" "$1"; }
+  system_unit=no
+  for d in /usr/lib/systemd/user /etc/systemd/user /usr/local/lib/systemd/user; do
+    [ -e "$d/nucleodrive.service" ] && system_unit=yes
+  done
+
+  if [ "$system_unit" = no ] && ours "$unit"; then
+    if ! grep -qF "ExecStart=\"$APPIMAGE\" daemon" "$unit" 2>/dev/null; then
+      mkdir -p "$(dirname "$unit")"
+      cat > "$unit" <<UNIT
+$MARK
+[Unit]
+Description=Proton Drive sync and backup (unofficial, AppImage)
+
+[Service]
+Type=notify
+# The AppImage runtime is the main process; the daemon is its child.
+NotifyAccess=all
+ExecStart="$APPIMAGE" daemon
+Restart=on-failure
+RestartSec=30
+TimeoutStopSec=60
+# Hardening that works for user services and doesn't get in the way of syncing your files.
+NoNewPrivileges=yes
+LockPersonality=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=default.target
+UNIT
+      if [ "${NUCLEODRIVE_NO_SYSTEMD:-0}" != 1 ] && command -v systemctl >/dev/null 2>&1; then
+        systemctl --user daemon-reload >/dev/null 2>&1 || true
+        systemctl --user enable NucleoDrive.service >/dev/null 2>&1 || true
+        systemctl --user restart nucleodrive.service >/dev/null 2>&1 || true
+      fi
+    fi
+  fi
+
+  if ours "$autostart" && ! grep -qF "Exec=\"$APPIMAGE\" --tray" "$autostart" 2>/dev/null; then
+    hidden=""
+    grep -qx "Hidden=true" "$autostart" 2>/dev/null && hidden="Hidden=true"
+    mkdir -p "$(dirname "$autostart")"
+    cat > "$autostart" <<DESK
+[Desktop Entry]
+$MARK
+Type=Application
+Name=NucleoDrive (tray)
+Exec="$APPIMAGE" --tray
+Icon=io.github.m411s.nucleodrive
+X-GNOME-Autostart-enabled=true
+NoDisplay=true
+$hidden
+DESK
+  fi
+
+  if ours "$apps" && ! grep -qF "Exec=\"$APPIMAGE\"" "$apps" 2>/dev/null; then
+    mkdir -p "$(dirname "$apps")"
+    icon="${XDG_DATA_HOME:-$HOME/.local/share}/nucleodrive/io.github.m411s.nucleodrive.png"
+    mkdir -p "$(dirname "$icon")"
+    cp "$HERE/nucleodrive.png" "$icon" 2>/dev/null || true
+    cat > "$apps" <<DESK
+[Desktop Entry]
+$MARK
+Type=Application
+Name=NucleoDrive
+Comment=Sync, browse and back up Proton Drive (unofficial client)
+GenericName=Proton Drive client
+Keywords=Proton;Drive;sync;cloud;backup;
+Exec="$APPIMAGE"
+Icon=$icon
+Categories=Network;FileTransfer;
+StartupWMClass=nucleodrive
+DESK
+  fi
+}
+
+case "${1:-}" in
+  daemon) shift; exec "$LIB/nucleodrive-daemon" "$@" ;;
+  ctl|nucleodrivectl) shift; exec "$LIB/nucleodrivectl" "$@" ;;
+  integrate) integrate; exit 0 ;;
+esac
+
+integrate
+exec "$LIB/nucleodrive" "$@"

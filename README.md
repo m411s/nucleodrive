@@ -1,7 +1,8 @@
-# pdrive
+# NucleoDrive
 
 An unofficial Linux client for [Proton Drive](https://proton.me/drive), built on Proton's official
 [`proton-drive` CLI](https://proton.me/support/drive-cli). Not affiliated with or endorsed by Proton AG.
+Formerly called pdrive: upgrading keeps your settings and sync state.
 
 - **Two-way sync**: chosen Drive folders stay identical with `~/proton-drive`. Changes on this computer
   upload within seconds. Changes made elsewhere arrive at the next check. Deletions go to the Trash, never
@@ -13,32 +14,32 @@ An unofficial Linux client for [Proton Drive](https://proton.me/drive), built on
   login.
 
 > [!WARNING]
-> **Use at your own risk.** pdrive is an unofficial, third-party app, not made, endorsed or supported by
+> **Use at your own risk.** NucleoDrive is an unofficial, third-party app, not made, endorsed or supported by
 > Proton AG. It is meant for **personal, non-commercial use**: Proton only allows third-party Drive apps
-> for personal, non-commercial projects. pdrive is provided "as is", without warranty of any kind, and its
+> for personal, non-commercial projects. NucleoDrive is provided "as is", without warranty of any kind, and its
 > authors accept **no responsibility for any data loss** or other damage (see [LICENSE](LICENSE)). Keep
 > backups of anything you can't afford to lose.
 
 ## Get it
 
 ```bash
-cd pdrive-net
+cd nucleodrive-net
 ./install.sh
 ```
 
 That builds and installs for your user (needs the .NET 10 SDK). To build a `.deb` and an AppImage
 instead, run `./package.sh`. Then choose folders on the app's **Sync** page, or run
-`pdrivectl sync add Documents`.
+`nucleodrivectl sync add Documents`.
 
 Everything else (how sync behaves, safety rules, configuration, development) is in
-**[pdrive-net/README.md](pdrive-net/README.md)**.
+**[nucleodrive-net/README.md](nucleodrive-net/README.md)**.
 
 ## Limits of the Proton Drive CLI
 
-pdrive does everything through Proton's official `proton-drive` command-line tool. That keeps your
-password and encryption in Proton's hands, but the CLI has limits pdrive can't work around:
+NucleoDrive does everything through Proton's official `proton-drive` command-line tool. That keeps your
+password and encryption in Proton's hands, but the CLI has limits NucleoDrive can't work around:
 
-- **Changes made elsewhere aren't instant.** The CLI can't report what changed on Drive, so pdrive checks
+- **Changes made elsewhere aren't instant.** The CLI can't report what changed on Drive, so NucleoDrive checks
   every hour by default (backing off while nothing changes); you can choose every 30 minutes to every 4
   hours, or only on **Sync now**, on the Sync page. **Sync now** always checks straight away.
   Changes on this computer upload within seconds.
@@ -55,8 +56,8 @@ password and encryption in Proton's hands, but the CLI has limits pdrive can't w
 
 ## Privacy and security
 
-pdrive collects nothing: no telemetry, analytics or crash reports. Your files go only to Proton, encrypted
-by Proton's CLI, and pdrive never sees your password. Details in **[PRIVACY.md](PRIVACY.md)**.
+NucleoDrive collects nothing: no telemetry, analytics or crash reports. Your files go only to Proton, encrypted
+by Proton's CLI, and NucleoDrive never sees your password. Details in **[PRIVACY.md](PRIVACY.md)**.
 
 Found a security problem? Please report it privately, as described in **[SECURITY.md](SECURITY.md)**.
 
@@ -64,11 +65,11 @@ Found a security problem? Please report it privately, as described in **[SECURIT
 
 | Folder | What it is |
 |---|---|
-| [`pdrive-net/`](pdrive-net) | **The app**: .NET 10 + Avalonia. Sync/backup daemon (systemd user service), `pdrivectl`, desktop app with tray, tests, install and packaging scripts. |
+| [`nucleodrive-net/`](nucleodrive-net) | **The app**: .NET 10 + Avalonia. Sync/backup daemon (systemd user service), `nucleodrivectl`, desktop app with tray, tests, install and packaging scripts. |
 
-Plans: [pdrive-net/docs/ROADMAP.md](pdrive-net/docs/ROADMAP.md). What was checked against the real CLI:
-[pdrive-net/docs/cli-notes.md](pdrive-net/docs/cli-notes.md).
+Plans: [nucleodrive-net/docs/ROADMAP.md](nucleodrive-net/docs/ROADMAP.md). What was checked against the real CLI:
+[nucleodrive-net/docs/cli-notes.md](nucleodrive-net/docs/cli-notes.md).
 
 ## Licence
 
-[MIT](LICENSE) for pdrive's own code. "Proton" and "Proton Drive" are trademarks of Proton AG.
+[MIT](LICENSE) for NucleoDrive's own code. "Proton" and "Proton Drive" are trademarks of Proton AG.

@@ -1,0 +1,377 @@
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using NucleoDrive.Cli;
+using NucleoDrive.Ipc;
+using NucleoDrive.Sync;
+using NucleoDrive.Sync.TwoWay;
+
+namespace NucleoDrive.Daemon;
+
+/// <summary>Keeps the chosen Drive folders and ~/proton-drive in sync.
+/// <list type="bullet">
+/// <item>Local changes (inotify on the sync folder) → a quick local pass after a short quiet period.</item>
+/// <item>Every <c>sync.remote_interval_minutes</c>, at start, on SyncNow/Resume or folder changes → a full pass,
+/// the only way to see changes made on Drive elsewhere.</item>
+/// </list>
+/// Problems (missing folders, sign-in, network, held deletions) show in the status; the loop keeps running.</summary>
+public sealed class TwoWaySyncWorker : BackgroundService
+{
+    private readonly NucleoDrivePaths _paths;
+    private readonly DaemonOptions _options;
+    private readonly SyncWorker _backup;
+    private readonly ILogger<TwoWaySyncWorker> _log;
+    private readonly ConfigStore _configStore;
+    private readonly StateStore _state;
+    private readonly FreedesktopTrash _trash;
+
+    private readonly Lock _gate = new();
+    private readonly SemaphoreSlim _wake = new(0, 1);
+    private volatile bool _fullRequested = true;
+    private volatile bool _localDirty;
+    private volatile bool _confirmRequested;
+    private CancellationTokenSource? _runCts;
+    private ChangeWatcher? _watcher;
+    private string? _watcherKey;
+    private DateTimeOffset _nextFull = DateTimeOffset.MinValue;
+    private int _quietChecks; // checks of Drive in a row that found nothing: the next one waits longer
+    private DateTimeOffset? _lastFull;
+    private double? _lastCheckSeconds;
+    private SyncInfo? _lastInfo;
+    private readonly HashSet<string> _held = new(StringComparer.Ordinal);
+
+    public TwoWaySyncWorker(NucleoDrivePaths paths, DaemonOptions options, SyncWorker backup, ILogger<TwoWaySyncWorker> log)
+    {
+        _paths = paths;
+        _options = options;
+        _backup = backup;
+        _log = log;
+        _configStore = new ConfigStore(paths);
+        _state = new StateStore(paths.StateDb);
+        _trash = new FreedesktopTrash(options.TrashDataHome);
+        backup.SyncNowRequested += RequestFull;
+        backup.PauseChanged += paused =>
+        {
+            if (paused)
+                lock (_gate)
+                    _runCts?.Cancel();
+            RequestFull();
+        };
+    }
+
+    // ---- control (IPC) ---------------------------------------------------------------------------
+
+    public SyncSettingsInfo GetSettings()
+    {
+        var s = LoadConfigOrDefault().Sync;
+        return new SyncSettingsInfo(s.LocalPath, [.. s.Folders], s.RemoteIntervalMinutes);
+    }
+
+    /// <summary>Sets the synced Drive folders. Folders no longer listed stop syncing: their local files
+    /// and Drive files are both left as they are, and their baseline is dropped.</summary>
+    /// <exception cref="ConfigException">Invalid folder names, or config.json is broken.</exception>
+    public void SetFolders(IReadOnlyList<string> folders)
+    {
+        var trimmed = folders.Select(f => f.Trim().Trim('/')).Where(f => f.Length > 0).Distinct(StringComparer.Ordinal).ToList();
+        // A folder inside another listed folder is already synced by it; listing both would sync it twice.
+        var normalized = trimmed.Where(f => !trimmed.Any(o => f.StartsWith(o + "/", StringComparison.Ordinal))).ToList();
+        var before = LoadConfigOrDefault().Sync.Folders;
+        _configStore.Update(c => c with { Sync = c.Sync with { Folders = normalized } });
+        foreach (var removed in before.Except(normalized, StringComparer.Ordinal))
+        {
+            _state.ClearBaseline(removed);
+            lock (_gate)
+                _held.Remove(removed);
+        }
+        RequestFull();
+    }
+
+    /// <summary>Sets where the sync folder lives (creating it). Refused while folders are synced.</summary>
+    /// <exception cref="ConfigException">Not usable, folders still synced, or config.json is broken.</exception>
+    public void SetLocal(string local)
+    {
+        var cfg = _configStore.Update(c => SyncRootRules.SetLocal(c, local));
+        Directory.CreateDirectory(cfg.Sync.LocalPath);
+        RequestFull();
+    }
+
+    /// <summary>How often Drive is checked: one of <see cref="TwoWaySettings.IntervalChoices"/> (0 = only on
+    /// "Sync now"). Takes effect for the next check.</summary>
+    /// <exception cref="ConfigException">Not one of the choices, or config.json is broken.</exception>
+    public void SetInterval(double minutes)
+    {
+        if (!TwoWaySettings.IntervalChoices.Contains(minutes))
+            throw new ConfigException($"Choose one of: {string.Join(", ", TwoWaySettings.IntervalChoices.Select(m => m == 0 ? "only on Sync now" : $"{m} min"))}");
+        var cfg = _configStore.Update(c => c with { Sync = c.Sync with { RemoteIntervalMinutes = minutes } });
+        lock (_gate)
+        {
+            _quietChecks = 0;
+            _nextFull = cfg.Sync.ManualChecksOnly ? DateTimeOffset.MaxValue
+                : (_lastFull ?? DateTimeOffset.UtcNow) + cfg.Sync.RemoteInterval;
+        }
+        Republish(cfg.Sync);
+        Wake(); // if the new interval is already over, check now
+    }
+
+    /// <summary>Lets the held-back deletions go through on the next pass.</summary>
+    public void ConfirmDeletions()
+    {
+        _confirmRequested = true;
+        RequestFull();
+    }
+
+    private void RequestFull()
+    {
+        _fullRequested = true;
+        Wake();
+    }
+
+    private void Wake()
+    {
+        try { _wake.Release(); } catch (SemaphoreFullException) { }
+    }
+
+    // ---- loop -----------------------------------------------------------------------------------
+
+    protected override async Task ExecuteAsync(CancellationToken stopping)
+    {
+        await Task.Yield();
+        while (!stopping.IsCancellationRequested)
+        {
+            await CycleAsync(stopping);
+            var delay = _nextFull - DateTimeOffset.UtcNow;
+            if (delay < TimeSpan.Zero) delay = TimeSpan.Zero;
+            if (delay > TimeSpan.FromDays(1)) delay = TimeSpan.FromDays(1);
+            try
+            {
+                await _wake.WaitAsync(delay, stopping);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
+        }
+    }
+
+    private async Task CycleAsync(CancellationToken stopping)
+    {
+        SyncConfig cfg;
+        try
+        {
+            cfg = _configStore.Load();
+        }
+        catch (Exception e) when (e is ConfigException or IOException or UnauthorizedAccessException)
+        {
+            Publish(SyncState.Error, e.Message, new TwoWaySettings(), []);
+            _nextFull = DateTimeOffset.UtcNow + TimeSpan.FromMinutes(1);
+            return;
+        }
+        var sync = cfg.Sync;
+        if (sync.Folders.Count == 0)
+        {
+            UpdateWatcher(null, cfg);
+            Publish(SyncState.Off, "No Drive folders chosen for sync", sync, []);
+            _nextFull = DateTimeOffset.MaxValue;
+            _fullRequested = false;
+            return;
+        }
+        if (_state.Paused)
+        {
+            Publish(SyncState.Paused, "Paused", sync, []);
+            _nextFull = sync.ManualChecksOnly ? DateTimeOffset.MaxValue : DateTimeOffset.UtcNow + sync.RemoteInterval;
+            return;
+        }
+
+        var full = _fullRequested || DateTimeOffset.UtcNow >= _nextFull;
+        var local = _localDirty;
+        if (!full && !local)
+            return;
+        _fullRequested = false;
+        _localDirty = false;
+        var confirm = _confirmRequested;
+        _confirmRequested = false;
+
+        Directory.CreateDirectory(sync.LocalPath);
+        UpdateWatcher(sync, cfg);
+        using var runCts = CancellationTokenSource.CreateLinkedTokenSource(stopping);
+        lock (_gate)
+            _runCts = runCts;
+
+        var errors = new List<string>();
+        var cycleTimer = System.Diagnostics.Stopwatch.StartNew();
+        int changes = 0, heldTotal = 0;
+        var anyFullOk = false;
+        try
+        {
+            var client = _options.ClientFactory(cfg);
+            foreach (var folder in sync.Folders)
+            {
+                runCts.Token.ThrowIfCancellationRequested();
+                var progress = new InlineProgress<string>(m => Publish(SyncState.Syncing, m, sync, errors, throttle: true));
+                Publish(SyncState.Syncing, full ? $"Checking {folder}…" : $"Syncing local changes in {folder}…", sync, errors);
+                try
+                {
+                    var engine = new TwoWaySyncEngine(client, _state, _trash, change => _log.LogInformation("{Folder}: {Change}", folder, change));
+                    var started = System.Diagnostics.Stopwatch.StartNew();
+                    var result = full
+                        ? await engine.FullPassAsync(sync, cfg, folder, confirm, progress, runCts.Token)
+                        : await engine.LocalPassAsync(sync, cfg, folder, confirm, progress, runCts.Token);
+                    if (full || result.Changes > 0)
+                        _log.LogInformation("{Folder}: {Kind} in {Seconds:0} s: {Summary}", folder,
+                            full ? "checked Drive" : "synced local changes", started.Elapsed.TotalSeconds, Summarize(result));
+                    changes += result.Changes;
+                    errors.AddRange(result.Errors.Select(e => $"{folder}/{e}"));
+                    lock (_gate)
+                    {
+                        if (result.DeletionsHeld)
+                            _held.Add(folder);
+                        else
+                            _held.Remove(folder);
+                    }
+                    heldTotal += result.HeldLocalDeletes + result.HeldRemoteDeletes;
+                    anyFullOk |= full;
+                }
+                catch (SyncFolderException e)
+                {
+                    errors.Add(e.Message);
+                }
+                catch (IncompleteSnapshotException e)
+                {
+                    errors.Add(e.Message);
+                }
+            }
+
+            if (full && anyFullOk)
+                _lastFull = DateTimeOffset.UtcNow;
+            if (heldTotal > 0)
+                Publish(SyncState.NeedsConfirmation,
+                    $"{heldTotal} deletions are waiting for your confirmation (more than {sync.MaxDeletesWithoutConfirm} at once)", sync, errors, held: heldTotal);
+            else if (errors.Count > 0)
+                Publish(SyncState.Error, $"{errors.Count} problem(s): {errors[0]}", sync, errors);
+            else
+                Publish(SyncState.Idle, changes > 0 ? $"Up to date ({changes} change(s) synced)" : "Up to date", sync, errors);
+            foreach (var e in errors)
+                _log.LogWarning("Sync: {Error}", e);
+        }
+        catch (AuthException)
+        {
+            Publish(SyncState.Login, "Sign in required (open Proton Drive)", sync, errors);
+        }
+        catch (OperationCanceledException) when (!stopping.IsCancellationRequested)
+        {
+            Publish(_state.Paused ? SyncState.Paused : SyncState.Idle, _state.Paused ? "Paused" : "Interrupted", sync, errors);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (DriveException e)
+        {
+            Publish(SyncState.Error, e.FirstLine, sync, errors);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            Publish(SyncState.Error, e.Message, sync, errors);
+        }
+        catch (Exception e)
+        {
+            _log.LogError(e, "Unexpected error in two-way sync");
+            Publish(SyncState.Error, $"Unexpected: {e.Message}", sync, errors);
+        }
+        finally
+        {
+            lock (_gate)
+                _runCts = null;
+            if (full)
+            {
+                _lastCheckSeconds = cycleTimer.Elapsed.TotalSeconds;
+                _quietChecks = changes == 0 && errors.Count == 0 && heldTotal == 0 ? _quietChecks + 1 : 0;
+                _nextFull = sync.ManualChecksOnly ? DateTimeOffset.MaxValue : DateTimeOffset.UtcNow + sync.NextCheckAfter(_quietChecks);
+                Republish(sync);
+            }
+            else if (changes > 0 && !sync.ManualChecksOnly)
+            {
+                // You're working in the sync folder: check Drive at the normal pace again.
+                _quietChecks = 0;
+                var soon = DateTimeOffset.UtcNow + sync.RemoteInterval;
+                if (soon < _nextFull)
+                    _nextFull = soon;
+                Republish(sync);
+            }
+        }
+    }
+
+    private static string Summarize(PassResult r)
+    {
+        var parts = new List<string>();
+        if (r.Uploaded > 0) parts.Add($"{r.Uploaded} uploaded");
+        if (r.Downloaded > 0) parts.Add($"{r.Downloaded} downloaded");
+        if (r.Moved > 0) parts.Add($"{r.Moved} renamed/moved");
+        if (r.TrashedRemote > 0) parts.Add($"{r.TrashedRemote} moved to the Drive trash");
+        if (r.TrashedLocal > 0) parts.Add($"{r.TrashedLocal} moved to the desktop Trash");
+        if (r.DeletionsHeld) parts.Add($"{r.HeldLocalDeletes + r.HeldRemoteDeletes} deletions waiting for confirmation");
+        if (r.Errors.Count > 0) parts.Add($"{r.Errors.Count} problem(s)");
+        return parts.Count == 0 ? "up to date" : string.Join(", ", parts);
+    }
+
+    private void UpdateWatcher(TwoWaySettings? sync, SyncConfig cfg)
+    {
+        var quiet = _options.WatchQuiet ?? (cfg.MinAge > TimeSpan.FromSeconds(3) ? cfg.MinAge : TimeSpan.FromSeconds(3));
+        var key = sync is null ? "off" : $"{sync.LocalPath}|{quiet}|{string.Join('\n', cfg.Exclude)}";
+        if (key == _watcherKey)
+            return;
+        _watcher?.Dispose();
+        _watcher = null;
+        _watcherKey = key;
+        if (sync is null)
+            return;
+        _watcher = new ChangeWatcher([sync.LocalPath], [.. cfg.Exclude, SyncPaths.StagingDir, SyncPaths.LegacyStagingDir], quiet, _options.WatchMaxDelay, _ =>
+        {
+            _localDirty = true;
+            Wake();
+        });
+        foreach (var (folder, reason) in _watcher.Unwatched)
+            _log.LogWarning("Not watching {Folder} ({Reason}); local changes are picked up by the periodic scan", folder, reason);
+    }
+
+    private void Publish(SyncState state, string message, TwoWaySettings sync, IReadOnlyList<string> errors, int held = 0, bool throttle = false)
+    {
+        var info = new SyncInfo(state, message, sync.LocalPath, [.. sync.Folders], _lastFull, held, [.. errors.Take(20)])
+        {
+            NextCheck = NextCheckFor(sync),
+            LastCheckSeconds = _lastCheckSeconds,
+            IntervalMinutes = sync.RemoteIntervalMinutes,
+        };
+        _lastInfo = info;
+        _backup.PublishSync(info, throttle);
+    }
+
+    /// <summary>The last status again, with the schedule brought up to date.</summary>
+    private void Republish(TwoWaySettings sync)
+    {
+        if (_lastInfo is { } last)
+            _backup.PublishSync(last with { NextCheck = NextCheckFor(sync), LastCheckSeconds = _lastCheckSeconds, IntervalMinutes = sync.RemoteIntervalMinutes });
+    }
+
+    private DateTimeOffset? NextCheckFor(TwoWaySettings sync) =>
+        sync.ManualChecksOnly || sync.Folders.Count == 0 || _nextFull == DateTimeOffset.MaxValue ? null
+        : _nextFull < DateTimeOffset.UtcNow ? DateTimeOffset.UtcNow : _nextFull;
+
+    private SyncConfig LoadConfigOrDefault()
+    {
+        try
+        {
+            return _configStore.Load();
+        }
+        catch (ConfigException)
+        {
+            return new SyncConfig();
+        }
+    }
+
+    public override void Dispose()
+    {
+        _watcher?.Dispose();
+        _state.Dispose();
+        _wake.Dispose();
+        base.Dispose();
+    }
+}

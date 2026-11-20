@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>nucleodrive-daemon</AssemblyName>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../NucleoDrive.Sync/NucleoDrive.Sync.csproj" />
+    <ProjectReference Include="../NucleoDrive.Ipc/NucleoDrive.Ipc.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="NucleoDrive.Daemon.Tests" />
+  </ItemGroup>
+</Project>

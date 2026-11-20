@@ -22,13 +22,13 @@ jobs:
       attestations: write
     defaults:
       run:
-        working-directory: pdrive-net
+        working-directory: nucleodrive-net
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
-          global-json-file: pdrive-net/global.json
+          global-json-file: nucleodrive-net/global.json
 
       - name: Tools
         run: sudo apt-get update -q && sudo apt-get install -y -q imagemagick
@@ -51,7 +51,7 @@ jobs:
       - name: Package
         env:
           VERSION: ${{ steps.version.outputs.version }}
-          MAINTAINER: "pdrive (unofficial Proton Drive client) <noreply@github.com>"
+          MAINTAINER: "NucleoDrive (unofficial Proton Drive client) <noreply@github.com>"
         run: |
           ./package.sh
           cd dist
@@ -64,8 +64,8 @@ jobs:
           dpkg-deb -I *.deb | grep -E "Package|Version|Architecture"
           chmod +x *.AppImage
           ./*.AppImage --appimage-extract >/dev/null
-          test -x squashfs-root/usr/lib/pdrive/pdrive-daemon
-          test -f squashfs-root/usr/share/pdrive/icons/tray-idle.png
+          test -x squashfs-root/usr/lib/nucleodrive/nucleodrive-daemon
+          test -f squashfs-root/usr/share/nucleodrive/icons/tray-idle.png
           ./squashfs-root/AppRun ctl --help >/dev/null
           rm -rf squashfs-root
 
@@ -76,16 +76,16 @@ jobs:
         if: github.ref_type == 'tag' && !github.event.repository.private
         with:
           subject-path: |
-            pdrive-net/dist/*.deb
-            pdrive-net/dist/*.AppImage
+            nucleodrive-net/dist/*.deb
+            nucleodrive-net/dist/*.AppImage
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: pdrive-${{ steps.version.outputs.version }}
+          name: nucleodrive-${{ steps.version.outputs.version }}
           path: |
-            pdrive-net/dist/*.deb
-            pdrive-net/dist/*.AppImage
-            pdrive-net/dist/SHA256SUMS
+            nucleodrive-net/dist/*.deb
+            nucleodrive-net/dist/*.AppImage
+            nucleodrive-net/dist/SHA256SUMS
           if-no-files-found: error
 
   release:
@@ -107,14 +107,14 @@ jobs:
         run: |
           prerelease=""
           case "$TAG" in *-*) prerelease="--prerelease" ;; esac   # v1.0.0-beta.1 etc.
-          gh release create "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --title "pdrive $TAG" \
+          gh release create "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --title "NucleoDrive $TAG" \
             --generate-notes $prerelease --notes "$(cat <<'EOF'
           Unofficial Linux client for Proton Drive. Not affiliated with Proton AG.
           For personal, non-commercial use, at your own risk: provided "as is", with no responsibility for any data loss. Keep backups.
 
-          - **.deb** (Debian/Ubuntu): `sudo apt install ./pdrive_*.deb`; the sync service starts at your next login (or `systemctl --user start pdrive`).
-          - **AppImage**: `chmod +x pdrive-*.AppImage` and run it; the first launch sets up the background service and login entry.
-          - Check downloads with `sha256sum -c SHA256SUMS`, and where they were built with `gh attestation verify <file> -R m411s/pdrive`.
+          - **.deb** (Debian/Ubuntu): `sudo apt install ./nucleodrive_*.deb`; the sync service starts at your next login (or `systemctl --user start nucleodrive`).
+          - **AppImage**: `chmod +x nucleodrive-*.AppImage` and run it; the first launch sets up the background service and login entry.
+          - Check downloads with `sha256sum -c SHA256SUMS`, and where they were built with `gh attestation verify <file> -R m411s/nucleodrive`.
 
           The app installs Proton's official `proton-drive` CLI for you (Settings › Install the CLI), verified against Proton's published checksum.
           EOF

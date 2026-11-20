@@ -4,7 +4,7 @@
 version: 2
 updates:
   - package-ecosystem: nuget
-    directory: /pdrive-net # Directory.Packages.props (central package management)
+    directory: /nucleodrive-net # Directory.Packages.props (central package management)
     schedule:
       interval: weekly
       day: monday

@@ -1,0 +1,222 @@
+using NucleoDrive.App.Services;
+using NucleoDrive.App.ViewModels;
+using NucleoDrive.Cli;
+using NucleoDrive.Tests;
+
+namespace NucleoDrive.App.Tests;
+
+public sealed class StartupSettingsTests
+{
+    [Fact]
+    public void Start_at_login_toggles_the_xdg_autostart_entry()
+    {
+        using var tmp = new TempDir();
+        var s = new StartupSettings(tmp.Path, "/opt/nucleodrive/nucleodrive");
+        Assert.False(s.TrayAtLogin);
+        s.SetTrayAtLogin(true);
+        Assert.True(s.TrayAtLogin);
+        var text = File.ReadAllText(s.AutostartFile);
+        Assert.Contains("Exec=\"/opt/nucleodrive/nucleodrive\" --tray", text);
+        Assert.DoesNotContain("Hidden=true", text);
+        s.SetTrayAtLogin(false);
+        Assert.False(s.TrayAtLogin);
+        Assert.Contains("\nHidden=true", File.ReadAllText(s.AutostartFile)); // what install.sh preserves
+    }
+}
+
+public sealed class SettingsViewModelTests
+{
+    private sealed class FakeCliSetup : ICliSetup
+    {
+        public string? Installed { get; set; }
+        public string? Version { get; set; } = "0.9.0";
+        public string Latest { get; set; } = "0.9.0";
+        public int Installs { get; private set; }
+        public Func<string, Task<bool>>? LastConfirm { get; private set; }
+
+        public string? FindInstalled() => Installed;
+        public Task<string?> VersionOfAsync(string path) => Task.FromResult(Version);
+        public Task<CliRelease> GetLatestAsync() =>
+            Task.FromResult(new CliRelease(Latest, "linux-x64", new Uri($"https://proton.me/download/drive/cli/{Latest}/linux-x64/proton-drive"), new string('a', 128)));
+
+        public Task<string> InstallAsync(CliRelease release, Func<string, Task<bool>> confirmReplace, IProgress<string>? progress)
+        {
+            Installs++;
+            LastConfirm = confirmReplace;
+            Installed = "/home/me/.local/share/nucleodrive/cli/proton-drive";
+            Version = release.Version;
+            return Task.FromResult(Installed);
+        }
+    }
+
+    private sealed class FakeStartup : IStartupSettings
+    {
+        public bool TrayAtLogin { get; private set; } = true;
+        public bool? Service { get; set; } = true;
+        public void SetTrayAtLogin(bool enabled) => TrayAtLogin = enabled;
+        public Task<bool?> IsServiceEnabledAsync() => Task.FromResult(Service);
+        public Task SetServiceEnabledAsync(bool enabled)
+        {
+            Service = enabled;
+            return Task.CompletedTask;
+        }
+    }
+
+    private readonly FakeCliSetup _cli = new();
+    private readonly FakeStartup _startup = new();
+    private readonly FakeDaemon _daemon = new();
+    private readonly FakeDialogs _dialogs = new();
+    private readonly FakeToaster _toast = new();
+    private readonly FakeDrive _drive = new();
+    private bool _haveClient;
+
+    private SettingsViewModel Vm(out DriveClientProvider provider)
+    {
+        provider = new DriveClientProvider(() => _haveClient ? _drive : throw new DriveException("proton-drive CLI not found."));
+        return new SettingsViewModel(_cli, provider, _startup, _daemon, _dialogs, _toast);
+    }
+
+    [Fact]
+    public async Task Missing_cli_can_be_installed_and_the_app_picks_it_up()
+    {
+        var vm = Vm(out var provider);
+        var changed = 0;
+        provider.Changed += () => changed++;
+        await vm.LoadAsync();
+        Assert.False(vm.HasCli);
+        Assert.Equal("Install the CLI", vm.InstallLabel);
+        Assert.Null(vm.SignedIn);
+
+        _haveClient = true; // the installer puts it where the provider looks
+        await vm.InstallCliCommand.ExecuteAsync(null);
+        Assert.Equal(1, _cli.Installs);
+        Assert.Equal(1, changed);
+        Assert.True(vm.HasCli);
+        Assert.Equal("Reinstall", vm.InstallLabel);
+        Assert.True(vm.SignedIn);
+        Assert.Contains("sync", _daemon.Calls); // daemon nudged
+
+        // Replacing a CLI the user put in ~/.local/bin is asked through a dialog.
+        _dialogs.ConfirmAnswer = false;
+        Assert.False(await _cli.LastConfirm!("/home/me/.local/bin/proton-drive"));
+        Assert.Contains(_dialogs.Confirmations, c => c.Contains("/home/me/.local/bin/proton-drive"));
+    }
+
+    [Fact]
+    public async Task Shows_an_available_update()
+    {
+        _cli.Installed = "/x/proton-drive";
+        _cli.Latest = "0.10.0";
+        _haveClient = true;
+        var vm = Vm(out _);
+        await vm.LoadAsync();
+        Assert.Equal("Update to 0.10.0", vm.InstallLabel);
+        Assert.Contains("0.10.0 is available", vm.CliStatus);
+    }
+
+    [Fact]
+    public async Task Sign_out_asks_first_and_sign_in_works()
+    {
+        _haveClient = true;
+        var vm = Vm(out _);
+        await vm.LoadAsync();
+        Assert.True(vm.IsSignedIn);
+
+        _dialogs.ConfirmAnswer = false;
+        await vm.SignOutCommand.ExecuteAsync(null);
+        Assert.Equal(0, _drive.Logouts);
+
+        _dialogs.ConfirmAnswer = true;
+        await vm.SignOutCommand.ExecuteAsync(null);
+        Assert.Equal(1, _drive.Logouts);
+        Assert.True(vm.IsSignedOut);
+
+        await vm.SignInCommand.ExecuteAsync(null);
+        Assert.Equal(1, _drive.Logins);
+        Assert.True(vm.IsSignedIn);
+    }
+
+    [Fact]
+    public async Task Startup_toggles()
+    {
+        var vm = Vm(out _);
+        await vm.LoadAsync();
+        Assert.True(vm.TrayAtLogin);
+        vm.TrayAtLogin = false;
+        Assert.False(_startup.TrayAtLogin);
+
+        _dialogs.ConfirmAnswer = false;
+        vm.ServiceEnabled = false; // asks first; declined
+        await Task.Yield();
+        Assert.True(_startup.Service);
+        _dialogs.ConfirmAnswer = true;
+        vm.ServiceEnabled = false;
+        await Task.Yield();
+        Assert.False(_startup.Service);
+        Assert.False(vm.ServiceEnabled);
+    }
+}
+
+public sealed class SystemWideStartupTests
+{
+    [Fact]
+    public void A_system_autostart_entry_counts_until_the_user_overrides_it()
+    {
+        using var tmp = new TempDir();
+        Directory.CreateDirectory(tmp["etc/autostart"]);
+        File.WriteAllText(tmp["etc/autostart/nucleodrive-tray.desktop"], "[Desktop Entry]\nExec=nucleodrive --tray\n");
+        var s = new StartupSettings(tmp["home-config"], "/opt/nucleodrive/nucleodrive", [tmp["etc"]]);
+        Assert.True(s.TrayAtLogin); // from the .deb's /etc/xdg/autostart
+        s.SetTrayAtLogin(false);
+        Assert.False(s.TrayAtLogin); // the user's Hidden=true entry wins
+        Assert.True(File.Exists(tmp["etc/autostart/nucleodrive-tray.desktop"]));
+    }
+}
+
+public sealed class AppearanceTests : IDisposable
+{
+    private readonly string _dir = Path.Combine(Path.GetTempPath(), "nucleodrive-theme-" + Guid.NewGuid().ToString("N"));
+
+    public void Dispose()
+    {
+        if (Directory.Exists(_dir))
+            Directory.Delete(_dir, recursive: true);
+    }
+
+    [Fact]
+    public void Theme_is_saved_applied_and_defaults_to_automatic()
+    {
+        var store = new ThemeStore(_dir);
+        Assert.Equal(AppTheme.Auto, store.Load()); // nothing saved yet
+
+        var applied = new List<AppTheme>();
+        var appearance = new Appearance(store, applied.Add);
+        appearance.Theme = AppTheme.Dark;
+        appearance.Theme = AppTheme.Dark; // no change, nothing applied
+        Assert.Equal([AppTheme.Dark], applied);
+        Assert.Equal("dark", File.ReadAllText(Path.Combine(_dir, "theme")).Trim());
+        Assert.Equal(AppTheme.Dark, new Appearance(new ThemeStore(_dir), _ => { }).Theme); // remembered
+
+        File.WriteAllText(Path.Combine(_dir, "theme"), "purple\n");
+        Assert.Equal(AppTheme.Auto, store.Load()); // unknown → automatic
+        Assert.Equal(Avalonia.Styling.ThemeVariant.Default, Appearance.VariantFor(AppTheme.Auto));
+        Assert.Equal(Avalonia.Styling.ThemeVariant.Light, Appearance.VariantFor(AppTheme.Light));
+    }
+
+    [Fact]
+    public void Settings_switch_sets_the_theme()
+    {
+        var appearance = new Appearance(new ThemeStore(_dir), _ => { });
+        var vm = new SettingsViewModel(null!, new DriveClientProvider(() => null!), null!, new FakeDaemon(), new FakeDialogs(), new FakeToaster(), appearance);
+        Assert.True(vm.HasAppearance);
+        Assert.Equal(0, vm.ThemeIndex);
+        var changed = new List<string?>();
+        vm.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+        vm.ThemeIndex = 2;
+        Assert.Equal(AppTheme.Dark, appearance.Theme);
+        Assert.Contains(nameof(vm.ThemeIndex), changed);
+        vm.ThemeIndex = 7; // out of range: ignored
+        Assert.Equal(AppTheme.Dark, appearance.Theme);
+        Assert.False(new SettingsViewModel(null!, new DriveClientProvider(() => null!), null!, new FakeDaemon(), new FakeDialogs(), new FakeToaster()).HasAppearance);
+    }
+}

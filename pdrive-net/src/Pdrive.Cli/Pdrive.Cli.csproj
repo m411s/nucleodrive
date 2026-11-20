@@ -1,8 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-  <ItemGroup>
-    <PackageReference Include="CliWrap" />
-  </ItemGroup>
-  <ItemGroup>
-    <InternalsVisibleTo Include="Pdrive.Cli.Tests" />
-  </ItemGroup>
-</Project>

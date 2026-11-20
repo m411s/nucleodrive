@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>nucleodrivectl</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="System.CommandLine" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../NucleoDrive.Sync/NucleoDrive.Sync.csproj" />
+    <ProjectReference Include="../NucleoDrive.Ipc/NucleoDrive.Ipc.csproj" />
+  </ItemGroup>
+</Project>

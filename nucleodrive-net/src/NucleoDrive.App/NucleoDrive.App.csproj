@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <AssemblyName>nucleodrive</AssemblyName>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <ApplicationManifest />
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Desktop" />
+    <PackageReference Include="Avalonia.Themes.Fluent" />
+    <PackageReference Include="Avalonia.Fonts.Inter" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../NucleoDrive.Cli/NucleoDrive.Cli.csproj" />
+    <ProjectReference Include="../NucleoDrive.Ipc/NucleoDrive.Ipc.csproj" />
+    <ProjectReference Include="../NucleoDrive.Sync/NucleoDrive.Sync.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="NucleoDrive.App.Tests" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- App icon; source artwork is assets/nucleodrive.svg -->
+    <AvaloniaResource Include="../../assets/icons/nucleodrive-256.png" Link="Assets/nucleodrive.png" />
+    <AvaloniaResource Include="../../../LICENSE" Link="Assets/LICENSE.txt" />
+  </ItemGroup>
+</Project>

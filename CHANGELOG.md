@@ -1,7 +1,17 @@
 # Changelog
 
-All notable changes to pdrive. Versions follow [Semantic Versioning](https://semver.org); before 1.0,
+All notable changes to NucleoDrive (called pdrive up to 0.2.1). Versions follow [Semantic Versioning](https://semver.org); before 1.0,
 minor versions may change behaviour.
+
+## Unreleased
+
+- **New name: NucleoDrive** (was pdrive). Another Proton Drive tool for Linux already goes by "PDrive", so
+  this one is now NucleoDrive: commands `nucleodrive` and `nucleodrivectl`, service `nucleodrive.service`,
+  app ID `io.github.m411s.nucleodrive`, package `nucleodrive` (it replaces the `pdrive` package).
+- **Upgrading keeps everything:** on first start, settings, sync state and the CLI installed from Settings
+  move from the `pdrive` folders to the `nucleodrive` ones. `install.sh` and the AppImage stop and remove
+  the old service and login entry; "start at login" stays off if you had switched it off.
+- Environment variables are now `NUCLEODRIVE_*` (`NUCLEODRIVE_CONFIG_DIR` and so on).
 
 ## 0.2.1 — 2026-11-17
 
