@@ -30,10 +30,10 @@ public sealed class TrayController : IDisposable
             if (_daemon.Status.Sync is { LocalRoot.Length: > 0 } sync)
                 openFolder(sync.LocalRoot);
         };
-        var open = new NativeMenuItem("Open nucleodrive");
+        var open = new NativeMenuItem("Open NucleoDrive");
         var settingsItem = new NativeMenuItem("Settings");
         settingsItem.Click += (_, _) => showSettings();
-        var aboutItem = new NativeMenuItem("About nucleodrive");
+        var aboutItem = new NativeMenuItem("About NucleoDrive");
         aboutItem.Click += (_, _) => showAbout();
         var quitItem = new NativeMenuItem("Quit");
         open.Click += (_, _) => showWindow();

@@ -3,6 +3,11 @@
 All notable changes to NucleoDrive (called pdrive up to 0.2.1). Versions follow [Semantic Versioning](https://semver.org); before 1.0,
 minor versions may change behaviour.
 
+## Unreleased
+
+- The app spells its name NucleoDrive everywhere: the setup wizard, window titles, the tray menu and
+  Settings still said "nucleodrive" in places.
+
 ## 0.3.0 — 2026-11-21
 
 - **New name: NucleoDrive** (was pdrive). Another Proton Drive tool for Linux already goes by "PDrive", so

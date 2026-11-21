@@ -50,7 +50,7 @@ public sealed partial class SetupViewModel : ObservableObject
     private bool _busy;
 
     // CLI
-    [ObservableProperty] private string _cliStatus = "nucleodrive talks to Drive through Proton's official command-line tool. It isn't installed yet.";
+    [ObservableProperty] private string _cliStatus = "NucleoDrive talks to Drive through Proton's official command-line tool. It isn't installed yet.";
 
     /// <summary>Set once the wizard installed the CLI: the step then shows a success line instead of the Install button.</summary>
     [ObservableProperty] private bool _cliInstalled;

@@ -3,7 +3,7 @@
         xmlns:vm="using:NucleoDrive.App.ViewModels"
         x:Class="NucleoDrive.App.Views.SetupWindow"
         x:DataType="vm:SetupViewModel"
-        Title="Set up nucleodrive"
+        Title="Set up NucleoDrive"
         Background="{DynamicResource Pd.Window}"
         Width="620" Height="540" MinWidth="480" MinHeight="440"
         WindowStartupLocation="CenterScreen">
@@ -33,7 +33,7 @@
       <ProgressBar IsIndeterminate="True" IsVisible="{Binding Busy}" Width="100" HorizontalAlignment="Left" VerticalAlignment="Center" />
     </DockPanel>
     <TextBlock DockPanel.Dock="Bottom" Classes="muted small" Margin="2,12,2,0" TextWrapping="Wrap" IsVisible="{Binding IsFirstStep}"
-               Text="nucleodrive is an unofficial third-party app, not made or supported by Proton. It's for personal, non-commercial use, at your own risk: the authors accept no responsibility for data loss, so keep backups." />
+               Text="NucleoDrive is an unofficial third-party app, not made or supported by Proton. It's for personal, non-commercial use, at your own risk: the authors accept no responsibility for data loss, so keep backups." />
     <Border DockPanel.Dock="Bottom" Classes="warning" Margin="0,12,0,0"
             IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}">
       <TextBlock Text="{Binding Error}" TextWrapping="Wrap" />
@@ -47,7 +47,7 @@
             <StackPanel Spacing="12" IsVisible="{Binding !CliInstalled}">
               <TextBlock Text="{Binding CliStatus}" TextWrapping="Wrap" />
               <TextBlock Classes="muted" TextWrapping="Wrap"
-                         Text="nucleodrive downloads Proton's official build for this computer from proton.me and checks it against the checksum Proton publishes before installing it." />
+                         Text="NucleoDrive downloads Proton's official build for this computer from proton.me and checks it against the checksum Proton publishes before installing it." />
               <Button Classes="accent" Command="{Binding InstallCliCommand}" HorizontalAlignment="Left" Margin="0,6,0,0">Install the CLI</Button>
             </StackPanel>
             <Grid ColumnDefinitions="Auto,*" IsVisible="{Binding CliInstalled}">
@@ -64,7 +64,7 @@
           <StackPanel Spacing="12" IsVisible="{Binding IsSignInStep}">
             <TextBlock Text="{Binding SignInStatus}" TextWrapping="Wrap" />
             <TextBlock Classes="muted small" TextWrapping="Wrap" IsVisible="{Binding !IsFirstStep}"
-                       Text="nucleodrive is a third-party app, not made or supported by Proton." />
+                       Text="NucleoDrive is a third-party app, not made or supported by Proton." />
             <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding !SignedIn}" Margin="0,6,0,0">
               <Button Classes="accent" Command="{Binding SignInCommand}">Sign in</Button>
               <Button Classes="ghost" Command="{Binding SkipSignInCommand}">Skip for now</Button>
