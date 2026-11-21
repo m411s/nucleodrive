@@ -10,7 +10,7 @@ APPS="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
 ICONS="${XDG_DATA_HOME:-$HOME/.local/share}/icons/hicolor"
 
 if [ "${NO_SYSTEMD:-0}" != "1" ] && command -v systemctl >/dev/null && systemctl --user show-environment >/dev/null 2>&1; then
-  systemctl --user disable --now NucleoDrive.service 2>/dev/null || true
+  systemctl --user disable --now nucleodrive.service 2>/dev/null || true
 fi
 rm -f "$CONF/systemd/user/nucleodrive.service" "$CONF/autostart/nucleodrive-tray.desktop" "$APPS/nucleodrive.desktop"
 [ -L "$HOME/.local/bin/nucleodrivectl" ] && rm -f "$HOME/.local/bin/nucleodrivectl"
