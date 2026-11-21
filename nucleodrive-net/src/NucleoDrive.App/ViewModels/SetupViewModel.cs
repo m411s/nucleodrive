@@ -52,6 +52,11 @@ public sealed partial class SetupViewModel : ObservableObject
     // CLI
     [ObservableProperty] private string _cliStatus = "nucleodrive talks to Drive through Proton's official command-line tool. It isn't installed yet.";
 
+    /// <summary>Set once the wizard installed the CLI: the step then shows a success line instead of the Install button.</summary>
+    [ObservableProperty] private bool _cliInstalled;
+
+    [ObservableProperty] private string _cliInstalledTitle = "";
+
     // Sign in
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(NextCommand))]
@@ -182,7 +187,8 @@ public sealed partial class SetupViewModel : ObservableObject
                 what => _dialogs.ConfirmAsync("Replace proton-drive?", $"{what} already exists. Replace it with a link to the CLI NucleoDrive just installed?", "Replace", "Keep it"),
                 new Progress<string>(m => CliStatus = m));
             _provider.Reset();
-            CliStatus = $"Installed proton-drive {release.Version}.";
+            CliInstalledTitle = $"Proton Drive CLI {release.Version} installed";
+            CliInstalled = true;
             NextCommand.NotifyCanExecuteChanged();
         }
         catch (DriveException e)

@@ -84,7 +84,10 @@ public sealed class SetupViewModelTests : IDisposable
         Assert.Equal(SetupStep.Cli, vm.Step);
         Assert.Equal("Step 1 of 4", vm.StepText);
         Assert.False(vm.NextCommand.CanExecute(null));
+        Assert.False(vm.CliInstalled);
         await vm.InstallCliCommand.ExecuteAsync(null);
+        Assert.True(vm.CliInstalled);
+        Assert.Equal("Proton Drive CLI 0.9.0 installed", vm.CliInstalledTitle);
         Assert.True(vm.NextCommand.CanExecute(null));
         await vm.NextCommand.ExecuteAsync(null);
 
