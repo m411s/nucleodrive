@@ -8,7 +8,7 @@
 #   ./package.sh appimage   only the AppImage
 #
 # Environment: VERSION (default: 0.1.0~git<date>.<commit>), MAINTAINER (for the .deb).
-# Needs the .NET 10 SDK, dpkg-deb, ImageMagick; the AppImage step downloads appimagetool 1.9.1 once
+# Needs the .NET 10 SDK and dpkg-deb; the AppImage step downloads appimagetool 1.9.1 once
 # (checked against its pinned SHA-256) into .tools/.
 #
 # The packages use NucleoDrive's own icon. Proton's Drive badge is never included (it's Proton's
@@ -46,7 +46,7 @@ done
 echo "==> Icons"
 ICONS="$BUILD/icons"
 mkdir -p "$ICONS"
-"$DIR/assets/make-tray-icons.sh" "$DIR/assets/icons/nucleodrive-tray-base.png" "$ICONS"
+cp "$DIR"/assets/icons/tray-*.png "$ICONS/" # made by assets/make-tray-icons.sh, committed
 cp "$DIR/assets/icons/nucleodrive-256.png" "$ICONS/app-256.png"
 
 # Puts hicolor icons + tray icons under a share/ directory.

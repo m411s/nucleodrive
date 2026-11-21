@@ -30,9 +30,6 @@ jobs:
         with:
           global-json-file: nucleodrive-net/global.json
 
-      - name: Tools
-        run: sudo apt-get update -q && sudo apt-get install -y -q imagemagick
-
       - name: Version
         id: version
         run: |
