@@ -5,6 +5,13 @@
 #
 #   make-tray-icons.sh BASE.png OUTDIR [GLYPH_COLOUR]
 #
+# The results are committed in assets/icons (install.sh and package.sh copy them, so installing needs
+# no ImageMagick). After changing the base icon or this script, regenerate and commit them:
+#
+#   assets/make-tray-icons.sh assets/icons/nucleodrive-tray-base.png assets/icons
+#
+# Output carries no timestamps, so the same inputs give the same files.
+#
 # Writes OUTDIR/tray-{idle,syncing,paused,error,attention,stopped}.png (128×128):
 #   idle = synced (✓), syncing (⟳ two circular arrows), paused (‖), error (!),
 #   attention = sign in / confirm deletions (!), stopped = daemon not running (–, faded base)
@@ -41,5 +48,6 @@ for state in idle syncing paused error attention stopped; do
         \( -size 128x128 xc:none -fill black -draw "circle $CX,$CY $CX,$((CY - GAP))" \) -compose DstOut -composite \
         -compose Over -draw "fill ${colour[$state]} stroke none circle $CX,$CY $CX,$((CY - R))" \
         -draw "translate $CX,$CY ${glyph[$state]}" \
+        -strip -define png:exclude-chunks=date,time \
         "$out/tray-$state.png"
 done

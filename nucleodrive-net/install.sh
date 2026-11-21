@@ -117,16 +117,12 @@ done
 
 ICON_DATA="${XDG_DATA_HOME:-$HOME/.local/share}/nucleodrive/icons"
 mkdir -p "$ICON_DATA"
-base="$DIR/assets/icons/nucleodrive-tray-base.png" # the plain cloud: the sync loop is a smudge at tray size
 # Earlier versions could use Proton's Drive badge as the icon; Proton's rules for third-party apps
 # don't allow its logos, so remove any copy left from then.
 rm -f "$ICON_DATA/app-256.png" "$ICON_DATA/drive-badge.svg" "$ICON_DATA/drive-folder.svg" "$ICON_DATA/.drive-badge.download"
-# Tray state icons (synced, syncing, paused, error, attention, stopped) from NucleoDrive's icon.
-if command -v magick >/dev/null || command -v convert >/dev/null; then
-  "$DIR/assets/make-tray-icons.sh" "$base" "$ICON_DATA"
-else
-  echo "ImageMagick not found: the tray uses simple built-in state icons."
-fi
+# Tray state icons (synced, syncing, paused, error, attention, stopped), made from NucleoDrive's icon by
+# assets/make-tray-icons.sh and committed, so no ImageMagick is needed here.
+install -m644 "$DIR"/assets/icons/tray-*.png "$ICON_DATA/"
 
 # Only refresh an existing cache: creating one here would hide icons other apps add later.
 if [ -f "$ICONS/icon-theme.cache" ] && command -v gtk-update-icon-cache >/dev/null; then

@@ -57,7 +57,8 @@ installed from the app (**Settings › Install the CLI**), or by hand from
 https://proton.me/download/drive/cli/index.html into `~/.local/bin` (or set `PROTON_DRIVE_BIN`).
 
 NucleoDrive uses its own icon (a cloud with a sync loop, `assets/nucleodrive.svg`); Proton's rules for third-party
-apps don't allow Proton's logos. Tray state icons need ImageMagick.
+apps don't allow Proton's logos. The tray state icons in `assets/icons` are
+made from it by `assets/make-tray-icons.sh` (needs ImageMagick, only when regenerating them).
 
 ```bash
 ./install.sh
