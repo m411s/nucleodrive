@@ -12,6 +12,15 @@ minor versions may change behaviour.
   move from the `pdrive` folders to the `nucleodrive` ones. `install.sh` and the AppImage stop and remove
   the old service and login entry; "start at login" stays off if you had switched it off.
 - Environment variables are now `NUCLEODRIVE_*` (`NUCLEODRIVE_CONFIG_DIR` and so on).
+- **Fix:** `install.sh` stopped with "Unit NucleoDrive.service does not exist" before starting the
+  service and tray, and the .deb, AppImage and `uninstall.sh` didn't enable or disable the service
+  (systemd unit names are case-sensitive; the unit is `nucleodrive.service`).
+- The setup wizard now confirms clearly when it has installed the CLI (green dot, version, "Click Next
+  to sign in") instead of a plain sentence above the Install button.
+- **Tray icons without ImageMagick:** the tray state icons ship ready-made, so every install gets them.
+  Before, `install.sh` made them with ImageMagick and fell back to plain icons without it.
+- Building no longer fails with NU1507 when your NuGet config has more than one package source: the
+  repository's `nuget.config` uses only nuget.org.
 
 ## 0.2.1 — 2026-11-17
 
