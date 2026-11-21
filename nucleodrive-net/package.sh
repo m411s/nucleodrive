@@ -150,7 +150,7 @@ CTRL
 #!/bin/sh
 set -e
 if [ "$1" = configure ] && command -v systemctl >/dev/null 2>&1; then
-  systemctl --global enable NucleoDrive.service >/dev/null 2>&1 || true
+  systemctl --global enable nucleodrive.service >/dev/null 2>&1 || true
   echo "nucleodrive: the sync service starts at your next login (or now: systemctl --user start nucleodrive)."
 fi
 exit 0
@@ -159,7 +159,7 @@ SH
 #!/bin/sh
 set -e
 if [ "$1" = remove ] && command -v systemctl >/dev/null 2>&1; then
-  systemctl --global disable NucleoDrive.service >/dev/null 2>&1 || true
+  systemctl --global disable nucleodrive.service >/dev/null 2>&1 || true
 fi
 exit 0
 SH
