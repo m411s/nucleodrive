@@ -186,7 +186,7 @@ DESK
 
 if have_systemd; then
   systemctl --user daemon-reload
-  systemctl --user enable --now NucleoDrive.service
+  systemctl --user enable --now nucleodrive.service
   echo "Daemon started:  systemctl --user status nucleodrive   (logs: journalctl --user -u nucleodrive)"
 else
   echo "systemd not used; start the daemon yourself: \"$LIB/nucleodrive-daemon\""
