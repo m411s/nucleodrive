@@ -54,6 +54,25 @@ public sealed class HeadlessTests
     }
 
     [AvaloniaFact]
+    public void Setup_window_confirms_the_installed_cli()
+    {
+        var vm = new SetupViewModel(null!, null!, null!, null!, null!, null!, null!);
+        var w = new SetupWindow { DataContext = vm };
+        w.Show();
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        Button Install() => w.GetVisualDescendants().OfType<Button>().Single(b => b.Content as string == "Install the CLI");
+        Assert.True(Install().IsEffectivelyVisible);
+
+        vm.CliInstalledTitle = "Proton Drive CLI 0.9.0 installed";
+        vm.CliInstalled = true;
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        Assert.False(Install().IsEffectivelyVisible);
+        Assert.Contains(w.GetVisualDescendants().OfType<TextBlock>(),
+            t => t.Text == "Proton Drive CLI 0.9.0 installed" && t.IsEffectivelyVisible);
+        w.Close();
+    }
+
+    [AvaloniaFact]
     public void App_icon_is_embedded()
     {
         var uri = new Uri("avares://nucleodrive/Assets/nucleodrive.png");

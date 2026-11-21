@@ -44,10 +44,20 @@
         <Panel>
           <!-- CLI -->
           <StackPanel Spacing="12" IsVisible="{Binding IsCliStep}">
-            <TextBlock Text="{Binding CliStatus}" TextWrapping="Wrap" />
-            <TextBlock Classes="muted" TextWrapping="Wrap"
-                       Text="nucleodrive downloads Proton's official build for this computer from proton.me and checks it against the checksum Proton publishes before installing it." />
-            <Button Classes="accent" Command="{Binding InstallCliCommand}" HorizontalAlignment="Left" Margin="0,6,0,0">Install the CLI</Button>
+            <StackPanel Spacing="12" IsVisible="{Binding !CliInstalled}">
+              <TextBlock Text="{Binding CliStatus}" TextWrapping="Wrap" />
+              <TextBlock Classes="muted" TextWrapping="Wrap"
+                         Text="nucleodrive downloads Proton's official build for this computer from proton.me and checks it against the checksum Proton publishes before installing it." />
+              <Button Classes="accent" Command="{Binding InstallCliCommand}" HorizontalAlignment="Left" Margin="0,6,0,0">Install the CLI</Button>
+            </StackPanel>
+            <Grid ColumnDefinitions="Auto,*" IsVisible="{Binding CliInstalled}">
+              <Ellipse Classes="dot ok" Margin="2,6,10,0" VerticalAlignment="Top" />
+              <StackPanel Grid.Column="1" Spacing="4">
+                <TextBlock Text="{Binding CliInstalledTitle}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                <TextBlock Classes="muted" TextWrapping="Wrap"
+                           Text="Downloaded from proton.me and checked against Proton's published checksum. Click Next to sign in." />
+              </StackPanel>
+            </Grid>
           </StackPanel>
 
           <!-- sign in -->
