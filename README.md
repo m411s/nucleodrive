@@ -13,6 +13,16 @@ Formerly called pdrive: upgrading keeps your settings and sync state.
 - **Settings**: sign in/out, install or update the CLI (verified against Proton's checksums), start at
   login.
 
+<p align="center">
+<picture><source media="(prefers-color-scheme: dark)" srcset="nucleodrive-net/docs/screenshots/readme-sync-dark.png"><img src="nucleodrive-net/docs/screenshots/readme-sync-light.png" alt="NucleoDrive's Sync page: Drive folders with on/off switches, the sync folder and when Drive was last checked" width="720"></picture>
+</p>
+<p align="center">
+<picture><source media="(prefers-color-scheme: dark)" srcset="nucleodrive-net/docs/screenshots/readme-files-dark.png"><img src="nucleodrive-net/docs/screenshots/readme-files-light.png" alt="The Files page: browsing My files on Drive, with upload" width="355"></picture>
+<picture><source media="(prefers-color-scheme: dark)" srcset="nucleodrive-net/docs/screenshots/readme-settings-dark.png"><img src="nucleodrive-net/docs/screenshots/readme-settings-light.png" alt="The Settings page: Proton account, the Proton Drive CLI, appearance and startup" width="355"></picture>
+</p>
+
+<sub>Screenshots use made-up sample data (regenerate with <code>nucleodrive-net/docs/screenshots/update.sh</code>).</sub>
+
 > [!WARNING]
 > **Use at your own risk.** NucleoDrive is an unofficial, third-party app, not made, endorsed or supported by
 > Proton AG. It is meant for **personal, non-commercial use**: Proton only allows third-party Drive apps

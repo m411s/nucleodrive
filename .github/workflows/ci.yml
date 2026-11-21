@@ -37,5 +37,5 @@ jobs:
 
       - name: Shell scripts parse
         run: |
-          bash -n install.sh uninstall.sh package.sh test.sh assets/make-tray-icons.sh
+          bash -n install.sh uninstall.sh package.sh test.sh assets/make-tray-icons.sh docs/screenshots/update.sh
           sh -n packaging/appimage/AppRun

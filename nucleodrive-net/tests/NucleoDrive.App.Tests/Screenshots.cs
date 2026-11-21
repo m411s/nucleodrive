@@ -84,6 +84,16 @@ public sealed class Screenshots
                 await Task.Delay(250, TestContext.Current.CancellationToken); // let the cross-fade finish
                 Save(w, $"main-{i}-{suffix}");
             }
+            // The README's screenshots (docs/screenshots, see update.sh there): taller, so Sync and
+            // Settings aren't cut off.
+            w.Height = 800;
+            foreach (var (page, name) in new[] { (1, "sync"), (0, "files"), (3, "settings") })
+            {
+                vm.PageIndex = page;
+                await Task.Delay(250, TestContext.Current.CancellationToken);
+                Save(w, $"readme-{name}-{suffix}");
+            }
+            w.Height = 620;
             vm.PageIndex = 3;
             await Task.Delay(250, TestContext.Current.CancellationToken);
             if (w.FindDescendantOfType<Expander>() is { } limits)
