@@ -102,6 +102,17 @@ public sealed class BinaryLocatorTests
         env["PATH"] = tmp.Path;
         Assert.Equal(exe, BinaryLocator.Find(k => env.GetValueOrDefault(k)));
     }
+
+    [Fact]
+    public void Broken_symlinks_are_skipped_not_thrown()
+    {
+        using var tmp = new TempDir();
+        Directory.CreateDirectory(tmp["bin"]);
+        File.CreateSymbolicLink(Path.Combine(tmp["bin"], "proton-drive"), tmp["gone/proton-drive"]);
+        var env = new Dictionary<string, string?> { ["PATH"] = tmp["bin"], ["HOME"] = tmp.Path };
+
+        Assert.Null(BinaryLocator.Find(k => env.GetValueOrDefault(k)));
+    }
 }
 
 public sealed class RemotePathTests

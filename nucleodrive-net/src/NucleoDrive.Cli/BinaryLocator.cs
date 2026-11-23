@@ -32,6 +32,13 @@ public static class BinaryLocator
         if (OperatingSystem.IsWindows())
             return true;
         const UnixFileMode anyExec = UnixFileMode.UserExecute | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute;
-        return (File.GetUnixFileMode(path) & anyExec) != 0;
+        try
+        {
+            return (File.GetUnixFileMode(path) & anyExec) != 0;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            return false; // a broken symlink: File.Exists sees the link, GetUnixFileMode follows it
+        }
     }
 }
