@@ -3,8 +3,10 @@
 All notable changes to NucleoDrive (called pdrive up to 0.2.1). Versions follow [Semantic Versioning](https://semver.org); before 1.0,
 minor versions may change behaviour.
 
-## Unreleased
+## 0.3.1 — 2026-11-23
 
+- **Fix:** the app and tray crashed on startup when a `proton-drive` found on the way (for example
+  `~/.local/bin/proton-drive`) was a symlink to a file that no longer exists. Such a link is now skipped.
 - The app spells its name NucleoDrive everywhere: the setup wizard, window titles, the tray menu and
   Settings still said "nucleodrive" in places.
 
