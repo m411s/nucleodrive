@@ -60,6 +60,14 @@ install_icons() {
   cp "$ICONS"/*.png "$share/nucleodrive/icons/"
 }
 
+# AppStream metainfo with this build's version and today's date as its release entry.
+install_metainfo() {
+  local share="$1"
+  install -d "$share/metainfo"
+  sed -e "s/@VERSION@/${FILE_VERSION%%[-+]*}/" -e "s/@DATE@/$(date -u +%F)/" \
+    "$DIR/packaging/io.github.m411s.nucleodrive.metainfo.xml" > "$share/metainfo/io.github.m411s.nucleodrive.metainfo.xml"
+}
+
 # Files 644 (755 if executable), folders 755, whatever the build machine's umask was.
 normalize_modes() {
   find "$1" -type d -exec chmod 755 {} +
@@ -75,6 +83,11 @@ build_deb() {
   ln -s /opt/nucleodrive/nucleodrive "$root/usr/bin/nucleodrive"
   ln -s /opt/nucleodrive/nucleodrivectl "$root/usr/bin/nucleodrivectl"
   install_icons "$root/usr/share"
+  install_metainfo "$root/usr/share"
+  install -Dm644 "$DIR/packaging/copyright" "$root/usr/share/doc/nucleodrive/copyright"
+  gzip -9n < "$DIR/../CHANGELOG.md" > "$root/usr/share/doc/nucleodrive/changelog.gz"
+  install -d "$root/usr/share/man/man1"
+  gzip -9n < "$DIR/packaging/nucleodrivectl.1" > "$root/usr/share/man/man1/nucleodrivectl.1.gz"
 
   install -Dm644 /dev/stdin "$root/usr/lib/systemd/user/nucleodrive.service" <<'UNIT'
 [Unit]
@@ -196,8 +209,9 @@ build_appimage() {
   mkdir -p "$app/usr/lib/nucleodrive"
   cp -a "$PUB/." "$app/usr/lib/nucleodrive/"
   install_icons "$app/usr/share"
+  install_metainfo "$app/usr/share"
   cp "$DIR/assets/icons/nucleodrive-256.png" "$app/nucleodrive.png"
-  ln -s NucleoDrive.png "$app/.DirIcon"
+  ln -s nucleodrive.png "$app/.DirIcon"
   install -Dm755 "$DIR/packaging/appimage/AppRun" "$app/AppRun"
   normalize_modes "$app"
   cat > "$app/nucleodrive.desktop" <<'DESK'
@@ -216,8 +230,13 @@ DESK
   local tool out="$DIR/dist/nucleodrive-${FILE_VERSION}-${AI_ARCH}.AppImage"
   tool=$(appimagetool_path)
   # Run the tool from its extracted form, so building needs no FUSE.
-  ARCH="$AI_ARCH" APPIMAGE_EXTRACT_AND_RUN=1 "$tool" --no-appstream "$app" "$out" >/dev/null 2>"$BUILD/appimagetool.log" \
+  # -u embeds the update information (AppImageUpdate, Gear Lever); with zsyncmake installed the tool
+  # also writes <file>.zsync next to the AppImage, which the release publishes.
+  ARCH="$AI_ARCH" APPIMAGE_EXTRACT_AND_RUN=1 "$tool" --no-appstream \
+    -u "gh-releases-zsync|m411s|nucleodrive|latest|nucleodrive-*-$AI_ARCH.AppImage.zsync" "$app" "$out" >/dev/null 2>"$BUILD/appimagetool.log" \
     || { cat "$BUILD/appimagetool.log" >&2; exit 1; }
+  # appimagetool writes the .zsync into the current directory; keep it next to the AppImage.
+  [ -f "$DIR/$(basename "$out").zsync" ] && mv "$DIR/$(basename "$out").zsync" "$out.zsync"
   echo "    $out ($(du -h "$out" | cut -f1))"
 }
 

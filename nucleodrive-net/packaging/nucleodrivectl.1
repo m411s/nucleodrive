@@ -1,0 +1,66 @@
+.TH NUCLEODRIVECTL 1 "" "NucleoDrive" "User Commands"
+.SH NAME
+nucleodrivectl \- control the NucleoDrive background service
+.SH SYNOPSIS
+.B nucleodrivectl
+.I command
+[\fIarguments\fR]
+.br
+.B nucleodrivectl sync
+.I command
+[\fIarguments\fR]
+.SH DESCRIPTION
+Controls the NucleoDrive service, an unofficial Proton Drive client, through its
+per-user control socket. When the service is not running, folder and pause
+changes are written to its configuration and take effect when it starts.
+.SS Backup (one way, local to Drive)
+.TP
+.B status
+Show what the service is doing.
+.TP
+.B list
+List backed-up folders.
+.TP
+.BI add " local remote"
+Back up a local folder to a Drive folder, e.g. ~/Documents /my-files/Documents.
+.TP
+.BI remove " local"
+Stop backing up a folder. Nothing is deleted on Drive.
+.TP
+.B now
+Sync now.
+.TP
+.B pause
+Pause backups.
+.TP
+.B resume
+Resume backups.
+.SS Two-way sync
+.TP
+.B sync status
+Show the state of the sync folder (~/proton-drive).
+.TP
+.B sync list
+List the Drive folders that are synced.
+.TP
+.BI "sync add " folder
+Start syncing a Drive folder, given relative to /my-files (e.g. Photos).
+.TP
+.BI "sync remove " folder
+Stop syncing a Drive folder. Nothing is deleted on either side.
+.TP
+.B sync now
+Check Drive for changes now.
+.TP
+.B sync confirm
+Let held-back deletions go through.
+.TP
+.BR "sync interval " [ when ]
+How often Drive is checked: 30, 60, 120 or 240 (minutes), or manual. Without an
+argument, show the current setting.
+.SH EXIT STATUS
+3 if the service is not running (where one is needed).
+.SH SEE ALSO
+https://github.com/m411s/nucleodrive
+.SH NOTES
+NucleoDrive is not affiliated with Proton AG.

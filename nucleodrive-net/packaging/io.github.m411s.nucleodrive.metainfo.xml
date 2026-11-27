@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.m411s.nucleodrive</id>
+  <name>NucleoDrive</name>
+  <summary>Unofficial Proton Drive client: two-way sync, backup, browser</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <developer id="io.github.m411s">
+    <name>m411s</name>
+  </developer>
+  <description>
+    <p>
+      NucleoDrive keeps chosen Proton Drive folders in sync with a local folder, backs up other folders one way,
+      and lets you browse your Drive from a tray app. It is built on Proton's official proton-drive CLI, which
+      the app can install for you from its Settings page.
+    </p>
+    <p>
+      NucleoDrive is an unofficial, independent project and is not affiliated with Proton AG.
+    </p>
+  </description>
+  <launchable type="desktop-id">nucleodrive.desktop</launchable>
+  <url type="homepage">https://github.com/m411s/nucleodrive</url>
+  <url type="bugtracker">https://github.com/m411s/nucleodrive/issues</url>
+  <screenshots>
+    <screenshot type="default">
+      <caption>Choose which Drive folders are kept in sync</caption>
+      <image>https://raw.githubusercontent.com/m411s/nucleodrive/main/nucleodrive-net/docs/screenshots/readme-sync-light.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Browse your Drive</caption>
+      <image>https://raw.githubusercontent.com/m411s/nucleodrive/main/nucleodrive-net/docs/screenshots/readme-files-light.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Settings, in the dark theme</caption>
+      <image>https://raw.githubusercontent.com/m411s/nucleodrive/main/nucleodrive-net/docs/screenshots/readme-settings-dark.png</image>
+    </screenshot>
+  </screenshots>
+  <categories>
+    <category>Network</category>
+    <category>FileTransfer</category>
+  </categories>
+  <keywords>
+    <keyword>Proton</keyword>
+    <keyword>Drive</keyword>
+    <keyword>sync</keyword>
+    <keyword>backup</keyword>
+  </keywords>
+  <content_rating type="oars-1.1"/>
+  <provides>
+    <binary>nucleodrive</binary>
+    <binary>nucleodrivectl</binary>
+  </provides>
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+  </supports>
+  <releases>
+    <release version="@VERSION@" date="@DATE@"/>
+  </releases>
+</component>

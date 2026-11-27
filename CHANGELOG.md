@@ -3,6 +3,12 @@
 All notable changes to NucleoDrive (called pdrive up to 0.2.1). Versions follow [Semantic Versioning](https://semver.org); before 1.0,
 minor versions may change behaviour.
 
+## Unreleased
+
+- Packages: AppStream metainfo (for software centres), a copyright file, a changelog and a `nucleodrivectl`
+  man page in the .deb, and update information plus a `.zsync` file for the AppImage, so AppImageUpdate
+  and Gear Lever can update it. The AppImage's `.DirIcon` link pointed at a file name with the wrong case.
+
 ## 0.3.1 — 2026-11-23
 
 - **Fix:** the app and tray crashed on startup when a `proton-drive` found on the way (for example
